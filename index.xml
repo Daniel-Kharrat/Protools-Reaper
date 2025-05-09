@@ -10,7 +10,7 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area%20(select%20tracks%20in%20between).lua</source>
       </version>
     </reapack>
-        <reapack name="Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua" type="script" desc=".">
+        <reapack name="Daniel_Add items to selection and extend time selection and razor edit area.lua" type="script" desc=".">
       <metadata>
         <description>
         </description>

@@ -34,14 +34,6 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Check for armed tracks.lua" type="script" desc=".">
-      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Check%20for%20armed%20tracks.lua</source>
-      </version>
-    </reapack>
-  </category>
-
-  <category name="Protools">
     <reapack name="Daniel_Check for muted tracks.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Check%20for%20muted%20tracks.lua</source>

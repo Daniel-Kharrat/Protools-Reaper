@@ -416,5 +416,45 @@
       </version>
     </reapack>
   </category>
+
+  <category name="Protools">
+    <reapack name="Daniel_Zoom in horizontal.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Daniel_Zoom%20in%20horizontal.lua</source>
+      </version>
+    </reapack>
+  </category>
+
+  <category name="Protools">
+    <reapack name="Daniel_Zoom out horizontal.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Daniel_Zoom%20out%20horizontal.lua</source>
+      </version>
+    </reapack>
+  </category>
+
+  <category name="Protools">
+    <reapack name="Daniel_Horizontal zoom preset 3.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Daniel_Horizontal%20zoom%20preset%203.lua</source>
+      </version>
+    </reapack>
+  </category>
+
+  <category name="Protools">
+    <reapack name="Daniel_Horizontal zoom preset 4.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Daniel_Horizontal%20zoom%20preset%204.lua</source>
+      </version>
+    </reapack>
+  </category>
+
+  <category name="Protools">
+    <reapack name="Daniel_Horizontal zoom preset 5.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Daniel_Horizontal%20zoom%20preset%205.lua</source>
+      </version>
+    </reapack>
+  </category>
   
 </index>

@@ -5,7 +5,7 @@ if track == nil then
 end
 
 -- Define the JSFX plugin name
-local fxName = "Floating Meter (Dummy JSFX)"
+local fxName = "Daniel_Floating Meter"
 
 -- Check if the JSFX already exists in the input FX chain
 local fxIndex = reaper.TrackFX_AddByName(track, fxName, true, 0) -- true for input FX, 0 to search for existing instances

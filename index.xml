@@ -17,7 +17,7 @@
     </reapack>
   </category>
 
-  <category name="Protools">
+  <category name="Utility">
     <reapack name="Daniel_Change track routing from main to processing bus.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Change%20track%20routing%20from%20main%20to%20processing%20bus.lua</source>
@@ -89,7 +89,7 @@
     </reapack>
   </category>
 
-  <category name="Protools">
+  <category name="Utility">
     <reapack name="Daniel_Delete non existant scripts.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Delete%20non%20existant%20scripts.lua</source>
@@ -153,7 +153,7 @@
     </reapack>
   </category>
 
-  <category name="Protools">
+  <category name="Utility">
     <reapack name="Daniel_Floating input meter.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Floating%20input%20meter.lua</source>
@@ -161,7 +161,7 @@
     </reapack>
   </category>
 
-  <category name="Protools">
+  <category name="Utility">
     <reapack name="Daniel_Floating track input meter.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Floating%20track%20input%20meter.lua</source>
@@ -377,7 +377,7 @@
     </reapack>
   </category>
 
-  <category name="Protools">
+  <category name="Utility">
     <reapack name="Daniel_Toggle expand folder track in mixer and edit window.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Toggle%20expand%20folder%20track%20in%20mixer%20and%20edit%20window.lua</source>

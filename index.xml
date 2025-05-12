@@ -156,7 +156,7 @@
   <category name="Utility">
     <reapack name="Daniel_Floating input meter.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Floating%20input%20meter.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Daniel_Floating%20input%20meter.lua</source>
       </version>
     </reapack>
   </category>
@@ -164,7 +164,7 @@
   <category name="Utility">
     <reapack name="Daniel_Floating track input meter.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Daniel_Floating%20track%20input%20meter.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Daniel_Floating%20track%20input%20meter.lua</source>
       </version>
     </reapack>
   </category>

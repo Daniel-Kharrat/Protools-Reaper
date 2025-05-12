@@ -1,8 +1,0 @@
-
-
-in_pin:left input
-in_pin:right input
-@init
-@sample
-spl0 = spl0;
-spl1 = spl1;

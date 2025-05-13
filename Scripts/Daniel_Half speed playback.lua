@@ -1,3 +1,5 @@
+reaper.set_action_options(2)
+
 if reaper.GetPlayState() & 1 == 1 then
   reaper.PreventUIRefresh(1)
   

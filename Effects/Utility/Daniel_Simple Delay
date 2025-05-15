@@ -1,0 +1,46 @@
+slider1: 1<0,1,1{Unlinked,Linked}>Link L/R Delay
+slider2: 0<0,500,1>Left Delay (ms)
+slider3: 0<0,500,1>Right Delay (ms)
+
+@init
+max_delay_ms = 500;
+max_delay_samples = ceil(srate * max_delay_ms / 1000);
+buffer_pos = 0;
+
+buffer_L[max_delay_samples];
+buffer_R[max_delay_samples];
+
+@slider
+link_mode = slider1;
+
+delay_L_ms = slider2;
+
+// In linked mode, right slider follows left
+link_mode == 1 ? (
+    slider3 = slider2;
+);
+
+delay_R_ms = slider3;
+
+delay_samples_L = min(delay_L_ms * srate / 1000, max_delay_samples - 1);
+delay_samples_R = min(delay_R_ms * srate / 1000, max_delay_samples - 1);
+
+@sample
+// Write input to buffers
+buffer_L[buffer_pos] = spl0;
+buffer_R[buffer_pos] = spl1;
+
+// Read delayed samples
+read_pos_L = buffer_pos - delay_samples_L;
+read_pos_R = buffer_pos - delay_samples_R;
+
+read_pos_L < 0 ? read_pos_L += max_delay_samples;
+read_pos_R < 0 ? read_pos_R += max_delay_samples;
+
+// Output delayed signal
+spl0 = buffer_L[read_pos_L];
+spl1 = buffer_R[read_pos_R];
+
+// Advance circular buffer
+buffer_pos += 1;
+buffer_pos >= max_delay_samples ? buffer_pos = 0;

@@ -22,7 +22,7 @@ end
 
 function update_toolbar_button()
 
-    local command_id = reaper.NamedCommandLookup("_RSab27b93a5d47c6be970a3409a47941aae1a8083b")
+    local command_id = reaper.NamedCommandLookup("_RSca6b334a6865ac544a62db22eaed921a45f4f2b9")
 
     if are_tracks_soloed() or is_master_soloed() then
         reaper.SetToggleCommandState(0, command_id, 1)

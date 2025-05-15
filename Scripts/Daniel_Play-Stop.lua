@@ -2,7 +2,7 @@
 start_time, end_time = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
 
 --Get the state of "insertion follows playback" action
-local command_id = reaper.NamedCommandLookup("_RSdf3b71d1099874230545f464d1d14cddbbeaa8f7")
+local command_id = reaper.NamedCommandLookup("_RS3954f4d6fde790290a4c7e86538380193bf6db74")
 local active = reaper.GetToggleCommandState(command_id)
 
 --Check if there is a time selection and "insertion follows playback" is active 

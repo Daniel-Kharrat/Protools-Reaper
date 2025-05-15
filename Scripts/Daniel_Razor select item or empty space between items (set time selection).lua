@@ -69,7 +69,7 @@ reaper.SetEditCurPos(start_time, false, false)
 reaper.BR_SetArrangeView(0, view_start, view_end)
 
 --Item: Select items
-reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS7f0f28a9e4ffff9e42de5f30f5c2a32b6453b72c"), 0)
+reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS94dc0dfafd24dbff81a1b0fd6d5b7bb388026d1c"), 0)
 
 reaper.Undo_EndBlock("Move cursor right to nearest item edge in selected tracks and set time selection",0)
 reaper.PreventUIRefresh(-1)

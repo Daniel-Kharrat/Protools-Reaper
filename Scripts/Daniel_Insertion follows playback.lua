@@ -5,7 +5,7 @@ local is_pressed = true
 
 function update_toolbar_button()
 
-    local command_id = reaper.NamedCommandLookup("_RSdf3b71d1099874230545f464d1d14cddbbeaa8f7")
+    local command_id = reaper.NamedCommandLookup("_RS3954f4d6fde790290a4c7e86538380193bf6db74")
 
     if is_active then
         reaper.SetToggleCommandState(0, command_id, 1)

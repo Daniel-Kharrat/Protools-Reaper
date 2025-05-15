@@ -11,7 +11,7 @@ local new_cursor = reaper.GetCursorPosition()
 
 -- Get the currently clicked track (the track under the mouse cursor)
 local track = reaper.GetTrackFromPoint(reaper.GetMousePosition())
---reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS2ff6cea039db08b318797cc281eed6ffde8cb4e5"), 0)  --don't select tracks in between
+--reaper.Main_OnCommand(reaper.NamedCommandLookup("_RSf6098a40ebbc367e990daedac677a4b0b05bd1dc"), 0)  --don't select tracks in between
 
 if track then
     local is_selected = reaper.IsTrackSelected(track)
@@ -56,7 +56,7 @@ for i = 0, num_selected_tracks - 1 do
   
 end
 
-reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS7f0f28a9e4ffff9e42de5f30f5c2a32b6453b72c"), 0)
+reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS94dc0dfafd24dbff81a1b0fd6d5b7bb388026d1c"), 0)
 
 
 reaper.PreventUIRefresh(-1)

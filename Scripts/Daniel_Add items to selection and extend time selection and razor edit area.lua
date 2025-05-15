@@ -17,7 +17,7 @@ local new_cursor = reaper.GetCursorPosition()
 
 -- Get the currently clicked track (the track under the mouse cursor)
 local track = reaper.GetTrackFromPoint(reaper.GetMousePosition())
---reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS2ff6cea039db08b318797cc281eed6ffde8cb4e5"), 0)
+--reaper.Main_OnCommand(reaper.NamedCommandLookup("_RSf6098a40ebbc367e990daedac677a4b0b05bd1dc"), 0)
 
 if track then
     local is_selected = reaper.IsTrackSelected(track)
@@ -95,7 +95,7 @@ start_time, end_time = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
 reaper.SetEditCurPos(start_time, false, false)
 
 -- Script: Daniel_Select all items within time selection on selected tracks.lua
-reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS7f0f28a9e4ffff9e42de5f30f5c2a32b6453b72c"), 0)
+reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS94dc0dfafd24dbff81a1b0fd6d5b7bb388026d1c"), 0)
 
 -- Restore the arrange view scroll position
 reaper.BR_SetArrangeView(0, view_start, view_end)

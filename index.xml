@@ -460,6 +460,14 @@
     </reapack>
   </category>
 
+  <category name="Utility">
+    <reapack name="Daniel_Simple Delay" type="effect" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Delay</source>
+      </version>
+    </reapack>
+  </category>
+  
   <category name="Real Time">
     <reapack name="Daniel_Live Vocal Rider" type="effect" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">

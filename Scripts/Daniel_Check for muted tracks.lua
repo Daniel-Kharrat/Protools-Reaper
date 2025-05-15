@@ -22,7 +22,7 @@ end
 
 function update_toolbar_button()
 
-    local command_id = reaper.NamedCommandLookup("_RS2fd58885b67a23e5a79291e47d96abb14b55da1e")
+    local command_id = reaper.NamedCommandLookup("_RSd2e825ef5e1c0848a2a346dc027f8a3a452bb1b2")
 
     if are_tracks_muted() or is_master_muted() then
         reaper.SetToggleCommandState(0, command_id, 1)

@@ -1,0 +1,136 @@
+slider1: -21 <-42, 0, 0.1> Target Level (dB)
+slider2: 200 <1,500,1> Speed (ms)
+slider3: -3 <-12,11,1> Min Gain (dB)
+slider4: 3 <-11,12,1> Max Gain (dB)
+slider5: 50 <0,100,1> Idle Position (%)
+
+
+@init
+rms_target = 10^(slider1/20);
+speed_ms = slider2;
+release_coeff = exp(-1.0 / (speed_ms * 0.001 * srate));
+
+min_gain = 10^(slider3/20);
+max_gain = 10^(slider4/20);
+
+rms_l_sum = 0;
+rms_r_sum = 0;
+rms_window = 1024;
+
+smooth_gain_l = 1.0;
+smooth_gain_r = 1.0;
+
+@slider
+rms_target = 10^(slider1/20);
+speed_ms = slider2;
+release_coeff = exp(-1.0 / (speed_ms * 0.001 * srate));
+
+min_gain = 10^(slider3/20);
+max_gain = 10^(slider4/20);
+
+@sample
+// Simple RMS using moving average
+rms_l_sum += spl0 * spl0;
+rms_r_sum += spl1 * spl1;
+
+rms_l_sum -= rms_l_sum / rms_window;
+rms_r_sum -= rms_r_sum / rms_window;
+
+rms_l = sqrt(rms_l_sum / rms_window);
+rms_r = sqrt(rms_r_sum / rms_window);
+
+// Threshold in linear scale
+threshold = 0.007943; // ~ -42 dB
+
+
+rms_l = max(rms_l, 0.000001);
+rms_r = max(rms_r, 0.000001);
+
+// Convert RMS to dB
+rms_db_l = 20 * log10(rms_l);
+rms_db_r = 20 * log10(rms_r);
+
+// Dead zone in dB
+dead_zone = 1;
+
+// Compute idle gain from slider (% between min and max)
+idle_gain_db = slider3 + (slider4 - slider3) * (slider5 / 100);
+idle_gain = 10^(idle_gain_db / 20);
+
+// Only apply gain if outside dead zone
+gain_db_l = (rms_l > threshold && abs(rms_db_l - slider1-12) > dead_zone) ? slider1-12 - rms_db_l : idle_gain_db;
+gain_db_r = (rms_r > threshold && abs(rms_db_r - slider1-12) > dead_zone) ? slider1-12 - rms_db_r : idle_gain_db;
+
+// Limit gain in dB
+gain_db_l = min(max(gain_db_l, slider3), slider4);
+gain_db_r = min(max(gain_db_r, slider3), slider4);
+
+// Convert dB to linear
+gain_l = 10^(gain_db_l / 20);
+gain_r = 10^(gain_db_r / 20);
+
+
+// Limit gain range
+gain_l = min(max(gain_l, min_gain), max_gain);
+gain_r = min(max(gain_r, min_gain), max_gain);
+
+// Smooth gain changes
+smooth_gain_l = (smooth_gain_l * release_coeff) + (gain_l * (1 - release_coeff));
+smooth_gain_r = (smooth_gain_r * release_coeff) + (gain_r * (1 - release_coeff));
+
+// Apply gain
+spl0 *= smooth_gain_l;
+spl1 *= smooth_gain_r;
+
+
+@gfx 300 700
+// Vertical fader-style gain meter with markings
+center_db = 0;
+range_db = slider4 - slider3;
+avg_gain = (smooth_gain_l + smooth_gain_r) * 0.5;
+meter_db = 20 * log10(avg_gain);
+
+// Draw background
+gfx_r = gfx_g = gfx_b = 0.20;
+gfx_rect(0, 0, gfx_w, gfx_h);
+
+
+// Draw tick marks and labels every 3 dB on both sides
+gfx_set(1, 1, 1, 1);
+i = -12;
+while (i <= 12) (
+  y = gfx_h * 0.5 - (i / 14) * gfx_h * 0.5;
+  y = max(0, min(gfx_h, y));
+
+  // Tick mark (centered)
+  gfx_line(gfx_w * 0.4, y, gfx_w * 0.6, y);
+
+  // Left side label
+  gfx_set(1, 1, 1, 1);
+  gfx_x = gfx_w * 0.35;
+  gfx_y = y - 5;
+  sprintf(#label, "%+d", i);
+  gfx_drawstr(#label);
+
+  // Right side label
+  gfx_x = gfx_w * 0.62;
+  gfx_y = y - 5;
+  gfx_drawstr(#label);
+
+  i += 3;
+);
+
+
+// Draw gain indicator
+meter_y = gfx_h * 0.5 - (meter_db / 14) * gfx_h * 0.5;
+meter_y = max(0, min(gfx_h, meter_y));
+gfx_r = 0.2; gfx_g = 0.8; gfx_b = 0.2;
+gfx_rect(gfx_w * 0.4, meter_y - 2, gfx_w * 0.2, 4);   
+
+
+// Draw idle marker line
+gfx_r = 1; gfx_g = 0.5; gfx_b = 0;
+idle_marker_y = gfx_h * 0.5 - (idle_gain_db / 14) * gfx_h * 0.5;
+idle_marker_y = max(0, min(gfx_h, idle_marker_y));
+gfx_line(gfx_w * 0.4, idle_marker_y, gfx_w * 0.6, idle_marker_y);
+

@@ -89,14 +89,6 @@
     </reapack>
   </category>
 
-  <category name="Utility">
-    <reapack name="Daniel_Delete non existant scripts.lua" type="script" desc=".">
-      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Daniel_Delete%20non%20existant%20scripts.lua</source>
-      </version>
-    </reapack>
-  </category>
-
   <category name="Protools">
     <reapack name="Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">

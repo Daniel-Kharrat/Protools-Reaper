@@ -11,7 +11,8 @@ local view_center = view_start + view_length/2
 
 -- Check if edit cursor is in the view
 if old_cursor < view_end and old_cursor > view_start then
-  -- View: Zoom out horizontal
+  -- View: Zoom in horizontal
+  reaper.Main_OnCommand(1012, 0)
   reaper.Main_OnCommand(1012, 0)
   
 else
@@ -21,7 +22,8 @@ else
   -- Move edit cursor to view center
   reaper.SetEditCurPos(view_center, false, false)
 
-  -- View: Zoom out horizontal
+  -- View: Zoom in horizontal
+  reaper.Main_OnCommand(1012, 0)
   reaper.Main_OnCommand(1012, 0)
 
   -- Restore cursor position

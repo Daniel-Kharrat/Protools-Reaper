@@ -15,6 +15,7 @@ reaper.SetEditCurPos(view_center, false, false)
 
 -- View: Zoom out horizontal
 reaper.Main_OnCommand(1011, 0)
+reaper.Main_OnCommand(1011, 0)
 
 -- Restore cursor position
 reaper.SetEditCurPos(old_cursor, false, false)

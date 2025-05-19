@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <index version="1.0" name="Daniel Kharrat" commit="58a3e39ba95bd0f35846aa1f39aa4cb2574295e1">
+ 
+<!-- ________Protools Scripts________ -->
   
   <category name="Protools">
     <reapack name="Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua" type="script" desc=".">
@@ -13,14 +15,6 @@
     <reapack name="Daniel_Add items to selection and extend time selection and razor edit area.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area.lua</source>
-      </version>
-    </reapack>
-  </category>
-
-  <category name="Utility">
-    <reapack name="Daniel_Change track routing from main to processing bus.lua" type="script" desc=".">
-      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Change%20track%20routing%20from%20main%20to%20processing%20bus.lua</source>
       </version>
     </reapack>
   </category>
@@ -145,22 +139,6 @@
     </reapack>
   </category>
 
-  <category name="Utility">
-    <reapack name="Daniel_Floating input meter.lua" type="script" desc=".">
-      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20input%20meter.lua</source>
-      </version>
-    </reapack>
-  </category>
-
-  <category name="Utility">
-    <reapack name="Daniel_Floating track input meter.lua" type="script" desc=".">
-      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20track%20input%20meter.lua</source>
-      </version>
-    </reapack>
-  </category>
-
   <category name="Protools">
     <reapack name="Daniel_Global startup actions.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
@@ -213,6 +191,30 @@
     <reapack name="Daniel_Heal splits.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Heal%20splits.lua</source>
+      </version>
+    </reapack>
+  </category>
+
+  <category name="Protools">
+    <reapack name="Daniel_Horizontal zoom preset 3.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%203.lua</source>
+      </version>
+    </reapack>
+  </category>
+
+  <category name="Protools">
+    <reapack name="Daniel_Horizontal zoom preset 4.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%204.lua</source>
+      </version>
+    </reapack>
+  </category>
+
+  <category name="Protools">
+    <reapack name="Daniel_Horizontal zoom preset 5.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%205.lua</source>
       </version>
     </reapack>
   </category>
@@ -369,14 +371,6 @@
     </reapack>
   </category>
 
-  <category name="Utility">
-    <reapack name="Daniel_Toggle expand folder track in mixer and edit window.lua" type="script" desc=".">
-      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Toggle%20expand%20folder%20track%20in%20mixer%20and%20edit%20window.lua</source>
-      </version>
-    </reapack>
-  </category>
-
   <category name="Protools">
     <reapack name="Daniel_Toggle input monitoring.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
@@ -402,14 +396,6 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Zoom out project.lua" type="script" desc=".">
-      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20out%20project.lua</source>
-      </version>
-    </reapack>
-  </category>
-
-  <category name="Protools">
     <reapack name="Daniel_Zoom in horizontal.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20in%20horizontal.lua</source>
@@ -426,31 +412,49 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Horizontal zoom preset 3.lua" type="script" desc=".">
+    <reapack name="Daniel_Zoom out project.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%203.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20out%20project.lua</source>
       </version>
     </reapack>
   </category>
 
-  <category name="Protools">
-    <reapack name="Daniel_Horizontal zoom preset 4.lua" type="script" desc=".">
+  
+<!-- ________Utility Scripts________ -->
+  
+  <category name="Utility">
+    <reapack name="Daniel_Change track routing from main to processing bus.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%204.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Change%20track%20routing%20from%20main%20to%20processing%20bus.lua</source>
       </version>
     </reapack>
   </category>
 
-  <category name="Protools">
-    <reapack name="Daniel_Horizontal zoom preset 5.lua" type="script" desc=".">
+  <category name="Utility">
+    <reapack name="Daniel_Floating input meter.lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%205.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20input%20meter.lua</source>
       </version>
     </reapack>
   </category>
 
+  <category name="Utility">
+    <reapack name="Daniel_Floating track input meter.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20track%20input%20meter.lua</source>
+      </version>
+    </reapack>
+  </category>
 
-<!-- ________EFFECTS________ -->
+  <category name="Utility">
+    <reapack name="Daniel_Toggle expand folder track in mixer and edit window.lua" type="script" desc=".">
+      <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Toggle%20expand%20folder%20track%20in%20mixer%20and%20edit%20window.lua</source>
+      </version>
+    </reapack>
+  </category>
+
+<!-- ________Utility Effects________ -->
   
   <category name="Utility">
     <reapack name="Daniel_Floating Meter" type="effect" desc=".">
@@ -475,6 +479,8 @@
       </version>
     </reapack>
   </category>
+
+<!-- ________Real Time Effects________ -->
   
   <category name="Real Time">
     <reapack name="Daniel_Live Vocal Rider" type="effect" desc=".">

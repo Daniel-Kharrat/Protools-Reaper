@@ -86,7 +86,7 @@
   <category name="Protools">
     <reapack name="Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua" type="script" desc=".">
       <version name="1.1" author="Daniel" time="2025-05-04T23:30:32Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Daniel_Extend%20razor%20edit%20area%20to%20mouse%20cursor%20%20(select%20tracks%20in%20between).lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20mouse%20cursor%20%20(select%20tracks%20in%20between).lua</source>
       </version>
     </reapack>
   </category>

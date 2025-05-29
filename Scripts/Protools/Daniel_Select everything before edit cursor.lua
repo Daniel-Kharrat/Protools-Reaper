@@ -29,6 +29,9 @@ end
 --Razor edit: Select media items within razor edit area
 reaper.Main_OnCommand(42957,0)
 
+--Move edit cursor to start of project
+reaper.SetEditCurPos(0, false, false)
+
 reaper.Undo_BeginBlock( "Set selected tracks razor edit area to time selection", -1 )
 reaper.UpdateArrange()
 reaper.PreventUIRefresh(1)

@@ -14,9 +14,11 @@ if reaper.GetPlayState() & 1 == 1 then
   --Transport: Play
   reaper.Main_OnCommand(1007,0)
   
+  --Restore cursor position
   reaper.SetEditCurPos(old_cursor, false, false)
   
   reaper.PreventUIRefresh(-1)
+  
 else
   --set playback speed to 50% 
   reaper.CSurf_OnPlayRateChange(0.5)
@@ -31,8 +33,11 @@ function reset()
   if is_playing then
     --do nothing
   else
-  reaper.CSurf_OnPlayRateChange(1.0)
-  return
+    --Transport: Stop
+    reaper.Main_OnCommand(1016,0)
+    --Reset Play Rate
+    reaper.CSurf_OnPlayRateChange(1.0)
+    return
   end
   
   reaper.defer(reset)

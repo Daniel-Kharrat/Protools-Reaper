@@ -33,8 +33,6 @@ function reset()
   if is_playing then
     --do nothing
   else
-    --Transport: Stop
-    reaper.Main_OnCommand(1016,0)
     --Reset Play Rate
     reaper.CSurf_OnPlayRateChange(1.0)
     return

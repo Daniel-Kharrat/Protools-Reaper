@@ -6,7 +6,7 @@ local command_id = reaper.NamedCommandLookup("_RS3954f4d6fde790290a4c7e865383801
 local active = reaper.GetToggleCommandState(command_id)
 
 --Check if there is a time selection and "insertion follows playback" is active 
-if start_time ~= end_time and active == 0 then
+if start_time ~= end_time and active ~= 1 then
   reaper.SetEditCurPos(start_time, false, false)
 end
 

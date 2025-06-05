@@ -1,3 +1,5 @@
+reaper.set_action_options(1)
+
 local was_playing = false
 local play_cursor = nil
 local is_active = true

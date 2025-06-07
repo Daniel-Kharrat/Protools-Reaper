@@ -12,7 +12,7 @@
   </category>
   
   <category name="Protools">
-    <reapack name="Daniel_Add items to selection and extend time selection and razor edit area.lua" type="script" desc=".">
+    <reapack name="Daniel_Add items to selection and extend time selection and razor edit area.lua" type="script" desc="Daniel_Add items to selection and extend time selection and razor edit area.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area.lua</source>
       </version>
@@ -20,7 +20,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Check for armed tracks.lua" type="script" desc=".">
+    <reapack name="Daniel_Check for armed tracks.lua" type="script" desc="Daniel_Check for armed tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Check%20for%20armed%20tracks.lua</source>
       </version>
@@ -28,7 +28,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Check for muted tracks.lua" type="script" desc=".">
+    <reapack name="Daniel_Check for muted tracks.lua" type="script" desc="Daniel_Check for muted tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Check%20for%20muted%20tracks.lua</source>
       </version>
@@ -36,7 +36,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Check for soloed tracks.lua" type="script" desc=".">
+    <reapack name="Daniel_Check for soloed tracks.lua" type="script" desc="Daniel_Check for soloed tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Check%20for%20soloed%20tracks.lua</source>
       </version>
@@ -44,7 +44,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Clear mute.lua" type="script" desc=".">
+    <reapack name="Daniel_Clear mute.lua" type="script" desc="Daniel_Clear mute.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20mute.lua</source>
       </version>
@@ -52,7 +52,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Clear record arm.lua" type="script" desc=".">
+    <reapack name="Daniel_Clear record arm.lua" type="script" desc="Daniel_Clear record arm.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20record%20arm.lua</source>
       </version>
@@ -60,7 +60,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Clear selection.lua" type="script" desc=".">
+    <reapack name="Daniel_Clear selection.lua" type="script" desc="Daniel_Clear selection.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20selection.lua</source>
       </version>
@@ -68,7 +68,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Clear solo.lua" type="script" desc=".">
+    <reapack name="Daniel_Clear solo.lua" type="script" desc="Daniel_Clear solo.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20solo.lua</source>
       </version>
@@ -76,7 +76,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Color palette.lua" type="script" desc=".">
+    <reapack name="Daniel_Color palette.lua" type="script" desc="Daniel_Color palette.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Color%20palette.lua</source>
       </version>
@@ -84,7 +84,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua" type="script" desc=".">
+    <reapack name="Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua" type="script" desc="Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20mouse%20cursor%20%20(select%20tracks%20in%20between).lua</source>
       </version>
@@ -92,7 +92,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Extend razor edit area to mouse cursor.lua" type="script" desc=".">
+    <reapack name="Daniel_Extend razor edit area to mouse cursor.lua" type="script" desc="Daniel_Extend razor edit area to mouse cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20mouse%20cursor.lua</source>
       </version>
@@ -100,7 +100,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Extend razor edit area to the left.lua" type="script" desc=".">
+    <reapack name="Daniel_Extend razor edit area to the left.lua" type="script" desc="Daniel_Extend razor edit area to the left.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20the%20left.lua</source>
       </version>
@@ -108,7 +108,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Extend razor edit area to the right.lua" type="script" desc=".">
+    <reapack name="Daniel_Extend razor edit area to the right.lua" type="script" desc="Daniel_Extend razor edit area to the right.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20the%20right.lua</source>
       </version>
@@ -116,7 +116,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Extend selection to play cursor (during plaback).lua" type="script" desc=".">
+    <reapack name="Daniel_Extend selection to play cursor (during plaback).lua" type="script" desc="Daniel_Extend selection to play cursor (during plaback).lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20selection%20to%20play%20cursor%20(during%20plaback).lua</source>
       </version>

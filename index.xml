@@ -5,21 +5,7 @@
   
   <category name="Protools">
     <reapack name="Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua" type="script" desc="Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua">
-      <metadata>
-        <changelog><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
-{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
-\widowctrl\hyphauto
-
-{\pard \ql \f0 \sa180 \li0 \fi0 This is an example of a package file. It installs itself as a ReaScript that does nothing but show "Hello World!" in REAPER's scripting console.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Packages may also include additional files specified using the @provides tag.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 This text is the documentation shown when using ReaPack's "About this package" feature. {\field{\*\fldinst{HYPERLINK "https://commonmark.org/"}}{\fldrslt{\ul
-Markdown
-}}}
- {\i formatting} is supported.\par}
-}
-]]>    </changelog>
-      </metadata> 
-     <version name="1.0" author="Daniel" time="2025-06">
+     <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area%20(select%20tracks%20in%20between).lua</source>
       </version>
     </reapack>
@@ -138,7 +124,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Fade in, out, crossfade.lua" type="script" desc=".">
+    <reapack name="Daniel_Fade in, out, crossfade.lua" type="script" desc="Daniel_Fade in, out, crossfade.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Fade%20in,%20out,%20crossfade.lua</source>
       </version>
@@ -146,7 +132,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Fast forward.lua" type="script" desc=".">
+    <reapack name="Daniel_Fast forward.lua" type="script" desc="Daniel_Fast forward.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Fast%20forward.lua</source>
       </version>
@@ -154,7 +140,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Global startup actions.lua" type="script" desc=".">
+    <reapack name="Daniel_Global startup actions.lua" type="script" desc="Daniel_Global startup actions.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Global%20startup%20actions.lua</source>
       </version>
@@ -162,7 +148,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Go to end of project.lua" type="script" desc=".">
+    <reapack name="Daniel_Go to end of project.lua" type="script" desc="Daniel_Go to end of project.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20end%20of%20project.lua</source>
       </version>
@@ -170,7 +156,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Go to end of time selection.lua" type="script" desc=".">
+    <reapack name="Daniel_Go to end of time selection.lua" type="script" desc="Daniel_Go to end of time selection.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20end%20of%20time%20selection.lua</source>
       </version>
@@ -178,7 +164,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Go to start of project.lua" type="script" desc=".">
+    <reapack name="Daniel_Go to start of project.lua" type="script" desc="Daniel_Go to start of project.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20start%20of%20project.lua</source>
       </version>
@@ -186,7 +172,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Go to start of time selection.lua" type="script" desc=".">
+    <reapack name="Daniel_Go to start of time selection.lua" type="script" desc="Daniel_Go to start of time selection.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20start%20of%20time%20selection.lua</source>
       </version>
@@ -194,7 +180,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Half speed playback.lua" type="script" desc=".">
+    <reapack name="Daniel_Half speed playback.lua" type="script" desc="Daniel_Half speed playback.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Half%20speed%20playback.lua</source>
       </version>
@@ -202,7 +188,7 @@ Markdown
   </category>
 
    <category name="Protools">
-    <reapack name="Daniel_Double speed playback.lua" type="script" desc=".">
+    <reapack name="Daniel_Double speed playback.lua" type="script" desc="Daniel_Double speed playback.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Double%20speed%20playback.lua</source>
       </version>
@@ -210,7 +196,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Heal splits.lua" type="script" desc=".">
+    <reapack name="Daniel_Heal splits.lua" type="script" desc="Daniel_Heal splits.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Heal%20splits.lua</source>
       </version>
@@ -218,7 +204,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Horizontal zoom preset 3.lua" type="script" desc=".">
+    <reapack name="Daniel_Horizontal zoom preset 3.lua" type="script" desc="Daniel_Horizontal zoom preset 3.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%203.lua</source>
       </version>
@@ -226,7 +212,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Horizontal zoom preset 4.lua" type="script" desc=".">
+    <reapack name="Daniel_Horizontal zoom preset 4.lua" type="script" desc="Daniel_Horizontal zoom preset 4.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%204.lua</source>
       </version>
@@ -234,7 +220,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Horizontal zoom preset 5.lua" type="script" desc=".">
+    <reapack name="Daniel_Horizontal zoom preset 5.lua" type="script" desc="Daniel_Horizontal zoom preset 5.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%205.lua</source>
       </version>
@@ -242,7 +228,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Insertion follows playback.lua" type="script" desc=".">
+    <reapack name="Daniel_Insertion follows playback.lua" type="script" desc="Daniel_Insertion follows playback.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Insertion%20follows%20playback.lua</source>
       </version>
@@ -250,7 +236,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Move edit cursor to play cursor.lua" type="script" desc=".">
+    <reapack name="Daniel_Move edit cursor to play cursor.lua" type="script" desc="Daniel_Move edit cursor to play cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Move%20edit%20cursor%20to%20play%20cursor.lua</source>
       </version>
@@ -258,7 +244,7 @@ Markdown
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Move selected item to start of project.lua" type="script" desc=".">
+    <reapack name="Daniel_Move selected item to start of project.lua" type="script" desc="Daniel_Move selected item to start of project.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Move%20selected%20item%20to%20start%20of%20project.lua</source>
       </version>

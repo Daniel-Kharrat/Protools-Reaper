@@ -15,7 +15,7 @@
   
   <category name="Protools">
     <reapack name="Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua" type="script" desc="Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua">
-     <version name="1.0" author="Daniel" time="2025-05">
+     <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area%20(select%20tracks%20in%20between).lua</source>
       </version>
     </reapack>
@@ -23,7 +23,7 @@
   
   <category name="Protools">
     <reapack name="Daniel_Add items to selection and extend time selection and razor edit area.lua" type="script" desc="Daniel_Add items to selection and extend time selection and razor edit area.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="2.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area.lua</source>
       </version>
     </reapack>

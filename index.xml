@@ -252,7 +252,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Paste items-tracks.lua" type="script" desc=".">
+    <reapack name="Daniel_Paste items-tracks.lua" type="script" desc="Daniel_Paste items-tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Paste%20items-tracks.lua</source>
       </version>
@@ -260,7 +260,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Play-Stop.lua" type="script" desc=".">
+    <reapack name="Daniel_Play-Stop.lua" type="script" desc="Daniel_Play-Stop.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Play-Stop.lua</source>
       </version>
@@ -268,7 +268,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Razor select item or empty space between items (set time selection).lua" type="script" desc=".">
+    <reapack name="Daniel_Razor select item or empty space between items (set time selection).lua" type="script" desc="Daniel_Razor select item or empty space between items (set time selection).lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Razor%20select%20item%20or%20empty%20space%20between%20items%20(set%20time%20selection).lua</source>
       </version>
@@ -276,7 +276,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Razor select item or empty space between items.lua" type="script" desc=".">
+    <reapack name="Daniel_Razor select item or empty space between items.lua" type="script" desc="Daniel_Razor select item or empty space between items.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Razor%20select%20item%20or%20empty%20space%20between%20items.lua</source>
       </version>
@@ -284,7 +284,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Rewind.lua" type="script" desc=".">
+    <reapack name="Daniel_Rewind.lua" type="script" desc="Daniel_Rewind.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Rewind.lua</source>
       </version>
@@ -292,7 +292,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Select all items within time selection on selected tracks.lua" type="script" desc=".">
+    <reapack name="Daniel_Select all items within time selection on selected tracks.lua" type="script" desc="Daniel_Select all items within time selection on selected tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20all%20items%20within%20time%20selection%20on%20selected%20tracks.lua</source>
       </version>
@@ -300,7 +300,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Select all tracks in between.lua" type="script" desc=".">
+    <reapack name="Daniel_Select all tracks in between.lua" type="script" desc="Daniel_Select all tracks in between.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20all%20tracks%20in%20between.lua</source>
       </version>
@@ -308,7 +308,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Select down track(add).lua" type="script" desc=".">
+    <reapack name="Daniel_Select down track(add).lua" type="script" desc="Daniel_Select down track(add).lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20down%20track(add).lua</source>
       </version>
@@ -316,7 +316,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Select down track.lua" type="script" desc=".">
+    <reapack name="Daniel_Select down track.lua" type="script" desc="Daniel_Select down track.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20down%20track.lua</source>
       </version>
@@ -324,7 +324,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Select everything after edit cursor.lua" type="script" desc=".">
+    <reapack name="Daniel_Select everything after edit cursor.lua" type="script" desc="Daniel_Select everything after edit cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20everything%20after%20edit%20cursor.lua</source>
       </version>
@@ -332,7 +332,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Select everything before edit cursor.lua" type="script" desc=".">
+    <reapack name="Daniel_Select everything before edit cursor.lua" type="script" desc="Daniel_Select everything before edit cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20everything%20before%20edit%20cursor.lua</source>
       </version>
@@ -340,7 +340,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Select up track(add).lua" type="script" desc=".">
+    <reapack name="Daniel_Select up track(add).lua" type="script" desc="Daniel_Select up track(add).lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20up%20track(add).lua</source>
       </version>
@@ -348,7 +348,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Select up track.lua" type="script" desc=".">
+    <reapack name="Daniel_Select up track.lua" type="script" desc="Daniel_Select up track.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20up%20track.lua</source>
       </version>
@@ -356,7 +356,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Split items at selection (if exists), else at edit cursor.lua" type="script" desc=".">
+    <reapack name="Daniel_Split items at selection (if exists), else at edit cursor.lua" type="script" desc="Daniel_Split items at selection (if exists), else at edit cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Split%20items%20at%20selection%20(if%20exists),%20else%20at%20edit%20cursor.lua</source>
       </version>
@@ -364,7 +364,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Tab to transient or items (backward).lua" type="script" desc=".">
+    <reapack name="Daniel_Tab to transient or items (backward).lua" type="script" desc="Daniel_Tab to transient or items (backward).lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Tab%20to%20transient%20or%20items%20(backward).lua</source>
       </version>
@@ -372,7 +372,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Tab to transient or items (forward).lua" type="script" desc=".">
+    <reapack name="Daniel_Tab to transient or items (forward).lua" type="script" desc="Daniel_Tab to transient or items (forward).lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Tab%20to%20transient%20or%20items%20(forward).lua</source>
       </version>
@@ -380,7 +380,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Toggle input monitoring.lua" type="script" desc=".">
+    <reapack name="Daniel_Toggle input monitoring.lua" type="script" desc="Daniel_Toggle input monitoring.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Toggle%20input%20monitoring.lua</source>
       </version>
@@ -388,7 +388,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Toggle track selection.lua" type="script" desc=".">
+    <reapack name="Daniel_Toggle track selection.lua" type="script" desc="Daniel_Toggle track selection.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Toggle%20track%20selection.lua</source>
       </version>
@@ -396,7 +396,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Track left click.lua" type="script" desc=".">
+    <reapack name="Daniel_Track left click.lua" type="script" desc="Daniel_Track left click.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Track%20left%20click.lua</source>
       </version>
@@ -404,7 +404,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Zoom in horizontal.lua" type="script" desc=".">
+    <reapack name="Daniel_Zoom in horizontal.lua" type="script" desc="Daniel_Zoom in horizontal.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20in%20horizontal.lua</source>
       </version>
@@ -412,7 +412,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Zoom out horizontal.lua" type="script" desc=".">
+    <reapack name="Daniel_Zoom out horizontal.lua" type="script" desc="Daniel_Zoom out horizontal.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20out%20horizontal.lua</source>
       </version>
@@ -420,7 +420,7 @@
   </category>
 
   <category name="Protools">
-    <reapack name="Daniel_Zoom out project.lua" type="script" desc=".">
+    <reapack name="Daniel_Zoom out project.lua" type="script" desc="Daniel_Zoom out project.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20out%20project.lua</source>
       </version>
@@ -431,7 +431,7 @@
 <!-- ________Utility Scripts________ -->
   
   <category name="Utility">
-    <reapack name="Daniel_Change track routing from main to processing bus.lua" type="script" desc=".">
+    <reapack name="Daniel_Change track routing from main to processing bus.lua" type="script" desc="Daniel_Change track routing from main to processing bus.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Change%20track%20routing%20from%20main%20to%20processing%20bus.lua</source>
       </version>
@@ -439,7 +439,7 @@
   </category>
 
   <category name="Utility">
-    <reapack name="Daniel_Floating input meter.lua" type="script" desc=".">
+    <reapack name="Daniel_Floating input meter.lua" type="script" desc="Daniel_Floating input meter.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20input%20meter.lua</source>
       </version>
@@ -447,7 +447,7 @@
   </category>
 
   <category name="Utility">
-    <reapack name="Daniel_Floating track input meter.lua" type="script" desc=".">
+    <reapack name="Daniel_Floating track input meter.lua" type="script" desc="Daniel_Floating track input meter.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20track%20input%20meter.lua</source>
       </version>
@@ -455,7 +455,7 @@
   </category>
 
   <category name="Utility">
-    <reapack name="Daniel_Toggle expand folder track in mixer and edit window.lua" type="script" desc=".">
+    <reapack name="Daniel_Toggle expand folder track in mixer and edit window.lua" type="script" desc="Daniel_Toggle expand folder track in mixer and edit window.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Toggle%20expand%20folder%20track%20in%20mixer%20and%20edit%20window.lua</source>
       </version>
@@ -465,7 +465,7 @@
 <!-- ________Utility Effects________ -->
   
   <category name="Utility">
-    <reapack name="Daniel_Floating Meter" type="effect" desc=".">
+    <reapack name="Daniel_Floating Meter" type="effect" desc="Daniel_Floating Meter">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Effects/Utility/Daniel_Floating%20Meter</source>
       </version>
@@ -473,7 +473,7 @@
   </category>
 
   <category name="Utility">
-    <reapack name="Daniel_Simple Delay" type="effect" desc=".">
+    <reapack name="Daniel_Simple Delay" type="effect" desc="Daniel_Simple Delay">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Delay</source>
       </version>
@@ -481,7 +481,7 @@
   </category>
 
   <category name="Utility">
-    <reapack name="Daniel_Simple Gain" type="effect" desc=".">
+    <reapack name="Daniel_Simple Gain" type="effect" desc="Daniel_Simple Gain">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Gain</source>
       </version>
@@ -491,7 +491,7 @@
 <!-- ________Real Time Effects________ -->
   
   <category name="Real Time">
-    <reapack name="Daniel_Live Vocal Rider" type="effect" desc=".">
+    <reapack name="Daniel_Live Vocal Rider" type="effect" desc="Daniel_Live Vocal Rider">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Effects/Real%20Time/Daniel_Live%20Vocal%20Rider</source>
       </version>

@@ -92,10 +92,21 @@ end
 local function applyColor(r, g, b)
     local color = reaper.ColorToNative(r, g, b) -- Use Reaper's native color format
     local num_tracks = reaper.CountSelectedTracks(0)
-    for i = 0, num_tracks - 1 do
+    local num_items = reaper.CountSelectedMediaItems(0)
+    
+    if num_items == 0 then
+      for i = 0, num_tracks - 1 do
         local track = reaper.GetSelectedTrack(0, i)
         reaper.SetTrackColor(track, color)
+      end
+    
+    else
+      for i = 0, num_items - 1 do
+       local item = reaper.GetSelectedMediaItem(0, i)
+       reaper.SetMediaItemInfo_Value(item, "I_CUSTOMCOLOR", color | 0x1000000)
+      end
     end
+
     reaper.TrackList_AdjustWindows(false)
     reaper.UpdateArrange()
 end
@@ -158,4 +169,3 @@ end
 
 -- Start the loop
 loop()
-

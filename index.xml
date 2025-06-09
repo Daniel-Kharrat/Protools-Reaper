@@ -71,7 +71,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Clear selection.lua" type="script" desc="Daniel_Clear selection.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20selection.lua</source>
       </version>
     </reapack>

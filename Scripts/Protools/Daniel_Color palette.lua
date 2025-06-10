@@ -1,3 +1,5 @@
+reaper.set_action_options(1)
+
 -- ReaImGui Color Palette Script for Reaper (No Text, Square Buttons, Correct Layout)
 local reaper = reaper
 local imgui = reaper.ImGui_CreateContext("Color Palette")

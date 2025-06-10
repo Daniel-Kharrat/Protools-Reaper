@@ -87,7 +87,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Color palette.lua" type="script" desc="Daniel_Color palette.lua">
-      <version name="1.1" author="Daniel" time="2025-05">
+      <version name="1.2" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Color%20palette.lua</source>
       </version>
     </reapack>

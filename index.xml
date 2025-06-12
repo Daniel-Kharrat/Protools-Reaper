@@ -215,7 +215,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Horizontal zoom preset 3.lua" type="script" desc="Daniel_Horizontal zoom preset 3.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%203.lua</source>
       </version>
     </reapack>
@@ -223,7 +223,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Horizontal zoom preset 4.lua" type="script" desc="Daniel_Horizontal zoom preset 4.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%204.lua</source>
       </version>
     </reapack>
@@ -231,7 +231,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Horizontal zoom preset 5.lua" type="script" desc="Daniel_Horizontal zoom preset 5.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%205.lua</source>
       </version>
     </reapack>

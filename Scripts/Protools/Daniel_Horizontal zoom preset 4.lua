@@ -1,4 +1,4 @@
-local target_range = 12
+local target_range = 24
 
 -- Get arrange view start and end
 local view_start, view_end = reaper.GetSet_ArrangeView2(0, false, 0, 0)

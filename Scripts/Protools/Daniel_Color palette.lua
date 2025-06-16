@@ -95,8 +95,9 @@ local function applyColor(r, g, b)
     local color = reaper.ColorToNative(r, g, b) -- Use Reaper's native color format
     local num_tracks = reaper.CountSelectedTracks(0)
     local num_items = reaper.CountSelectedMediaItems(0)
+    local start_time, end_time = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
     
-    if num_items == 0 then
+    if num_items == 0 or start_time == end_time then
       for i = 0, num_tracks - 1 do
         local track = reaper.GetSelectedTrack(0, i)
         reaper.SetTrackColor(track, color)

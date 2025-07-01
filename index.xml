@@ -437,6 +437,22 @@
     </reapack>
   </category>
 
+  <category name="Protools">
+    <reapack name="Daniel_Razor edit and time select first selected media item.lua" type="script" desc="Daniel_Razor edit and time select first selected media item.lua">
+      <version name="1.0" author="Daniel" time="2025-07">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Razor%20edit%20and%20time%20select%20first%20selected%20media%20item.lua</source>
+      </version>
+    </reapack>
+  </category>
+
+  <category name="Protools">
+    <reapack name="Daniel_Razor select current item and extend selection.lua" type="script" desc="Daniel_Razor select current item and extend selection.lua">
+      <version name="1.0" author="Daniel" time="2025-07">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Razor%20select%20current%20item%20and%20extend%20selection.lua</source>
+      </version>
+    </reapack>
+  </category>
+
   
 <!-- ________Utility Scripts________ -->
   

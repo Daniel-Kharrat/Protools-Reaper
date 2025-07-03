@@ -1,4 +1,4 @@
-# REAPER Tools by Daniel Kharrat
+# Daniel Kharrat's REAPER Scripts and Effects
 
 ## How to Install
 

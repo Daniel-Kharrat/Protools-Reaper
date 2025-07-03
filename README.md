@@ -13,3 +13,14 @@ Go to:
 **REAPER → Extensions → ReaPack → Import repositories…**
 
 Paste it there and click OK
+
+
+When i update you can go to:
+
+**REAPER → Extensions → ReaPack → Synchronize packages**
+
+this will update everything, but if you only want to update my repository you can go to:
+
+**REAPER → Extensions → ReaPack → Manage repositories…**
+
+Right click on my name → About Daniel Kharrat → Install/update Daniel Kharrat → Install all packages in this repository

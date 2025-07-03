@@ -10,7 +10,14 @@
       </version>
     </reapack>
   </category>
- 
+
+  <category name="KeyMaps">
+    <reapack name="Daniel_Keyboard Shortcuts.ReaperKeyMap" type="data" desc="Daniel_Keyboard Shortcuts.ReaperKeyMap">
+     <version name="1.0" author="Daniel" time="2025-07">
+        <source main="main">https://github.com/Daniel-Kharrat/Reaper-Data/raw/refs/heads/main/Daniel_Keyboard%20Shortcuts.ReaperKeyMap</source>
+      </version>
+    </reapack>
+  </category>
 <!-- ________Protools Scripts________ -->
   
   <category name="Protools">

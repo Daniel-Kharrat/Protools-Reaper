@@ -12,7 +12,7 @@
   </category>
   
 <package>
-  <type>data</type>
+  <type>keymaps</type>
   <name>My KeyMap and Mouse Modifier</name>
   <author>Daniel</author>
   <version>1.0</version>

@@ -12,8 +12,7 @@ Go to:
 
 **REAPER → Extensions → ReaPack → Import repositories…**
 
-Paste it there and click OK
-
+Paste it there and click OK  
 
 
 To get new updates you can go to:

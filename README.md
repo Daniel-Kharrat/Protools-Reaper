@@ -22,4 +22,4 @@ this will update everything, but if you only want to update my repository you ca
 
 **REAPER → Extensions → ReaPack → Manage repositories…**
 
-Right click on my name → About Daniel Kharrat → Install/update Daniel Kharrat → Install all packages in this repository
+Right click on my name → **About Daniel Kharrat → Install/update Daniel Kharrat → Install all packages in this repository**

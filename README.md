@@ -5,7 +5,5 @@
 Copy and paste this URL into :
 **REAPER → Extensions → ReaPack → Import repositories…**
 
-```
-https://leafac.github.io/reaper/index.xml
-```
+
 

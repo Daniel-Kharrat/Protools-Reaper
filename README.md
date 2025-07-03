@@ -11,4 +11,4 @@ https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/index.xm
 and go to:
 **REAPER → Extensions → ReaPack → Import repositories…**
 
-and paste it
+paste it there and click OK

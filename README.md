@@ -8,7 +8,8 @@ Copy this URL:
 https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/index.xml
 ```
 
-and go to:
+Go to:
+
 **REAPER → Extensions → ReaPack → Import repositories…**
 
-paste it there and click OK
+Paste it there and click OK

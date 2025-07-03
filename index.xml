@@ -5,8 +5,8 @@
   
   <category name="ColorThemes">
     <reapack name="Default_7.0_Dan.ReaperThemeZip" type="theme" desc="Default_7.0_Dan.ReaperThemeZip">
-     <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Reaper-Data/raw/refs/heads/main/Default_7.0_Dan.ReaperThemeZip</source>
+     <version name="1.1" author="Daniel" time="2025-05">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Default_7.0_Dan.ReaperThemeZip</source>
       </version>
     </reapack>
   </category>

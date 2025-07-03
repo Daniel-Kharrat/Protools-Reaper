@@ -13,7 +13,7 @@
   
   <category name="KeyMaps">
     <reapack name="Daniel_Keyboard Shortcuts.ReaperKeyMap" type="" desc="Daniel_Keyboard Shortcuts.ReaperKeyMap">
-     <version name="1.0" author="Daniel" time="2025-07">
+     <version name="1.1" author="Daniel" time="2025-07">
         <source main="KeyMaps/">https://github.com/Daniel-Kharrat/Reaper-Data/raw/refs/heads/main/Daniel_Keyboard%20Shortcuts.ReaperKeyMap</source>
       </version>
     </reapack>

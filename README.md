@@ -18,7 +18,7 @@ Paste it there and click OK
 
 **REAPER → Extensions → ReaPack → Synchronize packages**
 
-this will update everything, but if you only want to update my repository you can go to:
+This will update everything, but if you only want to update my repository you can go to:
 
 **REAPER → Extensions → ReaPack → Manage repositories…**
 

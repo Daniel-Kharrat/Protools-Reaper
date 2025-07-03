@@ -15,7 +15,8 @@ Go to:
 Paste it there and click OK
 
 
-When i update you can go to:
+
+To get new updates you can go to:
 
 **REAPER → Extensions → ReaPack → Synchronize packages**
 

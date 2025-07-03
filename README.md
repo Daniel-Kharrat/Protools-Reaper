@@ -7,5 +7,5 @@ Copy and paste this URL into :
 
 
 ```
-https://github.com/Daniel-Kharrat/Protools-Reaper/blob/master/index.xml
+https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/index.xml
 ```

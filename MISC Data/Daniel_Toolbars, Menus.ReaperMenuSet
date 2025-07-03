@@ -1,0 +1,92 @@
+[Automation item context]
+title=Automation item context
+
+[Floating toolbar 1]
+default=2bcb4157b56ed885
+icon_0=toolbar_quarter_crotchet_note.png
+icon_1=toolbar_eighth_quaver_note.png
+icon_2=toolbar_sixteenth_semiquaver_note.png
+icon_3=toolbar_thirty_second_demisemiquaver_.png
+icon_6=toolbar_triplet_note.png
+icon_7=toolbar_dotted_note.png
+item_0=40779 Grid: Set to 1/4
+item_1=40778 Grid: Set to 1/8
+item_2=40776 Grid: Set to 1/16
+item_3=40775 Grid: Set to 1/32
+item_4=40774 1/64
+item_5=-1
+item_6=_SWS_AWTOGGLETRIPLET SWS/AW: Toggle triplet grid
+item_7=_SWS_AWTOGGLEDOTTED SWS/AW: Toggle dotted grid
+title=Toolbar 1
+
+[Floating toolbar 2]
+default=2bcb4157b56ed885
+icon_0=Rec_Tally_Light.png
+icon_1=Solo_Tally_Light.png
+icon_2=Mute_Tally_Light.png
+item_0=_RS02a24eb9425299db445e21d1ed1a08a2f6818766 Clear record arm
+item_1=_RSca6b334a6865ac544a62db22eaed921a45f4f2b9 Clear solo
+item_2=_RSd2e825ef5e1c0848a2a346dc027f8a3a452bb1b2 Clear mute
+title=Toolbar 2
+
+[Floating toolbar 3]
+title=Toolbar 3
+
+[Main toolbar]
+default=58fbbc5960bcf836
+icon_1=toolbar_cpu_properties_performance.png
+icon_4=text_tt
+icon_6=toolbar_zoom_in_audio_waveform.png
+icon_11=toolbar_grid_off.png
+icon_12=insertion_follows_playback.png
+item_0=40021 Project settings...
+item_1=40240 Performance meter
+item_2=-1
+item_3=40364 Metronome
+item_4=41819 Pre Roll
+item_5=-1
+item_6=42074 waveform zoom
+item_7=1155 Ripple editing
+item_8=40070 Move envelope points with media items
+item_9=40041 Auto-crossfade
+item_10=1157 Snap
+item_11=41679 Grid
+item_12=_RS3954f4d6fde790290a4c7e86538380193bf6db74 Insertion follows playback
+tbf_4=4
+tbf_7=4
+tbf_12=4
+title=Main toolbar
+
+[MIDI piano roll toolbar]
+default=f277b6ae0700fd1b
+icon_17=text_wide_tt
+icon_18=toolbar_track_previous.png
+icon_19=toolbar_track_next.png
+item_0=1005 Save (.mid source only)
+item_1=1013 Revert (.mid source only)
+item_2=40042 Piano roll
+item_3=40043 Named notes
+item_4=40056 Event list
+item_5=40954 Musical notation
+item_6=40449 Rectangular notes (normal mode)
+item_7=40448 Triangular notes (drum mode)
+item_8=40450 Diamond notes (drum mode)
+item_9=40471 Filter
+item_10=40818 Track List
+item_11=40009 Quantize
+item_12=1215 CC selection follows note selection
+item_13=1017 Show grid
+item_14=1014 Snap to grid
+item_15=40481 Step sequencing: use all MIDI inputs for step recording
+item_16=40018 Dock editor
+item_17=40901 single track edit
+item_18=40836 Activate previous MIDI track
+item_19=40835 Activate next MIDI track
+title=MIDI piano roll toolbar
+
+[Mixer context]
+title=Mixer context
+
+[Transport context]
+title=Transport context
+

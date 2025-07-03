@@ -1,0 +1,104 @@
+[MM_CTX_AREASEL]
+mm_0=0 m
+mm_1=0 m
+mm_2=-1 m
+mm_3=-1 m
+mm_4=4 m
+mm_5=3 m
+mm_6=-1 m
+mm_7=-1 m
+
+[MM_CTX_AREASEL_CLK]
+mm_1=-1 m
+mm_3=-1 m
+mm_4=-1 m
+mm_5=-1 m
+mm_7=-1 m
+
+[MM_CTX_AREASEL_EDGE]
+mm_0=0 m
+
+[MM_CTX_ENVLANE]
+mm_1=0 m
+mm_2=1 m
+
+[MM_CTX_ENVPT]
+mm_1=10 m
+mm_2=5 m
+
+[MM_CTX_ENVSEG]
+mm_1=1 m
+mm_2=5 m
+
+[MM_CTX_ENVSEG_DBLCLK]
+mm_0=40726 c
+
+[MM_CTX_ITEM]
+mm_0=66 m
+mm_1=66 m
+mm_2=3 m
+mm_4=64 m
+mm_5=64 m
+
+[MM_CTX_ITEM_CLK]
+mm_0=_RSfd22bbcb79022c5661e6684e0ac51a9aa5d4e71e
+mm_1=_RSb6cc7725bdd9ccbaa7d8258af9d957467ae9e697
+
+[MM_CTX_ITEM_DBLCLK]
+mm_0=_RS8d4e0e15416ba5e2f10ef369c0dcdf586473e1d0
+
+[MM_CTX_ITEMLOWER]
+mm_0=22 m
+mm_4=2 m
+
+[MM_CTX_ITEMLOWER_CLK]
+mm_0=_RS8d4e0e15416ba5e2f10ef369c0dcdf586473e1d0
+mm_1=_RS64e92b5321521923538f70aead33157b880573b1
+
+[MM_CTX_ITEMLOWER_DBLCLK]
+mm_0=6 m
+mm_1=_RS27a56cf08a59140ed93f01b833aed2ccc0f86471
+
+[MM_CTX_MCP_DBLCLK]
+mm_0=_RS27a56cf08a59140ed93f01b833aed2ccc0f86471
+mm_2=_RS06f2334b6424f44fee4fdabe89159e1693d805c1
+mm_4=_S&M_WNCLS3
+mm_6=_RSf113dce324e2a0300723ec1cdd6503384c836f56
+
+[MM_CTX_MIDI_NOTE]
+mm_1=6 m
+mm_2=9 m
+mm_3=0 m
+mm_4=8 m
+mm_5=5 m
+mm_7=-1 m
+
+[MM_CTX_MIDI_NOTE_CLK]
+mm_0=1 m
+
+[MM_CTX_MIDI_PIANOROLL]
+mm_0=7 m
+mm_2=0 m
+mm_4=27 m
+
+[MM_CTX_TCP_DBLCLK]
+mm_0=_RS27a56cf08a59140ed93f01b833aed2ccc0f86471
+mm_3=40455 c
+mm_4=_S&M_WNCLS3
+mm_6=_RSf113dce324e2a0300723ec1cdd6503384c836f56
+
+[MM_CTX_TRACK]
+mm_0=29 m
+mm_1=29 m
+mm_4=27 m
+mm_5=27 m
+
+[MM_CTX_TRACK_CLK]
+mm_0=_RSfd22bbcb79022c5661e6684e0ac51a9aa5d4e71e
+mm_1=_RSb6cc7725bdd9ccbaa7d8258af9d957467ae9e697
+mm_2=_RSbd71958e8c2846a790f21cc6ee5064fe98e763b9
+mm_5=_RSeef0ccbe51fe8fb427d2490b0d06b3161afe0fc1
+
+[MM_CTX_TRACK_DBLCLK]
+mm_0=_RS8d4e0e15416ba5e2f10ef369c0dcdf586473e1d0
+

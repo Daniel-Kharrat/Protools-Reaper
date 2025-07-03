@@ -12,12 +12,11 @@
   </category>
   
 <package>
-  <type>keymaps</type>
+  <type>data</type>
   <name>My KeyMap and Mouse Modifier</name>
   <author>Daniel</author>
   <version>1.0</version>
-  <provides>
-    KeyMaps/Daniel_Keyboard Shortcuts.ReaperKeyMap</provides>
+  <provides>Daniel_Keyboard Shortcuts.ReaperKeyMap | KeyMaps/Daniel_Keyboard Shortcuts.ReaperKeyMap</provides>
   <sources>https://github.com/Daniel-Kharrat/Reaper-Data/raw/refs/heads/main/Daniel_Keyboard%20Shortcuts.ReaperKeyMap</sources>
 </package>
 <!-- ________Protools Scripts________ -->

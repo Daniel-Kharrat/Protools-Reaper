@@ -14,7 +14,7 @@
   <category name="ColorThemes">
     <reapack name="Daniel_Splash Screen.jpg" type="theme" desc="Daniel_Splash Screen.jpg">
      <version name="1.0" author="Daniel" time="2025-07">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/blob/master/MISC%20Data/Daniel_Splash%20Screen.jpg</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/MISC%20Data/Daniel_Splash%20Screen.jpg</source>
       </version>
     </reapack>
   </category>

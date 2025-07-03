@@ -2,10 +2,13 @@
 
 ## How to Install
 
-Copy and paste this URL into :
-**REAPER → Extensions → ReaPack → Import repositories…**
-
+Copy this URL:
 
 ```
 https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/index.xml
 ```
+
+and go to:
+**REAPER → Extensions → ReaPack → Import repositories…**
+
+and paste it

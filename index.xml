@@ -11,6 +11,14 @@
     </reapack>
   </category>
 
+  <category name="KeyMaps">
+    <reapack name="Daniel_Keyboard Shortcuts.ReaperKeyMap" type="keymap" desc="Daniel_Keyboard Shortcuts.ReaperKeyMap">
+     <version name="1.0" author="Daniel" time="2025-07">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Keyboard%20Shortcuts.ReaperKeyMap</source>
+      </version>
+    </reapack>
+  </category>
+
   <!-- ________Splash Screen________ -->
   
   <category name="ColorThemes">

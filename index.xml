@@ -11,16 +11,16 @@
     </reapack>
   </category>
   
-  <category name="Keyboard Shortcuts">
-    <reapack name="Daniel_Keyboard Shortcuts.ReaperKeyMap" type="keymap" desc="Daniel_Keyboard Shortcuts.ReaperKeyMap">
+  <category name="Shortcuts">
+    <reapack name="Daniel_Keyboard Shortcuts.ReaperKeyMap" type="data" desc="Daniel_Keyboard Shortcuts.ReaperKeyMap">
      <version name="1.0" author="Daniel" time="2025-07">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Keyboard%20Shortcuts.ReaperKeyMap</source>
       </version>
     </reapack>
   </category>
 
-  <category name="Mouse Modifiers">
-    <reapack name="Daniel_Mouse Modifiers.ReaperMouseMap" type="mousemap" desc="Daniel_Mouse Modifiers.ReaperMouseMap">
+  <category name="Shortcuts">
+    <reapack name="Daniel_Mouse Modifiers.ReaperMouseMap" type="data" desc="Daniel_Mouse Modifiers.ReaperMouseMap">
      <version name="1.0" author="Daniel" time="2025-07">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Mouse%20Modifiers.ReaperMouseMap</source>
       </version>
@@ -473,7 +473,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Razor select current item and extend selection.lua" type="script" desc="Daniel_Razor select current item and extend selection.lua">
-      <version name="1.0" author="Daniel" time="2025-07">
+      <version name="1.1" author="Daniel" time="2025-07">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Razor%20select%20current%20item%20and%20extend%20selection.lua</source>
       </version>
     </reapack>

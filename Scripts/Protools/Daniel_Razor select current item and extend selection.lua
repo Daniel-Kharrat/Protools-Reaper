@@ -1,3 +1,6 @@
+--Time selection: Remove (unselect) time selection and loop points
+reaper.Main_OnCommand(40020,0)
+
 --Script: Daniel_Razor edit and time select first selected media item.lua
 reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS1c74c75cb4073ad955fe5bf5a1f40f6eb38a815b"),0)
 

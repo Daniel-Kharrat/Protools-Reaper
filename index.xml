@@ -4,9 +4,9 @@
 <!-- ________Color Themes________ -->
   
   <category name="ColorThemes">
-    <reapack name="Default_7.0_Dan.ReaperThemeZip" type="theme" desc="Default_7.0_Dan.ReaperThemeZip">
-     <version name="1.1" author="Daniel" time="2025-07">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Default_7.0_Dan.ReaperThemeZip</source>
+    <reapack name="Default_7.0_Daniel.ReaperThemeZip" type="theme" desc="Default_7.0_Daniel.ReaperThemeZip">
+     <version name="1.2" author="Daniel" time="2025-07">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Default_7.0_Daniel.ReaperThemeZip</source>
       </version>
     </reapack>
   </category>

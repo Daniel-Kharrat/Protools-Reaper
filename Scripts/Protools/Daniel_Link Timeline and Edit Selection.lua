@@ -1,5 +1,3 @@
-reaper.set_action_options(1)
-
 local command_id = reaper.NamedCommandLookup("_RSdd4ba6262e05c57604ab621179a4552cf2bad49b")
 local state = reaper.GetToggleCommandState(command_id)
 

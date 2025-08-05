@@ -1,12 +1,17 @@
-local time_start, time_end = reaper.GetSet_LoopTimeRange( false, false, 0, 0, false )
+--Get time selection
+start_time, end_time = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
 
---Get the state of 'link timeline and edit selection' 
-local command_id = reaper.NamedCommandLookup("_RSdd4ba6262e05c57604ab621179a4552cf2bad49b")
-local state = reaper.GetToggleCommandState(command_id)
+--Get the state of "insertion follows playback" action
+local command_id1 = reaper.NamedCommandLookup("_RS3954f4d6fde790290a4c7e86538380193bf6db74")
+local state1 = reaper.GetToggleCommandState(command_id1)
 
-if time_start ~= time_end and state == 1 then
-  --move cursor to start of time selection
-  reaper.SetEditCurPos(time_start, false, false)
+--Get the state of "link timeline and edit selection"
+local command_id2 = reaper.NamedCommandLookup("_RSdd4ba6262e05c57604ab621179a4552cf2bad49b")
+local state2 = reaper.GetToggleCommandState(command_id2)
+
+--Check if there is a time selection and "insertion follows playback" and "link timeline and edit selection"
+if start_time ~= end_time and state1 ~= 1 and state2 == 1 then
+  reaper.SetEditCurPos(start_time, false, false)
 end
 
 --Edit: Cut items/tracks/envelope points (depending on focus) within time selection, if any (smart cut)

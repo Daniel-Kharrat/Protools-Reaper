@@ -275,7 +275,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Link Timeline and Edit Selection.lua" type="script" desc="Daniel_Link Timeline and Edit Selection.lua">
-      <version name="1.0" author="Daniel" time="2025-08">
+      <version name="1.1" author="Daniel" time="2025-08">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Link%20Timeline%20and%20Edit%20Selection.lua</source>
       </version>
     </reapack>

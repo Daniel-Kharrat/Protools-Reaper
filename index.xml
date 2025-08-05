@@ -179,7 +179,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Global startup actions.lua" type="script" desc="Daniel_Global startup actions.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Global%20startup%20actions.lua</source>
       </version>
     </reapack>

@@ -299,7 +299,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Cut items,tracks,envelope points (depending on focus) within time selection, if any (smart cut).lua" type="script" desc="Daniel_Cut items,tracks,envelope points (depending on focus) within time selection, if any (smart cut).lua">
-      <version name="1.0" author="Daniel" time="2025-08">
+      <version name="1.1" author="Daniel" time="2025-08">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Cut%20items,tracks,envelope%20points%20(depending%20on%20focus)%20within%20time%20selection,%20if%20any%20(smart%20cut).lua</source>
       </version>
     </reapack>
@@ -315,7 +315,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Play-Stop.lua" type="script" desc="Daniel_Play-Stop.lua">
-      <version name="1.1" author="Daniel" time="2025-08">
+      <version name="1.2" author="Daniel" time="2025-08">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Play-Stop.lua</source>
       </version>
     </reapack>

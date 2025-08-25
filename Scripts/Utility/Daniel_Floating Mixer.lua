@@ -120,13 +120,21 @@ local function draw_sliders()
         local display_name = shorten_name(t.name, max_name_len)
         gfx.set(1,1,1,1)
         local name_w,name_h = gfx.measurestr(display_name)
-        gfx.x = x - name_w/2
-        gfx.y = 5
+        local name_x = x - name_w/2
+        local name_y = 5
+        gfx.x, gfx.y = name_x, name_y
         gfx.printf("%s", display_name)
-        t.name_rect = {gfx.x, gfx.y, name_w, name_h}
-        if mx >= gfx.x and mx <= gfx.x+name_w and my >= gfx.y and my <= gfx.y+name_h and #t.name>max_name_len then
+        
+        -- Instead of using just the text width, use the column width for tooltip
+        t.name_rect = {x - fader_spacing/2, name_y, fader_spacing, name_h}
+        
+        -- Show tooltip if hovering AND real name is longer than shortened
+        if mx >= t.name_rect[1] and mx <= t.name_rect[1]+t.name_rect[3] 
+           and my >= t.name_rect[2] and my <= t.name_rect[2]+t.name_rect[4]
+           and #t.name > max_name_len then
             tooltip_text = t.name
         end
+        
 
         -- Fader background
         local fader_w = 0.1*fader_spacing
@@ -181,7 +189,7 @@ local function draw_sliders()
         t.mute_rect = {x-btn_w-spacing/2,btn_y,btn_w,btn_h}
 
         -- Solo button
-        if t.solo==1 then
+        if t.solo ~= 0 then
             gfx.set(230/255,216/255,96/255,1)
             gfx.rect(x+spacing/2,btn_y,btn_w,btn_h,1)
             gfx.set(0,0,0,1)
@@ -219,18 +227,31 @@ local function mainloop()
     -- BUTTON CLICKS
     if mouse_down and not prev_mouse_down then
         for _,t in ipairs(tracks) do
+            -- Mute button
             if t.mute_rect then
                 local x,y,w,h = table.unpack(t.mute_rect)
                 if mx>=x and mx<=x+w and my>=y and my<=y+h then
-                    t.mute = 1-t.mute
-                    reaper.SetMediaTrackInfo_Value(t.track,"B_MUTE",t.mute)
+                    local new_state = 1 - t.mute
+                    for _,tt in ipairs(tracks) do
+                        if tt.selected or tt.index == t.index then
+                            tt.mute = new_state
+                            reaper.SetMediaTrackInfo_Value(tt.track, "B_MUTE", new_state)
+                        end
+                    end
                 end
             end
+            
+            -- Solo button
             if t.solo_rect then
                 local x,y,w,h = table.unpack(t.solo_rect)
                 if mx>=x and mx<=x+w and my>=y and my<=y+h then
-                    t.solo = 1-t.solo
-                    reaper.SetMediaTrackInfo_Value(t.track,"I_SOLO",t.solo)
+                    local new_state = (t.solo == 0) and 1 or 0
+                    for _,tt in ipairs(tracks) do
+                        if tt.selected or tt.index == t.index then
+                            tt.solo = new_state
+                            reaper.SetMediaTrackInfo_Value(tt.track, "I_SOLO", new_state)
+                        end
+                    end
                 end
             end
         end
@@ -332,4 +353,3 @@ local function mainloop()
 end
 
 mainloop()
-

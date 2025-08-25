@@ -578,7 +578,7 @@
   
   <category name="Real Time">
     <reapack name="Daniel_Live Vocal Rider" type="effect" desc="Daniel_Live Vocal Rider">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-08">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Effects/Real%20Time/Daniel_Live%20Vocal%20Rider</source>
       </version>
     </reapack>

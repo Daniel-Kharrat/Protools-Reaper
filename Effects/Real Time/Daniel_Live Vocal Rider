@@ -1,12 +1,11 @@
 slider1: -21 <-42, 0, 0.1> Target Level (dB)
-slider2: 200 <1,500,1> Speed (ms)
+slider2: 200 <20,500,1> Speed (ms)
 slider3: -3 <-12,11,1> Min Gain (dB)
 slider4: 3 <-11,12,1> Max Gain (dB)
 slider5: 50 <0,100,1> Idle Position (%)
-
+slider6: 0<0,1,1{RMS,Peak}> Detection Mode
 
 @init
-rms_target = 10^(slider1/20);
 speed_ms = slider2;
 release_coeff = exp(-1.0 / (speed_ms * 0.001 * srate));
 
@@ -20,6 +19,10 @@ rms_window = 1024;
 smooth_gain_l = 1.0;
 smooth_gain_r = 1.0;
 
+// Previous level for Peak smoothing
+level_l_prev = 0;
+level_r_prev = 0;
+
 @slider
 rms_target = 10^(slider1/20);
 speed_ms = slider2;
@@ -29,59 +32,70 @@ min_gain = 10^(slider3/20);
 max_gain = 10^(slider4/20);
 
 @sample
-// Simple RMS using moving average
-rms_l_sum += spl0 * spl0;
-rms_r_sum += spl1 * spl1;
+mode = slider6; // 0 = RMS, 1 = Peak
 
-rms_l_sum -= rms_l_sum / rms_window;
-rms_r_sum -= rms_r_sum / rms_window;
+// ----- Level Detection -----
+mode == 0 ? (
+    // RMS
+    rms_l_sum += spl0 * spl0;
+    rms_r_sum += spl1 * spl1;
+    rms_l_sum -= rms_l_sum / rms_window;
+    rms_r_sum -= rms_r_sum / rms_window;
 
-rms_l = sqrt(rms_l_sum / rms_window);
-rms_r = sqrt(rms_r_sum / rms_window);
+    level_l = sqrt(rms_l_sum / rms_window);
+    level_r = sqrt(rms_r_sum / rms_window);
+) : (
+    // Peak with smoothing
+    current_l = abs(spl0);
+    current_r = abs(spl1);
+
+    peak_smooth_coeff = exp(-1.0 / (speed_ms * 0.002 * srate)); // smoother than RMS
+    level_l = current_l * (1 - peak_smooth_coeff) + level_l_prev * peak_smooth_coeff;
+    level_r = current_r * (1 - peak_smooth_coeff) + level_r_prev * peak_smooth_coeff;
+
+    level_l_prev = level_l;
+    level_r_prev = level_r;
+);
 
 // Threshold in linear scale
 threshold = 0.007943; // ~ -42 dB
+level_l = max(level_l, 0.000001);
+level_r = max(level_r, 0.000001);
 
+// Convert to dB
+level_db_l = 20 * log10(level_l);
+level_db_r = 20 * log10(level_r);
 
-rms_l = max(rms_l, 0.000001);
-rms_r = max(rms_r, 0.000001);
-
-// Convert RMS to dB
-rms_db_l = 20 * log10(rms_l);
-rms_db_r = 20 * log10(rms_r);
-
-// Dead zone in dB
+// Dead zone
 dead_zone = 1;
 
-// Compute idle gain from slider (% between min and max)
+// Idle gain
 idle_gain_db = slider3 + (slider4 - slider3) * (slider5 / 100);
 idle_gain = 10^(idle_gain_db / 20);
 
-// Only apply gain if outside dead zone
-gain_db_l = (rms_l > threshold && abs(rms_db_l - slider1-12) > dead_zone) ? slider1-12 - rms_db_l : idle_gain_db;
-gain_db_r = (rms_r > threshold && abs(rms_db_r - slider1-12) > dead_zone) ? slider1-12 - rms_db_r : idle_gain_db;
+// Gain logic
+gain_db_l = (level_l > threshold && abs(level_db_l - (slider1-12)) > dead_zone) ? (slider1-12 - level_db_l) : idle_gain_db;
+gain_db_r = (level_r > threshold && abs(level_db_r - (slider1-12)) > dead_zone) ? (slider1-12 - level_db_r) : idle_gain_db;
 
-// Limit gain in dB
+// Clamp gain
 gain_db_l = min(max(gain_db_l, slider3), slider4);
 gain_db_r = min(max(gain_db_r, slider3), slider4);
 
-// Convert dB to linear
+// Convert to linear
 gain_l = 10^(gain_db_l / 20);
 gain_r = 10^(gain_db_r / 20);
 
-
-// Limit gain range
+// Clamp again
 gain_l = min(max(gain_l, min_gain), max_gain);
 gain_r = min(max(gain_r, min_gain), max_gain);
 
-// Smooth gain changes
+// Smooth gain
 smooth_gain_l = (smooth_gain_l * release_coeff) + (gain_l * (1 - release_coeff));
 smooth_gain_r = (smooth_gain_r * release_coeff) + (gain_r * (1 - release_coeff));
 
-// Apply gain
+// Apply
 spl0 *= smooth_gain_l;
 spl1 *= smooth_gain_r;
-
 
 @gfx 300 700
 // Vertical fader-style gain meter with markings
@@ -133,4 +147,3 @@ gfx_r = 1; gfx_g = 0.5; gfx_b = 0;
 idle_marker_y = gfx_h * 0.5 - (idle_gain_db / 14) * gfx_h * 0.5;
 idle_marker_y = max(0, min(gfx_h, idle_marker_y));
 gfx_line(gfx_w * 0.4, idle_marker_y, gfx_w * 0.6, idle_marker_y);
-

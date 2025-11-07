@@ -44,7 +44,7 @@
   <category name="Protools">
     <reapack name="Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua" type="script" desc="Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua">
      <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area%20(select%20tracks%20in%20between).lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area%20(select%20tracks%20in%20between).lua</source>
       </version>
     </reapack>
   </category>
@@ -52,7 +52,7 @@
   <category name="Protools">
     <reapack name="Daniel_Add items to selection and extend time selection and razor edit area.lua" type="script" desc="Daniel_Add items to selection and extend time selection and razor edit area.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Add%20items%20to%20selection%20and%20extend%20time%20selection%20and%20razor%20edit%20area.lua</source>
       </version>
     </reapack>
   </category>
@@ -60,7 +60,7 @@
   <category name="Protools">
     <reapack name="Daniel_Check for armed tracks.lua" type="script" desc="Daniel_Check for armed tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Check%20for%20armed%20tracks.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Check%20for%20armed%20tracks.lua</source>
       </version>
     </reapack>
   </category>
@@ -68,7 +68,7 @@
   <category name="Protools">
     <reapack name="Daniel_Check for muted tracks.lua" type="script" desc="Daniel_Check for muted tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Check%20for%20muted%20tracks.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Check%20for%20muted%20tracks.lua</source>
       </version>
     </reapack>
   </category>
@@ -76,7 +76,7 @@
   <category name="Protools">
     <reapack name="Daniel_Check for soloed tracks.lua" type="script" desc="Daniel_Check for soloed tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Check%20for%20soloed%20tracks.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Check%20for%20soloed%20tracks.lua</source>
       </version>
     </reapack>
   </category>
@@ -84,7 +84,7 @@
   <category name="Protools">
     <reapack name="Daniel_Clear mute.lua" type="script" desc="Daniel_Clear mute.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20mute.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20mute.lua</source>
       </version>
     </reapack>
   </category>
@@ -92,7 +92,7 @@
   <category name="Protools">
     <reapack name="Daniel_Clear record arm.lua" type="script" desc="Daniel_Clear record arm.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20record%20arm.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20record%20arm.lua</source>
       </version>
     </reapack>
   </category>
@@ -100,7 +100,7 @@
   <category name="Protools">
     <reapack name="Daniel_Clear selection.lua" type="script" desc="Daniel_Clear selection.lua">
       <version name="1.1" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20selection.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20selection.lua</source>
       </version>
     </reapack>
   </category>
@@ -108,7 +108,7 @@
   <category name="Protools">
     <reapack name="Daniel_Clear solo.lua" type="script" desc="Daniel_Clear solo.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20solo.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Clear%20solo.lua</source>
       </version>
     </reapack>
   </category>
@@ -116,7 +116,7 @@
   <category name="Protools">
     <reapack name="Daniel_Color palette.lua" type="script" desc="Daniel_Color palette.lua">
       <version name="1.3" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Color%20palette.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Color%20palette.lua</source>
       </version>
     </reapack>
   </category>
@@ -132,7 +132,7 @@
   <category name="Protools">
     <reapack name="Daniel_Extend razor edit area to mouse cursor.lua" type="script" desc="Daniel_Extend razor edit area to mouse cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20mouse%20cursor.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20mouse%20cursor.lua</source>
       </version>
     </reapack>
   </category>
@@ -140,7 +140,7 @@
   <category name="Protools">
     <reapack name="Daniel_Extend razor edit area to the left.lua" type="script" desc="Daniel_Extend razor edit area to the left.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20the%20left.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20the%20left.lua</source>
       </version>
     </reapack>
   </category>
@@ -148,7 +148,7 @@
   <category name="Protools">
     <reapack name="Daniel_Extend razor edit area to the right.lua" type="script" desc="Daniel_Extend razor edit area to the right.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20the%20right.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20razor%20edit%20area%20to%20the%20right.lua</source>
       </version>
     </reapack>
   </category>
@@ -156,7 +156,7 @@
   <category name="Protools">
     <reapack name="Daniel_Extend selection to play cursor (during plaback).lua" type="script" desc="Daniel_Extend selection to play cursor (during plaback).lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20selection%20to%20play%20cursor%20(during%20plaback).lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Extend%20selection%20to%20play%20cursor%20(during%20plaback).lua</source>
       </version>
     </reapack>
   </category>
@@ -164,7 +164,7 @@
   <category name="Protools">
     <reapack name="Daniel_Fade in, out, crossfade.lua" type="script" desc="Daniel_Fade in, out, crossfade.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Fade%20in,%20out,%20crossfade.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Fade%20in,%20out,%20crossfade.lua</source>
       </version>
     </reapack>
   </category>
@@ -172,7 +172,7 @@
   <category name="Protools">
     <reapack name="Daniel_Fast forward.lua" type="script" desc="Daniel_Fast forward.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Fast%20forward.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Fast%20forward.lua</source>
       </version>
     </reapack>
   </category>
@@ -180,7 +180,7 @@
   <category name="Protools">
     <reapack name="Daniel_Global startup actions.lua" type="script" desc="Daniel_Global startup actions.lua">
       <version name="1.1" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Global%20startup%20actions.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Global%20startup%20actions.lua</source>
       </version>
     </reapack>
   </category>
@@ -188,7 +188,7 @@
   <category name="Protools">
     <reapack name="Daniel_Go to end of project.lua" type="script" desc="Daniel_Go to end of project.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20end%20of%20project.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20end%20of%20project.lua</source>
       </version>
     </reapack>
   </category>
@@ -196,7 +196,7 @@
   <category name="Protools">
     <reapack name="Daniel_Go to end of time selection.lua" type="script" desc="Daniel_Go to end of time selection.lua">
       <version name="1.1" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20end%20of%20time%20selection.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20end%20of%20time%20selection.lua</source>
       </version>
     </reapack>
   </category>
@@ -204,7 +204,7 @@
   <category name="Protools">
     <reapack name="Daniel_Go to start of project.lua" type="script" desc="Daniel_Go to start of project.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20start%20of%20project.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20start%20of%20project.lua</source>
       </version>
     </reapack>
   </category>
@@ -212,7 +212,7 @@
   <category name="Protools">
     <reapack name="Daniel_Go to start of time selection.lua" type="script" desc="Daniel_Go to start of time selection.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20start%20of%20time%20selection.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20start%20of%20time%20selection.lua</source>
       </version>
     </reapack>
   </category>
@@ -220,7 +220,7 @@
   <category name="Protools">
     <reapack name="Daniel_Half speed playback.lua" type="script" desc="Daniel_Half speed playback.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Half%20speed%20playback.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Half%20speed%20playback.lua</source>
       </version>
     </reapack>
   </category>
@@ -236,7 +236,7 @@
   <category name="Protools">
     <reapack name="Daniel_Heal splits.lua" type="script" desc="Daniel_Heal splits.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Heal%20splits.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Heal%20splits.lua</source>
       </version>
     </reapack>
   </category>
@@ -244,7 +244,7 @@
   <category name="Protools">
     <reapack name="Daniel_Horizontal zoom preset 3.lua" type="script" desc="Daniel_Horizontal zoom preset 3.lua">
       <version name="1.3" author="Daniel" time="2025-07">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%203.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%203.lua</source>
       </version>
     </reapack>
   </category>
@@ -252,7 +252,7 @@
   <category name="Protools">
     <reapack name="Daniel_Horizontal zoom preset 4.lua" type="script" desc="Daniel_Horizontal zoom preset 4.lua">
       <version name="1.3" author="Daniel" time="2025-07">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%204.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%204.lua</source>
       </version>
     </reapack>
   </category>
@@ -260,7 +260,7 @@
   <category name="Protools">
     <reapack name="Daniel_Horizontal zoom preset 5.lua" type="script" desc="Daniel_Horizontal zoom preset 5.lua">
       <version name="1.3" author="Daniel" time="2025-07">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%205.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%205.lua</source>
       </version>
     </reapack>
   </category>
@@ -268,7 +268,7 @@
   <category name="Protools">
     <reapack name="Daniel_Insertion follows playback.lua" type="script" desc="Daniel_Insertion follows playback.lua">
       <version name="1.1" author="Daniel" time="2025-08">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Insertion%20follows%20playback.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Insertion%20follows%20playback.lua</source>
       </version>
     </reapack>
   </category>
@@ -284,7 +284,7 @@
   <category name="Protools">
     <reapack name="Daniel_Move edit cursor to play cursor.lua" type="script" desc="Daniel_Move edit cursor to play cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Move%20edit%20cursor%20to%20play%20cursor.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Move%20edit%20cursor%20to%20play%20cursor.lua</source>
       </version>
     </reapack>
   </category>
@@ -292,7 +292,7 @@
   <category name="Protools">
     <reapack name="Daniel_Move selected item to start of project.lua" type="script" desc="Daniel_Move selected item to start of project.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Move%20selected%20item%20to%20start%20of%20project.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Move%20selected%20item%20to%20start%20of%20project.lua</source>
       </version>
     </reapack>
   </category>
@@ -308,7 +308,7 @@
   <category name="Protools">
     <reapack name="Daniel_Paste items-tracks.lua" type="script" desc="Daniel_Paste items-tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Paste%20items-tracks.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Paste%20items-tracks.lua</source>
       </version>
     </reapack>
   </category>
@@ -316,7 +316,7 @@
   <category name="Protools">
     <reapack name="Daniel_Play-Stop.lua" type="script" desc="Daniel_Play-Stop.lua">
       <version name="1.2" author="Daniel" time="2025-08">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Play-Stop.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Play-Stop.lua</source>
       </version>
     </reapack>
   </category>
@@ -324,7 +324,7 @@
   <category name="Protools">
     <reapack name="Daniel_Razor select item or empty space between items (set time selection).lua" type="script" desc="Daniel_Razor select item or empty space between items (set time selection).lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Razor%20select%20item%20or%20empty%20space%20between%20items%20(set%20time%20selection).lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Razor%20select%20item%20or%20empty%20space%20between%20items%20(set%20time%20selection).lua</source>
       </version>
     </reapack>
   </category>
@@ -332,7 +332,7 @@
   <category name="Protools">
     <reapack name="Daniel_Razor select item or empty space between items.lua" type="script" desc="Daniel_Razor select item or empty space between items.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Razor%20select%20item%20or%20empty%20space%20between%20items.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Razor%20select%20item%20or%20empty%20space%20between%20items.lua</source>
       </version>
     </reapack>
   </category>
@@ -340,7 +340,7 @@
   <category name="Protools">
     <reapack name="Daniel_Rewind.lua" type="script" desc="Daniel_Rewind.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Rewind.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Rewind.lua</source>
       </version>
     </reapack>
   </category>
@@ -348,7 +348,7 @@
   <category name="Protools">
     <reapack name="Daniel_Select all items within time selection on selected tracks.lua" type="script" desc="Daniel_Select all items within time selection on selected tracks.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20all%20items%20within%20time%20selection%20on%20selected%20tracks.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20all%20items%20within%20time%20selection%20on%20selected%20tracks.lua</source>
       </version>
     </reapack>
   </category>
@@ -356,7 +356,7 @@
   <category name="Protools">
     <reapack name="Daniel_Select all tracks in between.lua" type="script" desc="Daniel_Select all tracks in between.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20all%20tracks%20in%20between.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20all%20tracks%20in%20between.lua</source>
       </version>
     </reapack>
   </category>
@@ -364,7 +364,7 @@
   <category name="Protools">
     <reapack name="Daniel_Select down track(add).lua" type="script" desc="Daniel_Select down track(add).lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20down%20track(add).lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20down%20track(add).lua</source>
       </version>
     </reapack>
   </category>
@@ -372,7 +372,7 @@
   <category name="Protools">
     <reapack name="Daniel_Select down track.lua" type="script" desc="Daniel_Select down track.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20down%20track.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20down%20track.lua</source>
       </version>
     </reapack>
   </category>
@@ -380,7 +380,7 @@
   <category name="Protools">
     <reapack name="Daniel_Select everything after edit cursor.lua" type="script" desc="Daniel_Select everything after edit cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20everything%20after%20edit%20cursor.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20everything%20after%20edit%20cursor.lua</source>
       </version>
     </reapack>
   </category>
@@ -388,7 +388,7 @@
   <category name="Protools">
     <reapack name="Daniel_Select everything before edit cursor.lua" type="script" desc="Daniel_Select everything before edit cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20everything%20before%20edit%20cursor.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20everything%20before%20edit%20cursor.lua</source>
       </version>
     </reapack>
   </category>
@@ -396,7 +396,7 @@
   <category name="Protools">
     <reapack name="Daniel_Select up track(add).lua" type="script" desc="Daniel_Select up track(add).lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20up%20track(add).lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20up%20track(add).lua</source>
       </version>
     </reapack>
   </category>
@@ -404,7 +404,7 @@
   <category name="Protools">
     <reapack name="Daniel_Select up track.lua" type="script" desc="Daniel_Select up track.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20up%20track.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Select%20up%20track.lua</source>
       </version>
     </reapack>
   </category>
@@ -412,7 +412,7 @@
   <category name="Protools">
     <reapack name="Daniel_Split items at selection (if exists), else at edit cursor.lua" type="script" desc="Daniel_Split items at selection (if exists), else at edit cursor.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Split%20items%20at%20selection%20(if%20exists),%20else%20at%20edit%20cursor.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Split%20items%20at%20selection%20(if%20exists),%20else%20at%20edit%20cursor.lua</source>
       </version>
     </reapack>
   </category>
@@ -420,7 +420,7 @@
   <category name="Protools">
     <reapack name="Daniel_Tab to transient or items (backward).lua" type="script" desc="Daniel_Tab to transient or items (backward).lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Tab%20to%20transient%20or%20items%20(backward).lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Tab%20to%20transient%20or%20items%20(backward).lua</source>
       </version>
     </reapack>
   </category>
@@ -428,7 +428,7 @@
   <category name="Protools">
     <reapack name="Daniel_Tab to transient or items (forward).lua" type="script" desc="Daniel_Tab to transient or items (forward).lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Tab%20to%20transient%20or%20items%20(forward).lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Tab%20to%20transient%20or%20items%20(forward).lua</source>
       </version>
     </reapack>
   </category>
@@ -436,7 +436,7 @@
   <category name="Protools">
     <reapack name="Daniel_Toggle input monitoring.lua" type="script" desc="Daniel_Toggle input monitoring.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Toggle%20input%20monitoring.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Toggle%20input%20monitoring.lua</source>
       </version>
     </reapack>
   </category>
@@ -444,7 +444,7 @@
   <category name="Protools">
     <reapack name="Daniel_Toggle track selection.lua" type="script" desc="Daniel_Toggle track selection.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Toggle%20track%20selection.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Toggle%20track%20selection.lua</source>
       </version>
     </reapack>
   </category>
@@ -452,7 +452,7 @@
   <category name="Protools">
     <reapack name="Daniel_Track left click.lua" type="script" desc="Daniel_Track left click.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Track%20left%20click.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Track%20left%20click.lua</source>
       </version>
     </reapack>
   </category>
@@ -460,7 +460,7 @@
   <category name="Protools">
     <reapack name="Daniel_Zoom in horizontal.lua" type="script" desc="Daniel_Zoom in horizontal.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20in%20horizontal.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20in%20horizontal.lua</source>
       </version>
     </reapack>
   </category>
@@ -468,7 +468,7 @@
   <category name="Protools">
     <reapack name="Daniel_Zoom out horizontal.lua" type="script" desc="Daniel_Zoom out horizontal.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20out%20horizontal.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20out%20horizontal.lua</source>
       </version>
     </reapack>
   </category>
@@ -476,7 +476,7 @@
   <category name="Protools">
     <reapack name="Daniel_Zoom out project.lua" type="script" desc="Daniel_Zoom out project.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20out%20project.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Zoom%20out%20project.lua</source>
       </version>
     </reapack>
   </category>
@@ -519,7 +519,7 @@
   <category name="Utility">
     <reapack name="Daniel_Floating track input meter.lua" type="script" desc="Daniel_Floating track input meter.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20track%20input%20meter.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20track%20input%20meter.lua</source>
       </version>
     </reapack>
   </category>
@@ -527,7 +527,7 @@
   <category name="Utility">
     <reapack name="Daniel_Toggle expand folder track in mixer and edit window.lua" type="script" desc="Daniel_Toggle expand folder track in mixer and edit window.lua">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Toggle%20expand%20folder%20track%20in%20mixer%20and%20edit%20window.lua</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Toggle%20expand%20folder%20track%20in%20mixer%20and%20edit%20window.lua</source>
       </version>
     </reapack>
   </category>
@@ -561,7 +561,7 @@
   <category name="Utility">
     <reapack name="Daniel_Floating Meter" type="effect" desc="Daniel_Floating Meter">
       <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Effects/Utility/Daniel_Floating%20Meter</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Floating%20Meter</source>
       </version>
     </reapack>
   </category>
@@ -569,7 +569,7 @@
   <category name="Utility">
     <reapack name="Daniel_Simple Delay" type="effect" desc="Daniel_Simple Delay">
       <version name="1.2" author="Daniel" time="2025-08">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Delay</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Delay</source>
       </version>
     </reapack>
   </category>
@@ -587,7 +587,7 @@
   <category name="Real Time">
     <reapack name="Daniel_Live Vocal Rider" type="effect" desc="Daniel_Live Vocal Rider">
       <version name="1.1" author="Daniel" time="2025-08">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Effects/Real%20Time/Daniel_Live%20Vocal%20Rider</source>
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Real%20Time/Daniel_Live%20Vocal%20Rider</source>
       </version>
     </reapack>
   </category>

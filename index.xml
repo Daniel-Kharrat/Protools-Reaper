@@ -502,8 +502,8 @@
   
   <category name="Utility">
     <reapack name="Daniel_Change track routing from main to processing bus.lua" type="script" desc="Daniel_Change track routing from main to processing bus.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Change%20track%20routing%20from%20main%20to%20processing%20bus.lua</source>
+      <version name="1.1" author="Daniel" time="2025-05">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Change%20track%20routing%20from%20main%20to%20processing%20bus.lua</source>
       </version>
     </reapack>
   </category>

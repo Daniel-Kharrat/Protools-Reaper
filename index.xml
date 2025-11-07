@@ -195,7 +195,7 @@
 
   <category name="Protools">
     <reapack name="Daniel_Go to end of time selection.lua" type="script" desc="Daniel_Go to end of time selection.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Protools/Daniel_Go%20to%20end%20of%20time%20selection.lua</source>
       </version>
     </reapack>

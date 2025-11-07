@@ -510,7 +510,7 @@
 
   <category name="Utility">
     <reapack name="Daniel_Floating input meter.lua" type="script" desc="Daniel_Floating input meter.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-11">
         <source main="main">https://github.com/Daniel-Kharrat/Protools/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20input%20meter.lua</source>
       </version>
     </reapack>

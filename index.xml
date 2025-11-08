@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <index version="1.0" name="Daniel Kharrat">
 
+  <metadata>
+
+<description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 If you're using my theme download the }
+{\field{\*\fldinst{HYPERLINK "https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/toolbar_icons.zip"}}{\fldrslt{\ul toolbar icons}
+}}
+{\pard \ql \f0 \sa180 \li0 \fi0  and replace them in the REAPER resource path > Data > toolbar_icons}
+}
+]]></description>
+
+  </metadata>
+  
 <!-- ________Color Themes________ -->
   
   <category name="ColorThemes">

@@ -24,7 +24,7 @@
   <category name="Shortcuts">
     
     <reapack name="Daniel_Keyboard Shortcuts.ReaperKeyMap" type="data" desc="Daniel_Keyboard Shortcuts.ReaperKeyMap">
-     <version name="1.2" author="Daniel" time="2025-07">
+     <version name="1.3" author="Daniel" time="2025-07">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Keyboard%20Shortcuts.ReaperKeyMap</source>
       </version>
     </reapack>

@@ -443,17 +443,13 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Floating%20Meter</source>
       </version>
     </reapack>
-  </category>
 
-  <category name="Utility">
     <reapack name="Daniel_Simple Delay" type="effect" desc="Daniel_Simple Delay">
       <version name="1.2" author="Daniel" time="2025-08">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Delay</source>
       </version>
     </reapack>
-  </category>
-  
-  <category name="Utility">
+
     <reapack name="Daniel_Simple Gain" type="effect" desc="Daniel_Simple Gain">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Gain</source>

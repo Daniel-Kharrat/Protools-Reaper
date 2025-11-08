@@ -432,11 +432,7 @@
       </version>
     </reapack>
 
-  </category>
-
 <!-- ________Utility Effects________ -->
-
-  <category name="Utility">
     
     <reapack name="Daniel_Floating Meter" type="effect" desc="Daniel_Floating Meter">
       <version name="1.0" author="Daniel" time="2025-05">

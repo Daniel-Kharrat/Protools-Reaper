@@ -431,8 +431,12 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20Mixer.lua</source>
       </version>
     </reapack>
+    
+  </category>
 
 <!-- ________Utility Effects________ -->
+
+  <category name="utility">
     
     <reapack name="Daniel_Floating Meter" type="effect" desc="Daniel_Floating Meter">
       <version name="1.0" author="Daniel" time="2025-05">

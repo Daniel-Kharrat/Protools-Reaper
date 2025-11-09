@@ -446,6 +446,12 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20Mixer.lua</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Unmute items inside selected folder track and mute all other items.lua" type="script" desc="Daniel_Unmute items inside selected folder track and mute all other items.lua">
+      <version name="1.0" author="Daniel" time="2025-11">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Unmute%20items%20inside%20selected%20folder%20track%20and%20mute%20all%20other%20items.lua</source>
+      </version>
+    </reapack>
     
   </category>
 

@@ -31,4 +31,4 @@ Paste it there and click OK, then go to:
 
 **REAPER → Extensions → ReaPack → Manage repositories…**
 
-Right click on my name → **About Daniel Kharrat → Install/update Daniel Kharrat → Install individual packages in this repository**
+Right click on **Daniel Kharrat** → **About Daniel Kharrat → Install/update Daniel Kharrat → Install individual packages in this repository**

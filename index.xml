@@ -10,7 +10,7 @@
 {\pard \ql \f0 \sa180 \li0 \fi0 If you're using my theme download the }
 {\field{\*\fldinst{HYPERLINK "https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/toolbar_icons.zip"}}{\fldrslt{\ul toolbar icons}
 }}
-{\pard \ql \f0 \sa180 \li0 \fi0  and replace them in the REAPER resource path > Data > toolbar_icons}
+{\pard \ql \f0 \sa180 \li0 \fi0  and replace them in the REAPER resource path → Data → toolbar_icons}
 }
 ]]></description>
 

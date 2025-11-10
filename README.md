@@ -2,7 +2,7 @@
 
 ## How to Install
 
-[![Watch the video](Protools-Reaper/MISC Data/Daniel_Splash Screen.jpg)](https://youtu.be/7FLHFj_httw)
+[![Watch the video](MISC Data/Daniel_Splash Screen.jpg)](https://youtu.be/7FLHFj_httw)
 
 ### Step 0:
 Install Reapack and the SWS Extensions for reaper if you haven't already

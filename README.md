@@ -17,8 +17,6 @@ Go to: **REAPER → Extensions → ReaPack → Synchronize packages**
 
 After all the packages finish installing restart reaper and that's it
 
-
-
 ## If you wish to install some of the Scripts or FX without my config
 You can copy the repository link from here:
 

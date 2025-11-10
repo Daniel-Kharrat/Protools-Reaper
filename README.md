@@ -1,8 +1,8 @@
 # Daniel Kharrat's Reaper-Protools Configuration
 
 ## How to Install
-
-[<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="150" alt="Watch the video">![Watch the video]](https://youtu.be/7FLHFj_httw)
+👇🏻 Watch the video 👇🏻
+[<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="150" alt="Watch the video">](https://youtu.be/7FLHFj_httw)
 
 ### Step 0:
 Install Reapack and the SWS Extensions for reaper if you haven't already

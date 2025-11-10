@@ -2,6 +2,7 @@
 
 ## How to Install
 👇🏻 Watch the video 👇🏻
+
 [<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="150" alt="Watch the video">](https://youtu.be/7FLHFj_httw)
 
 ### Step 0:

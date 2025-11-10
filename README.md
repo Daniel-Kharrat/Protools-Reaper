@@ -14,6 +14,7 @@ Find the file you just downloaded and click **"Open"** then **"Import"**
 
 ### Step 2:
 Go to: **REAPER → Extensions → ReaPack → Synchronize packages**
+
 After all the packages finish installing restart reaper and that's it
 
 ## if you wish to install some of the scripts or FX without the config

@@ -5,9 +5,12 @@
 Install Reapack and the SWS Extensions for reaper if you haven't already
 ### Step 1:
 Download latest version from the *Configurations* folder above
+
 Go to:
 **Reaper → Options → Preferences** ( ctrl + P for windows or cmd + , for mac)
+
 Under **General settings** click on **"Import configuration..."**
+
 Find the file you just downloaded and click **"Open"** then **"Import"**
 
 ### Step 2:

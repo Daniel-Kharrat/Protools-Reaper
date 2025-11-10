@@ -2,7 +2,7 @@
 
 ## How to Install
 
-[![Watch the video]<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="100" alt="Watch the video">](https://youtu.be/7FLHFj_httw)
+[<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="100" alt="Watch the video">![Watch the video]](https://youtu.be/7FLHFj_httw)
 
 ### Step 0:
 Install Reapack and the SWS Extensions for reaper if you haven't already

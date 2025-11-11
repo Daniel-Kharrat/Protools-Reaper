@@ -370,7 +370,6 @@ SCR 4 0 RS4766906eccc8c1e6e4a77aa3737995b654ab81e7 "Custom: Daniel_Fade in, out,
 SCR 4 0 RS452d51d36e5aef4e7af83a3628921433a77b9d0c "Custom: Daniel_Extend selection to play cursor (during plaback).lua" "Daniel Kharrat/Protools/Daniel_Extend selection to play cursor (during plaback).lua"
 SCR 4 0 RSd4b64e6efb77ff29d985a431d626345ca09435a9 "Custom: Daniel_Extend razor edit area to mouse cursor.lua" "Daniel Kharrat/Protools/Daniel_Extend razor edit area to mouse cursor.lua"
 SCR 4 0 RS05a03347aa4480d19fa19c5fe811c76ca00aa119 "Custom: Daniel_Extend razor edit area to the right.lua" "Daniel Kharrat/Protools/Daniel_Extend razor edit area to the right.lua"
-SCR 4 0 RS4b4651de8c915efe4caf7158048a68ddcba15c89 "Custom: Daniel_Delete non existant scripts.lua" "Daniel Kharrat/Utility/Daniel_Delete non existant scripts.lua"
 SCR 4 0 RSca6b334a6865ac544a62db22eaed921a45f4f2b9 "Custom: Daniel_Clear solo.lua" "Daniel Kharrat/Protools/Daniel_Clear solo.lua"
 SCR 4 0 RS20cb8cdf6b60ff5ddb600f056c0a9a1abe6da44f "Custom: Daniel_Clear selection.lua" "Daniel Kharrat/Protools/Daniel_Clear selection.lua"
 SCR 4 0 RS73872e52305a191a83f55f1811ac45c380e98ff5 "Custom: Daniel_Check for soloed tracks.lua" "Daniel Kharrat/Protools/Daniel_Check for soloed tracks.lua"

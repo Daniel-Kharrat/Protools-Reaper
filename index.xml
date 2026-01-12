@@ -454,7 +454,7 @@
     </reapack>
 
     <reapack name="Daniel_Insert red marker at current position.lua" type="script" desc="Daniel_Insert red marker at current position.lua">
-      <version name="1.0" author="Daniel" time="2026-01">
+      <version name="1.1" author="Daniel" time="2026-01">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Insert%20red%20marker%20at%20current%20position.lua</source>
       </version>
     </reapack>

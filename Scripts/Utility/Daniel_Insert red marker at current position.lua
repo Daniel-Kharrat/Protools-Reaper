@@ -26,7 +26,7 @@ end
 
 --Change marker color
 if enum_index_of_max then
-  local r, g, b = 198,72,56
+  local r, g, b = 240, 40, 40
   local color = reaper.ColorToNative(r, g, b) | 0x1000000
 
   reaper.SetProjectMarkerByIndex2(0, enum_index_of_max, false, max_pos, max_rgnend, max_idx, max_name, color, 0)

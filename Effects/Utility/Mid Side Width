@@ -1,0 +1,17 @@
+slider1:1.0<0,1,0.01>Mid
+slider2:1.0<0,3,0.01>Sides
+slider3:1.0<0,2,0.01>Output Gain
+
+@slider
+mid_gain   = slider1;
+side_gain  = slider2;
+output_gain = slider3;
+
+@sample
+// Input
+mid = spl0;
+side = spl1;
+
+// Output
+spl0 = ((mid * mid_gain) + (side * side_gain)) * output_gain;
+spl1 = ((mid * mid_gain) - (side * side_gain)) * output_gain;

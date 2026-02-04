@@ -1,0 +1,24 @@
+slider1:1.0<0,1,0.01>Mid
+slider2:1.0<0,3,0.01>Sides
+slider3:1.0<0,2,0.01>Output Gain
+
+@slider
+mono_gain   = slider1;
+side_gain  = slider2;
+output_gain = slider3;
+
+@sample
+// Input
+L = spl0;
+R = spl1;
+
+// Mono Sum
+mono = (L + R) * 0.5;
+
+// Remove Center
+side_L = L - R; // left side
+side_R = R - L; // right side
+
+// Output
+spl0 = ((mono * mono_gain) + (side_L * side_gain * 0.5)) * output_gain;
+spl1 = ((mono * mono_gain) + (side_R * side_gain * 0.5)) * output_gain;

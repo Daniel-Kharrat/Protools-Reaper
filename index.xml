@@ -482,6 +482,18 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Gain</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Stereo Width" type="effect" desc="Daniel_Stereo Width">
+      <version name="1.0" author="Daniel" time="2026-02">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Stereo%20Width</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Mid-Side Width" type="effect" desc="Daniel_Mid-Side Width">
+      <version name="1.0" author="Daniel" time="2026-02">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Mid-Side%20Width</source>
+      </version>
+    </reapack>
     
   </category>
 

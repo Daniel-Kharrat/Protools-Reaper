@@ -490,7 +490,7 @@
     </reapack>
 
     <reapack name="Daniel_Mid-Side Width" type="effect" desc="Daniel_Mid-Side Width">
-      <version name="1.0" author="Daniel" time="2026-02">
+      <version name="1.1" author="Daniel" time="2026-02">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Mid-Side%20Width</source>
       </version>
     </reapack>

@@ -458,6 +458,18 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Insert%20red%20marker%20at%20current%20position.lua</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Extend razor edit area to next marker.lua" type="script" desc="Daniel_Extend razor edit area to next marker.lua">
+      <version name="1.0" author="Daniel" time="2026-02">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Extend%20razor%20edit%20area%20to%20next%20marker.lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Extend razor edit area to previous marker.lua" type="script" desc="Daniel_Extend razor edit area to previous marker.lua">
+      <version name="1.0" author="Daniel" time="2026-02">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Extend%20razor%20edit%20area%20to%20previous%20marker.lua</source>
+      </version>
+    </reapack>
     
   </category>
 

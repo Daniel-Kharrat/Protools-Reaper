@@ -472,13 +472,13 @@
     </reapack>
 
     <reapack name="Daniel_Go to next marker.lua" type="script" desc="Daniel_Go to next marker.lua">
-      <version name="1.0" author="Daniel" time="2026-02">
+      <version name="1.1" author="Daniel" time="2026-02">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Go%20to%20next%20marker.lua</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Go to previous marker.lua" type="script" desc="Daniel_Go to previous marker.lua">
-      <version name="1.0" author="Daniel" time="2026-02">
+      <version name="1.1" author="Daniel" time="2026-02">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Go%20to%20previous%20marker.lua</source>
       </version>
     </reapack>

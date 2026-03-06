@@ -482,6 +482,18 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Go%20to%20previous%20marker.lua</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Disable audio on selected item.lua" type="script" desc="Daniel_Disable audio on selected item.lua">
+      <version name="1.0" author="Daniel" time="2026-03">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Disable%20audio%20on%20selected%20item.lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Disable video on selected item.lua" type="script" desc="Daniel_Disable video on selected item.lua">
+      <version name="1.0" author="Daniel" time="2026-03">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Disable%20video%20on%20selected%20item.lua</source>
+      </version>
+    </reapack>
     
   </category>
 

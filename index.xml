@@ -494,6 +494,18 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Disable%20video%20on%20selected%20item.lua</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Make item audio only (disable video).lua" type="script" desc="Daniel_Make item audio only (disable video).lua">
+      <version name="1.0" author="Daniel" time="2026-03">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Make%20item%20audio%20only%20(disable%20video).lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Make item video only (disable audio).lua" type="script" desc="Daniel_Make item video only (disable audio).lua">
+      <version name="1.0" author="Daniel" time="2026-03">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Make%20item%20video%20only%20(disable%20audio).lua</source>
+      </version>
+    </reapack>
     
   </category>
 

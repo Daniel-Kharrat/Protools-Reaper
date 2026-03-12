@@ -506,6 +506,12 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Make%20item%20video%20only%20(disable%20audio).lua</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Insert new vo track.lua" type="script" desc="Daniel_Insert new vo track.lua">
+      <version name="1.0" author="Daniel" time="2026-03">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Insert%20new%20vo%20track.lua</source>
+      </version>
+    </reapack>
     
   </category>
 

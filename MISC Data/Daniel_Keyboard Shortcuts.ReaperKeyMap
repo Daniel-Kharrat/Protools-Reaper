@@ -3163,10 +3163,15 @@ SCR 4 0 RSc71c2fe68b3bdbd5e8665dfa7d69722f8a915110 "Custom: talagan_Reannotate Q
 SCR 4 0 RS3d1d5c135bdbbce6967adb5a69b9027e0d7c6920 "Custom: az_Crop items on selected tracks by reference selected items (useful for ambiences).lua" "ReaTeam Scripts/Items Editing/az_Crop items on selected tracks by reference selected items (useful for ambiences).lua"
 SCR 4 0 RS11a744ce176acaa7d078a6e5a1edf9809c79a778 "Custom: Daniel_Unmute items inside selected folder track and mute all other items.lua" "Daniel Kharrat/Utility/Daniel_Unmute items inside selected folder track and mute all other items.lua"
 SCR 4 0 RS00a7cf4dc8b7cd38e1cab0bcb311589dd6db4e67 "Custom: Daniel_Insert red marker at current position.lua" "Daniel Kharrat/Utility/Daniel_Insert red marker at current position.lua"
-SCR 4 0 RS332147f664e866fe4539e60a643ee759081aee54 "Custom: Daniel_Extend razor edit area to next marker.lua" "Daniel Kharrat/Utility/Daniel_Extend razor edit area to next marker.lua"
+SCR 4 0 RS85427b4addf151a7c4fbb92cf4c03302655823dc "Custom: Daniel_Insert new vo track.lua" "Daniel Kharrat/Utility/Daniel_Insert new vo track.lua"
+SCR 4 0 RSefb7019012e21ed2d2b0efc04178b8d952898721 "Custom: Daniel_Make item video only (disable audio).lua" "Daniel Kharrat/Utility/Daniel_Make item video only (disable audio).lua"
+SCR 4 0 RS0ef2fba5362b3c2c2beb42b5e639dfda61084cc6 "Custom: Daniel_Make item audio only (disable video).lua" "Daniel Kharrat/Utility/Daniel_Make item audio only (disable video).lua"
+SCR 4 0 RS311e846a7adc0363b18d4ab91146f1415e357296 "Custom: Daniel_Disable video on selected item.lua" "Daniel Kharrat/Utility/Daniel_Disable video on selected item.lua"
+SCR 4 0 RS60b4b4ef929fe6f55dafed30232a0fb6bd0d13de "Custom: Daniel_Disable audio on selected item.lua" "Daniel Kharrat/Utility/Daniel_Disable audio on selected item.lua"
+SCR 4 0 RS8534176054979c7e82c8fc5c6f21cbff6eef948c "Custom: Daniel_Go to previous marker.lua" "Daniel Kharrat/Utility/Daniel_Go to previous marker.lua"
 SCR 4 0 RSccfd936adb9168b320c121630024ee7247f02ff9 "Custom: Daniel_Go to next marker.lua" "Daniel Kharrat/Utility/Daniel_Go to next marker.lua"
 SCR 4 0 RSbc84cced8099dbfa2a5fa078fedfdcdc9e4b1a55 "Custom: Daniel_Extend razor edit area to previous marker.lua" "Daniel Kharrat/Utility/Daniel_Extend razor edit area to previous marker.lua"
-SCR 4 0 RS8534176054979c7e82c8fc5c6f21cbff6eef948c "Custom: Daniel_Go to previous marker.lua" "Daniel Kharrat/Utility/Daniel_Go to previous marker.lua"
+SCR 4 0 RS332147f664e866fe4539e60a643ee759081aee54 "Custom: Daniel_Extend razor edit area to next marker.lua" "Daniel Kharrat/Utility/Daniel_Extend razor edit area to next marker.lua"
 KEY 1 109 0 0		 # Main : NumPad - : DISABLED DEFAULT
 KEY 255 250 0 0		 # Main : Alt+Mousewheel : DISABLED DEFAULT
 KEY 255 216 0 0		 # Main : HorizWheel : DISABLED DEFAULT
@@ -3213,7 +3218,6 @@ KEY 255 2036 987 0		 # Main : Shift+Logo+Mousewheel : Adjust solo in front dim (
 KEY 1 99 1013 0		 # Main : NumPad 3 : OVERRIDE DEFAULT : Transport: Record
 KEY 9 32 1013 0		 # Main : Ctrl+Space : OVERRIDE DEFAULT : Transport: Record
 KEY 1 100 1068 0		 # Main : NumPad 4 : OVERRIDE DEFAULT : Transport: Toggle repeat
-KEY 9 84 40001 0		 # Main : Ctrl+T : OVERRIDE DEFAULT : Track: Insert new track
 KEY 0 167 40011 0		 # Main : § : Item properties: Show media item source properties
 KEY 0 96 40011 0		 # Main : ` : OVERRIDE DEFAULT : Item properties: Show media item source properties
 KEY 9 113 40011 0		 # Main : Ctrl+F2 : OVERRIDE DEFAULT : Item properties: Show media item source properties
@@ -3372,7 +3376,8 @@ KEY 5 88 _RS3c3657bd89fb2a9955f738fb3a0d0fdcad63a642 0		 # Main : Shift+X : OVER
 KEY 1 88 _RS358a7cfe11ba70701049363e1207c764b52605c6 0		 # Main : X : OVERRIDE DEFAULT : Script: Daniel_Cut items,tracks,envelope points (depending on focus) within time selection, if any (smart cut).lua
 KEY 9 88 _RS358a7cfe11ba70701049363e1207c764b52605c6 0		 # Main : Ctrl+X : OVERRIDE DEFAULT : Script: Daniel_Cut items,tracks,envelope points (depending on focus) within time selection, if any (smart cut).lua
 KEY 1 110 _RS00a7cf4dc8b7cd38e1cab0bcb311589dd6db4e67 0		 # Main : NumPad . : Script: Daniel_Insert red marker at current position.lua
-KEY 0 125 _RS332147f664e866fe4539e60a643ee759081aee54 0		 # Main : } : OVERRIDE DEFAULT : Script: Daniel_Extend razor edit area to next marker.lua
+KEY 9 84 _RS85427b4addf151a7c4fbb92cf4c03302655823dc 0		 # Main : Ctrl+T : OVERRIDE DEFAULT : Script: Daniel_Insert new vo track.lua
+KEY 0 91 _RS8534176054979c7e82c8fc5c6f21cbff6eef948c 0		 # Main : [ : OVERRIDE DEFAULT : Script: Daniel_Go to previous marker.lua
 KEY 0 93 _RSccfd936adb9168b320c121630024ee7247f02ff9 0		 # Main : ] : OVERRIDE DEFAULT : Script: Daniel_Go to next marker.lua
 KEY 0 123 _RSbc84cced8099dbfa2a5fa078fedfdcdc9e4b1a55 0		 # Main : { : OVERRIDE DEFAULT : Script: Daniel_Extend razor edit area to previous marker.lua
-KEY 0 91 _RS8534176054979c7e82c8fc5c6f21cbff6eef948c 0		 # Main : [ : OVERRIDE DEFAULT : Script: Daniel_Go to previous marker.lua
+KEY 0 125 _RS332147f664e866fe4539e60a643ee759081aee54 0		 # Main : } : OVERRIDE DEFAULT : Script: Daniel_Extend razor edit area to next marker.lua

@@ -153,7 +153,7 @@
     </reapack>
 
     <reapack name="Daniel_Fast forward.lua" type="script" desc="Daniel_Fast forward.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Fast%20forward.lua</source>
       </version>
     </reapack>
@@ -279,7 +279,7 @@
     </reapack>
 
     <reapack name="Daniel_Rewind.lua" type="script" desc="Daniel_Rewind.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Rewind.lua</source>
       </version>
     </reapack>

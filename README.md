@@ -19,13 +19,15 @@ Find the file you just downloaded and click **"Open"** then **"Import"**
 ### Step 2:
 Go to: **REAPER → Extensions → ReaPack → Synchronize packages** (this will take some time)
 
-or you can just install the necessary packages by going to:
+OR you can just install the necessary packages by going to:
 
 **REAPER → Extensions → ReaPack → Manage repositories...** 
 
-then double click on **Daniel Kharrat** and click on **Install/update Daniel Kharrat → Install all packages in this repository**
+then double click on **Daniel Kharrat**
 
-and also install the **ReaTeam Extensions** in the same manner
+Click on **Install/update Daniel Kharrat → Install all packages in this repository**
+
+Also install the **ReaTeam Extensions** in the same manner
 
 After all the packages finish installing restart reaper and that's it
 

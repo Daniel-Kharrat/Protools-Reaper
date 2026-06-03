@@ -10,15 +10,18 @@ Install Reapack and the SWS Extensions for reaper if you haven't already
 ### Step 1:
 Download latest version from the *Configurations* folder above
 
-Go to: **Reaper → Options → Preferences** (ctrl + P for windows or cmd + , for mac)
+Go to: **Reaper → Options → Preferences** (ctrl + P for windows/linux or cmd + , for mac)
 
 Under **General settings** click on **"Import configuration..."**
 
 Find the file you just downloaded and click **"Open"** then **"Import"**
 
 ### Step 2:
-Go to: **REAPER → Extensions → ReaPack → Synchronize packages**
-
+Go to: **REAPER → Extensions → ReaPack → Synchronize packages** (this will take some time)
+or you can just install the necessary packages by going to:
+**REAPER → Extensions → ReaPack → Manage repositories...** 
+then double click on **Daniel Kharrat** and click on **Install/update Daniel Kharrat → Install all packages in this repository**
+and also install the **ReaTeam Extensions** in the same manner
 After all the packages finish installing restart reaper and that's it
 
 ## If you wish to install some of the Scripts or FX without my config
@@ -35,4 +38,4 @@ Paste it there and click OK, then go to:
 
 **REAPER → Extensions → ReaPack → Manage repositories…**
 
-Right click on **Daniel Kharrat** → **About Daniel Kharrat → Install/update Daniel Kharrat → Install individual packages in this repository**
+Double click on **Daniel Kharrat** then click on **Install/update Daniel Kharrat → Install individual packages in this repository**

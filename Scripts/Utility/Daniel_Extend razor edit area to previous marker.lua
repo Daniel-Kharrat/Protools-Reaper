@@ -1,5 +1,9 @@
 reaper.PreventUIRefresh(1)
 
+--Get the state of "toggle horizontal scroll 50%" action
+local command_id = reaper.NamedCommandLookup("_RSb188ca992fb7f08eba2ac3633ab1972d2a6604bd")
+local state = reaper.GetToggleCommandState(command_id)
+
 local start_time, end_time = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
 
 --move edit cursor to start of time selection
@@ -12,6 +16,12 @@ local old_cursor = reaper.GetCursorPosition()
 --Markers: Go to previous marker/project start
 reaper.Main_OnCommand(40172,0)
 local new_cursor = reaper.GetCursorPosition()
+
+--Horizontal scroll to put edit cursor at 50%
+if state == 1 then
+  --SWS: Horizontal scroll to put edit cursor at 50%
+  reaper.Main_OnCommand(reaper.NamedCommandLookup("_SWS_HSCROLL50"),0)
+end
 
 --Create selection
 local num_selected_tracks = reaper.CountSelectedTracks(0)

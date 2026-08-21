@@ -68,6 +68,18 @@ go to System Settings... → Keyboard → Keyboard Shortcuts... → Spotlight
 change the shortcut for ***Show Spotlight search*** to something else
 
 
+## For future Updates
+if you have tweaked your sws auto color and screensets, when you import my next configuration they will get reset
+
+so to avoid redoing the settings manually go to the REAPER resource folder
+
+copy the file named **sws-autocoloricon.ini** and the file named **reaper-screensets.ini** to somewhere else
+
+import your new configuration and close reaper (⚠️it's important to have reaper closed for the next step⚠️)
+
+find the 2 files you saved and replace them in the REAPER resource folder
+
+then open reaper and you will have the new configuration with your screensets and auto color unchanged
 
 
 ## If you wish to install some of the Scripts or FX without my config

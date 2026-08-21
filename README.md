@@ -14,14 +14,10 @@ Go to: **Reaper → Options → Preferences** (ctrl + P for windows/linux or cmd
 
 Under **General settings** click on **"Import configuration..."**
 
-Find the file you just downloaded and click **"Open"** then **"Import"**
+Find the file you just downloaded and click **"Open"** then **"Import"** (⚠️this will overwrite your existing config⚠️)
 
 ### Step 2:
-Go to: **REAPER → Extensions → ReaPack → Synchronize packages** (this will take some time)
-
-OR you can just install the necessary packages by going to:
-
-**REAPER → Extensions → ReaPack → Manage repositories...** 
+Go to: **REAPER → Extensions → ReaPack → Manage repositories...** 
 
 then double click on **Daniel Kharrat**
 
@@ -29,7 +25,14 @@ Click on **Install/update Daniel Kharrat → Install all packages in this reposi
 
 Also install the **ReaTeam Extensions** in the same manner
 
-After all the packages finish installing restart reaper and that's it
+After all the packages finish installing restart reaper and you're ready to go
+
+For future updates you can go to: **REAPER → Extensions → ReaPack → Synchronize packages**
+
+### Step 3:
+You may need to do some tweaks on different computers
+
+
 
 ## If you wish to install some of the Scripts or FX without my config
 You can copy the repository link from here:

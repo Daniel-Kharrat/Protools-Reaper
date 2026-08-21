@@ -27,7 +27,6 @@ Also install the **ReaTeam Extensions** in the same manner
 
 After all the required packages finish installing, restart reaper and you'll be ready to go
 
-For future updates you can go to: **Extensions → ReaPack → Synchronize packages**
 
 ### Step 3:
 You may need to do some tweaks on different computers
@@ -69,7 +68,7 @@ change the shortcut for ***Show Spotlight search*** to something else
 
 
 ## For future Updates
-if you have tweaked your sws auto color and screensets, when you import my next configuration they will get reset
+1) if you have tweaked your sws auto color and screensets, when you import my next configuration they will get reset
 
 so to avoid redoing the settings manually go to the REAPER resource folder
 
@@ -80,6 +79,10 @@ import your new configuration and close reaper (⚠️it's important to have rea
 find the 2 files you saved and replace them in the REAPER resource folder
 
 then open reaper and you will have the new configuration with your screensets and auto color unchanged
+
+2) if you only want to update the scripts you can go to:
+
+**Extensions → ReaPack → Synchronize packages**
 
 
 ## If you wish to install some of the Scripts or FX without my config

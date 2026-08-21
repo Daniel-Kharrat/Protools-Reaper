@@ -30,14 +30,14 @@ After all the required packages finish installing, restart reaper and you'll be 
 
 ## You may need to do some tweaks on different computers
 
-1) if the track in the mixer window becomes smaller when you arm it you need to go to:
+1) If the track in the mixer window becomes smaller when you arm it you need to go to:
 
 **Extensions → SWS/S&M → Auto Color/Icon/Layout...**
 
 in the **MCP Layout** column, right click and choose the appropriate size for each track color (100%, 150%, 200%)
 
 
-2) to get my custom Splash Screen when you launch reaper go to: **Options → Preferences**
+2) To get my custom Splash Screen when you launch reaper go to: **Options → Preferences**
 
 Under **General settings** click on **"Advanced UI/system tweaks..."** on the bottom of the page
 
@@ -59,7 +59,7 @@ go to the REAPER resource folder → Data folder
 replace the toolbar icons folder with the new one and restart reaper
 
 
-4) on mac change the shortcut for spotlight search because we're using cmd + space to record
+4) On mac change the shortcut for spotlight search because we're using cmd + space to record
 
 go to System Settings... → Keyboard → Keyboard Shortcuts... → Spotlight
 
@@ -67,7 +67,7 @@ change the shortcut for ***Show Spotlight search*** to something else
 
 
 ## For future Updates
-1) if you have tweaked your sws auto color and screensets, when you import my next configuration they will get reset
+1) If you have tweaked your sws auto color and screensets, when you import my next configuration they will get reset
 
 so to avoid redoing the settings manually go to the REAPER resource folder
 
@@ -79,7 +79,7 @@ find the 2 files you saved and replace them in the REAPER resource folder
 
 then open reaper and you will have the new configuration with your screensets and auto color unchanged
 
-2) if you only want to update the scripts you can go to:
+2) If you only want to update the scripts you can go to:
 
 **Extensions → ReaPack → Synchronize packages**
 

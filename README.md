@@ -28,8 +28,7 @@ Also install the **ReaTeam Extensions** in the same manner
 After all the required packages finish installing, restart reaper and you'll be ready to go
 
 
-### Step 3:
-You may need to do some tweaks on different computers
+##You may need to do some tweaks on different computers
 
 1) if the track in the mixer window becomes smaller when you arm it you need to go to:
 

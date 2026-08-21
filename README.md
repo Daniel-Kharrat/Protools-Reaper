@@ -72,7 +72,7 @@ change the shortcut for ***Show Spotlight search*** to something else
 
 so to avoid redoing the settings manually go to the REAPER resource folder
 
-copy the file named **sws-autocoloricon.ini** and the file named **reaper-screensets.ini** to somewhere else
+copy the file named ***sws-autocoloricon.ini*** and the file named ***reaper-screensets.ini*** to somewhere else
 
 import your new configuration and close reaper (⚠️it's important to have reaper closed for the next step⚠️)
 

@@ -530,6 +530,12 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Volume%20automation%20ramp%20up.lua</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Show big marker name.lua" type="script" desc="Daniel_Show big marker name.lua">
+      <version name="1.0" author="Daniel" time="2026-08">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Show%20big%20marker%20name.lua</source>
+      </version>
+    </reapack>
     
   </category>
 

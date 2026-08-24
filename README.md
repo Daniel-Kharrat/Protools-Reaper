@@ -79,7 +79,7 @@ import your new configuration and close reaper (⚠️it's important to have rea
 
 find the 2 files you saved and replace them in the REAPER resource folder
 
-then open reaper and you will have the new configuration with your screensets and auto color unchanged
+then open reaper and you will have the new configuration with your old screensets and auto color unchanged
 
 2) If you only want to update the scripts you can go to:
 

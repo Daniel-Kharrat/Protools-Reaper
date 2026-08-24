@@ -98,6 +98,6 @@ In Reaper go to: **Extensions → ReaPack → Import repositories…**
 Paste it there and click OK, then go to:
 
 
-**REAPER → Extensions → ReaPack → Manage repositories…**
+**Extensions → ReaPack → Manage repositories…**
 
 Double click on **Daniel Kharrat** then click on **Install/update Daniel Kharrat → Install individual packages in this repository**

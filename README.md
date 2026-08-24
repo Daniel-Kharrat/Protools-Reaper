@@ -93,7 +93,7 @@ You can copy the repository link from here:
 https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/index.xml
 ```
 
-Go to: **REAPER → Extensions → ReaPack → Import repositories…**
+In Reaper go to: **Extensions → ReaPack → Import repositories…**
 
 Paste it there and click OK, then go to:
 

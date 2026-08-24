@@ -25,7 +25,7 @@ Click on **Install/update Daniel Kharrat → Install all packages in this reposi
 
 Also install the **ReaTeam Extensions** in the same manner
 
-After all the required packages finish installing, restart reaper and you'll be ready to go
+After both repositories finish installing, restart reaper and you'll be ready to go
 
 
 ## You may need to do some tweaks on different computers

@@ -3175,6 +3175,7 @@ SCR 4 0 RS332147f664e866fe4539e60a643ee759081aee54 "Custom: Daniel_Extend razor 
 SCR 4 0 RSb188ca992fb7f08eba2ac3633ab1972d2a6604bd "Custom: Daniel_Toggle horizontal scroll 50%.lua" "Daniel Kharrat/Utility/Daniel_Toggle horizontal scroll 50%.lua"
 SCR 4 0 RS2859602fd33f70b9e0b51e734d4c5f5a291c655a "Custom: Daniel_Volume automation ramp up.lua" "Daniel Kharrat/Utility/Daniel_Volume automation ramp up.lua"
 SCR 4 0 RS771de6da4537693d4de9ac77621d0185807f3d9f "Custom: Daniel_Volume automation ramp down.lua" "Daniel Kharrat/Utility/Daniel_Volume automation ramp down.lua"
+SCR 4 0 RS28b2f9e3de9bb609d9febfaa1e1d3198d4bab8b3 "Custom: Daniel_Show big marker name.lua" "Daniel Kharrat/Utility/Daniel_Show big marker name.lua"
 KEY 1 109 0 0		 # Main : NumPad - : DISABLED DEFAULT
 KEY 255 250 0 0		 # Main : Alt+Mousewheel : DISABLED DEFAULT
 KEY 255 218 0 0		 # Main : Alt+HorizWheel : DISABLED DEFAULT
@@ -3396,3 +3397,4 @@ KEY 0 125 _RS332147f664e866fe4539e60a643ee759081aee54 0		 # Main : } : OVERRIDE 
 KEY 1 83 _RSb188ca992fb7f08eba2ac3633ab1972d2a6604bd 0		 # Main : S : OVERRIDE DEFAULT : Script: Daniel_Toggle horizontal scroll 50%.lua
 KEY 1 73 _RS2859602fd33f70b9e0b51e734d4c5f5a291c655a 0		 # Main : I : Script: Daniel_Volume automation ramp up.lua
 KEY 1 85 _RS771de6da4537693d4de9ac77621d0185807f3d9f 0		 # Main : U : OVERRIDE DEFAULT : Script: Daniel_Volume automation ramp down.lua
+KEY 9 100 _RS28b2f9e3de9bb609d9febfaa1e1d3198d4bab8b3 0		 # Main : Ctrl+NumPad 4 : OVERRIDE DEFAULT : Script: Daniel_Show big marker name.lua

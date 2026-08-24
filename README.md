@@ -50,7 +50,7 @@ Under **Custom splash screen image:** click ***Browse...*** and select my custom
 
 Go to: **Extensions → ReaPack → Manage repositories...** 
 
-Double click on **Daniel Kharrat** and click on the [hyperlink](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/toolbar_icons.zip)) (it will download them automatically)
+Double click on **Daniel Kharrat** and click on the [hyperlink](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/toolbar_icons.zip) (it will download them automatically)
 
 go to your downloads folder, unzip the toolbar_icons folder
 

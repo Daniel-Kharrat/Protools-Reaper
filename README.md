@@ -63,7 +63,9 @@ replace the toolbar icons folder with the new one and restart reaper
 
 go to System Settings... → Keyboard → Keyboard Shortcuts... → Spotlight
 
-change the shortcut for ***Show Spotlight search*** to something else
+change the shortcut for ***Show Spotlight search*** to opt + space
+
+change the shortcut for ***Show Finder search window*** to opt + cmd + space
 
 
 ## For future Updates

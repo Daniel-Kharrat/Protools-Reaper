@@ -1,182 +1,72 @@
+reaper.set_action_options(1)
+
 ------------------------------------------------------------
 -- SETTINGS
 ------------------------------------------------------------
-reaper.set_action_options(1)
 
-local WINDOW_TITLE = "Current Marker / Region"
+local reaper = reaper
+local imgui = reaper.ImGui_CreateContext("Current Marker")
 
-local WINDOW_WIDTH  = 500
-local WINDOW_HEIGHT = 80
+local font = reaper.ImGui_CreateFont("Arial", reaper.ImGui_FontFlags_Bold())
+reaper.ImGui_Attach(imgui, font)
 
--- Distance from a cue position that is considered
--- "at the cue".
---
--- 0.001 = 1 millisecond.
-local POSITION_TOLERANCE = 0.001
-
+local INITIAL_WIDTH  = 500
+local INITIAL_HEIGHT = 100
 
 ------------------------------------------------------------
--- CURRENT DISPLAY
+-- GET CURRENT MARKER / REGION NAME
 ------------------------------------------------------------
 
-local display_name = "No Marker / Region"
+local function getCurrentMarkerName()
 
-local last_type = nil
-local last_id = nil
-local last_position = nil
+    local position = reaper.GetCursorPosition()
 
+    local markerName = ""
 
-------------------------------------------------------------
--- GET ALL PROJECT MARKERS AND REGIONS
-------------------------------------------------------------
+    --------------------------------------------------------
+    -- CHECK MARKERS FIRST
+    --------------------------------------------------------
 
-local function get_all_cues()
+    for i = 0, reaper.CountProjectMarkers(0) - 1 do
 
-    local cues = {}
-
-    local _, num_markers, num_regions =
-        reaper.CountProjectMarkers(0)
-
-    for i = 0, num_markers + num_regions - 1 do
-
-        local retval,
-              is_region,
-              position,
-              region_end,
-              name,
-              id =
+        local retval, isrgn, markerPos, regionEnd,
+              markerNameAtPos, markerIndex =
             reaper.EnumProjectMarkers3(0, i)
 
-        if retval then
+        if not isrgn then
 
-            if is_region then
-
-                table.insert(cues, {
-                    type = "region",
-                    id = id,
-                    start_pos = position,
-                    end_pos = region_end,
-                    name = name
-                })
-
-            else
-
-                table.insert(cues, {
-                    type = "marker",
-                    id = id,
-                    start_pos = position,
-                    end_pos = nil,
-                    name = name
-                })
-
+            if math.abs(position - markerPos) < 0.0001 then
+                markerName = markerNameAtPos or ""
+                break
             end
+
         end
     end
 
-    return cues
-end
+    --------------------------------------------------------
+    -- IF NOT ON A MARKER, CHECK REGIONS
+    -- If regions overlap, use the smallest/innermost one
+    --------------------------------------------------------
 
+    if markerName == "" then
 
-------------------------------------------------------------
--- FIND MARKER / REGION START AT CURSOR
-------------------------------------------------------------
+        local smallestRegionLength = math.huge
 
-local function find_start_cue(cursor, cues)
+        for i = 0, reaper.CountProjectMarkers(0) - 1 do
 
-    local best_cue = nil
-    local best_distance = math.huge
+            local retval, isrgn, markerPos, regionEnd,
+                  markerNameAtPos, markerIndex =
+                reaper.EnumProjectMarkers3(0, i)
 
-    for _, cue in ipairs(cues) do
+            if isrgn then
 
-        local distance =
-            math.abs(cue.start_pos - cursor)
+                if position >= markerPos and position <= regionEnd then
 
-        if distance <= POSITION_TOLERANCE
-           and distance < best_distance then
+                    local regionLength = regionEnd - markerPos
 
-            best_distance = distance
-            best_cue = cue
-        end
-    end
-
-    return best_cue
-end
-
-
-------------------------------------------------------------
--- FIND REGION END AT CURSOR
-------------------------------------------------------------
-
-local function find_region_end(cursor, cues)
-
-    local ending_region = nil
-
-    for _, cue in ipairs(cues) do
-
-        if cue.type == "region" then
-
-            local distance =
-                math.abs(cue.end_pos - cursor)
-
-            if distance <= POSITION_TOLERANCE then
-
-                -- If multiple regions end at the same point,
-                -- prefer the smallest/most deeply nested one.
-                --
-                -- A smaller region has a later start position.
-                if not ending_region
-                   or cue.start_pos > ending_region.start_pos then
-
-                    ending_region = cue
-                end
-            end
-        end
-    end
-
-    return ending_region
-end
-
-
-------------------------------------------------------------
--- FIND THE SMALLEST REGION CONTAINING CURSOR
---
--- This is used after a nested region ends.
---
--- Example:
---
--- A: 0 ------------------------- 20
--- B:     5 --------------- 15
--- C:         8 ------- 12
---
--- At C's end (12):
---     A and B contain the cursor.
---
--- We choose B because it is the smallest
--- enclosing region.
-------------------------------------------------------------
-
-local function find_innermost_region(cursor, cues)
-
-    local best_region = nil
-
-    for _, cue in ipairs(cues) do
-
-        if cue.type == "region" then
-
-            -- The cursor must be INSIDE the region,
-            -- not at its end.
-            if cursor > cue.start_pos + POSITION_TOLERANCE
-               and cursor < cue.end_pos - POSITION_TOLERANCE then
-
-                if not best_region then
-
-                    best_region = cue
-
-                else
-
-                    -- Later start = smaller nested region
-                    if cue.start_pos > best_region.start_pos then
-                        best_region = cue
+                    if regionLength < smallestRegionLength then
+                        smallestRegionLength = regionLength
+                        markerName = markerNameAtPos or ""
                     end
 
                 end
@@ -184,307 +74,204 @@ local function find_innermost_region(cursor, cues)
         end
     end
 
-    return best_region
+    return markerName
 end
-
-
-------------------------------------------------------------
--- SET DISPLAY FROM CUE
-------------------------------------------------------------
-
-local function set_display_from_cue(cue)
-
-    if not cue then
-        return
-    end
-
-    last_type = cue.type
-    last_id = cue.id
-    last_position = cue.start_pos
-
-    if cue.name and cue.name ~= "" then
-
-        display_name = cue.name
-
-    else
-
-        if cue.type == "marker" then
-            display_name = "(Unnamed Marker)"
-        else
-            display_name = "(Unnamed Region)"
-        end
-    end
-end
-
-
-------------------------------------------------------------
--- UPDATE DISPLAY
-------------------------------------------------------------
-
-local function update_cue()
-
-    local cursor =
-        reaper.GetCursorPosition()
-
-    local cues =
-        get_all_cues()
-
-
-    --------------------------------------------------------
-    -- 1. Check for marker or region START
-    --
-    -- This has priority.
-    --------------------------------------------------------
-
-    local start_cue =
-        find_start_cue(cursor, cues)
-
-    if start_cue then
-
-        ----------------------------------------------------
-        -- If this is a new cue, display it.
-        ----------------------------------------------------
-
-        local changed =
-            start_cue.type ~= last_type
-            or start_cue.id ~= last_id
-            or start_cue.start_pos ~= last_position
-
-        if changed then
-            set_display_from_cue(start_cue)
-        end
-
-        return
-    end
-
-
-    --------------------------------------------------------
-    -- 2. Check for a REGION END
-    --------------------------------------------------------
-
-    local ending_region =
-        find_region_end(cursor, cues)
-
-    if not ending_region then
-        return
-    end
-
-
-    --------------------------------------------------------
-    -- 3. We reached the end of a region.
-    --
-    -- Find the smallest region that still contains
-    -- the cursor.
-    --------------------------------------------------------
-
-    local enclosing_region =
-        find_innermost_region(cursor, cues)
-
-
-    --------------------------------------------------------
-    -- 4. If another region contains this position,
-    -- display that region.
-    --------------------------------------------------------
-
-    if enclosing_region then
-
-        local changed =
-            enclosing_region.type ~= last_type
-            or enclosing_region.id ~= last_id
-            or enclosing_region.start_pos ~= last_position
-
-        if changed then
-            set_display_from_cue(enclosing_region)
-        end
-
-        return
-    end
-
-
-    --------------------------------------------------------
-    -- 5. No enclosing region.
-    --
-    -- This means we've reached the end of the
-    -- outermost region.
-    --
-    -- DO NOTHING.
-    --
-    -- The display remains unchanged.
-    --------------------------------------------------------
-
-end
-
-
-------------------------------------------------------------
--- FIND FONT SIZE THAT FITS WINDOW
-------------------------------------------------------------
-
-local function get_fitting_font_size(text)
-
-    local low = 10
-    local high = 1000
-    local best = 10
-
-    while low <= high do
-
-        local mid =
-            math.floor((low + high) / 2)
-
-        gfx.setfont(1,"Arial Bold",mid)
-
-        local text_width,
-              text_height =
-            gfx.measurestr(text)
-
-
-        local padding_x =
-            gfx.w * 0.02
-
-        local padding_y =
-            gfx.h * 0.05
-
-
-        if text_width <= gfx.w - padding_x * 2
-           and text_height <= gfx.h - padding_y * 2 then
-
-            best = mid
-            low = mid + 1
-
-        else
-
-            high = mid - 1
-
-        end
-    end
-
-    return best
-end
-
-
-------------------------------------------------------------
--- DRAW DISPLAY
-------------------------------------------------------------
-
-local function draw()
-
-    --------------------------------------------------------
-    -- Background
-    --------------------------------------------------------
-
-    gfx.set(0,0,0,1)
-
-    gfx.rect(0,0,gfx.w,gfx.h,1)
-
-
-    --------------------------------------------------------
-    -- Calculate maximum font size
-    --------------------------------------------------------
-
-    local font_size =
-        get_fitting_font_size(display_name)
-
-
-    gfx.setfont(1,"Arial Bold",font_size)
-
-
-    --------------------------------------------------------
-    -- Measure text
-    --------------------------------------------------------
-
-    local text_width,text_height = gfx.measurestr(display_name)
-
-
-    --------------------------------------------------------
-    -- Center text
-    --------------------------------------------------------
-
-    local x = (gfx.w - text_width) / 2
-
-    local y = (gfx.h - text_height) / 2
-
-
-    --------------------------------------------------------
-    -- Shadow
-    --------------------------------------------------------
-
-    gfx.set(0,0,0,1)
-
-    gfx.x = x + 3
-    gfx.y = y + 3
-
-    gfx.drawstr(display_name)
-
-
-    --------------------------------------------------------
-    -- Main text
-    --------------------------------------------------------
-
-    gfx.set(0.4314,0.8039,0.5020,1)
-
-    gfx.x = x
-    gfx.y = y
-
-    gfx.drawstr(display_name)
-
-
-    --------------------------------------------------------
-    -- Update window
-    --------------------------------------------------------
-
-    gfx.update()
-end
-
 
 ------------------------------------------------------------
 -- MAIN LOOP
 ------------------------------------------------------------
 
-local function main()
-
-    update_cue()
-
-    draw()
-
+local function loop()
 
     --------------------------------------------------------
-    -- Window / keyboard input
+    -- INITIAL WINDOW SIZE
     --------------------------------------------------------
 
-    local char = gfx.getchar()
-
+    reaper.ImGui_SetNextWindowSize(
+        imgui,
+        INITIAL_WIDTH,
+        INITIAL_HEIGHT,
+        reaper.ImGui_Cond_FirstUseEver()
+    )
 
     --------------------------------------------------------
-    -- Close with:
-    --   X button
-    --   ESC
+    -- REMOVE WINDOW PADDING
     --------------------------------------------------------
 
-    if char == -1
-       or char == 27 then
+    reaper.ImGui_PushStyleVar(
+        imgui,
+        reaper.ImGui_StyleVar_WindowPadding(),
+        0,
+        0
+    )
 
-        gfx.quit()
+    --------------------------------------------------------
+    -- WINDOW
+    --------------------------------------------------------
 
-        return
+    reaper.ImGui_PushStyleColor(
+        imgui,
+       reaper.ImGui_Col_WindowBg(),
+        0x000000FF
+    )
+    
+    local visible, open =
+        reaper.ImGui_Begin(
+            imgui,
+            "Current Marker",
+            true,
+            reaper.ImGui_WindowFlags_NoTitleBar() |
+            reaper.ImGui_WindowFlags_NoFocusOnAppearing()
+        )
+
+    --------------------------------------------------------
+    -- CONTENT
+    --------------------------------------------------------
+
+    if visible then
+
+        ----------------------------------------------------
+        -- GET CURRENT MARKER / REGION
+        ----------------------------------------------------
+
+        local TEXT = getCurrentMarkerName()
+
+        if TEXT == "" then
+            TEXT = "no marker"
+        end
+
+        ----------------------------------------------------
+        -- CONTENT AREA
+        ----------------------------------------------------
+
+        local areaX, areaY =
+            reaper.ImGui_GetCursorScreenPos(imgui)
+
+        local areaWidth, areaHeight =
+            reaper.ImGui_GetContentRegionAvail(imgui)
+
+        ----------------------------------------------------
+        -- CALCULATE TEXT SIZE
+        ----------------------------------------------------
+
+        local baseFontSize =
+            reaper.ImGui_GetFontSize(imgui)
+
+        reaper.ImGui_PushFont(
+            imgui,
+            font,
+            baseFontSize
+        )
+
+        local baseTextWidth, baseTextHeight =
+            reaper.ImGui_CalcTextSize(
+                imgui,
+                TEXT
+            )
+
+        reaper.ImGui_PopFont(imgui)
+
+        ----------------------------------------------------
+        -- CALCULATE MAXIMUM FONT SIZE
+        ----------------------------------------------------
+
+        local fontSize = baseFontSize
+
+        if baseTextWidth > 0 and baseTextHeight > 0 then
+
+            local sizeFromWidth =
+                baseFontSize *
+                (areaWidth / baseTextWidth)
+
+            local sizeFromHeight =
+                baseFontSize *
+                (areaHeight / baseTextHeight)
+
+            fontSize =
+                math.min(
+                    sizeFromWidth,
+                    sizeFromHeight
+                )
+
+        end
+
+        ----------------------------------------------------
+        -- MEASURE FINAL TEXT
+        ----------------------------------------------------
+
+        reaper.ImGui_PushFont(
+            imgui,
+            font,
+            fontSize
+        )
+
+        local textWidth, textHeight =
+            reaper.ImGui_CalcTextSize(
+                imgui,
+                TEXT
+            )
+
+        reaper.ImGui_PopFont(imgui)
+
+        ----------------------------------------------------
+        -- CENTER TEXT
+        ----------------------------------------------------
+
+        local x =
+            areaX +
+            (areaWidth - textWidth) / 2
+
+        local y =
+            areaY +
+            (areaHeight - textHeight) / 2 - (fontSize * 0.04)
+
+        ----------------------------------------------------
+        -- DRAW TEXT
+        ----------------------------------------------------
+
+        local drawList =
+            reaper.ImGui_GetWindowDrawList(imgui)
+
+        reaper.ImGui_DrawList_AddTextEx(
+            drawList,
+            font,
+            fontSize,
+            x,
+            y,
+            0x6ECD80FF,
+            TEXT
+        )
+
+        ----------------------------------------------------
+        -- END WINDOW
+        --
+        -- IMPORTANT:
+        -- End() belongs inside the visible block.
+        ----------------------------------------------------
+
+        reaper.ImGui_End(imgui)
+
     end
-
+    
+    reaper.ImGui_PopStyleColor(imgui)
 
     --------------------------------------------------------
-    -- Continue
+    -- RESTORE STYLE
     --------------------------------------------------------
 
-    reaper.defer(main)
+    reaper.ImGui_PopStyleVar(imgui)
+
+    --------------------------------------------------------
+    -- CONTINUE
+    --------------------------------------------------------
+
+    if open then
+        reaper.defer(loop)
+    end
 end
-
-
-------------------------------------------------------------
--- CREATE WINDOW
-------------------------------------------------------------
-
-gfx.init(WINDOW_TITLE,WINDOW_WIDTH,WINDOW_HEIGHT,0)
-
 
 ------------------------------------------------------------
 -- START
 ------------------------------------------------------------
 
-main()
+loop()

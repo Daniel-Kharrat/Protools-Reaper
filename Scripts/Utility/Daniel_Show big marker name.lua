@@ -21,10 +21,11 @@ local function getCurrentMarkerName()
 
     local position = reaper.GetCursorPosition()
 
-    local markerName = ""
+    local markers = {}
+    local regions = {}
 
     --------------------------------------------------------
-    -- CHECK MARKERS FIRST
+    -- COLLECT MARKERS AND REGIONS
     --------------------------------------------------------
 
     for i = 0, reaper.CountProjectMarkers(0) - 1 do
@@ -33,50 +34,199 @@ local function getCurrentMarkerName()
               markerNameAtPos, markerIndex =
             reaper.EnumProjectMarkers3(0, i)
 
-        if not isrgn then
+        if isrgn then
 
-            if math.abs(position - markerPos) < 0.0001 then
-                markerName = markerNameAtPos or ""
-                break
+            regions[#regions + 1] = {
+                startPos = markerPos,
+                endPos   = regionEnd,
+                name     = markerNameAtPos or ""
+            }
+
+        else
+
+            markers[#markers + 1] = {
+                pos  = markerPos,
+                name = markerNameAtPos or ""
+            }
+
+        end
+    end
+
+    --------------------------------------------------------
+    -- 1. EXACT MARKER
+    --
+    -- Marker always wins when we are exactly on it,
+    -- including when it is inside a region.
+    --------------------------------------------------------
+
+    for i = 1, #markers do
+
+        if math.abs(position - markers[i].pos) < 0.0001 then
+            return markers[i].name
+        end
+
+    end
+
+    --------------------------------------------------------
+    -- 2. CURRENT REGION
+    --
+    -- If inside overlapping regions, use the smallest one.
+    --------------------------------------------------------
+
+    local currentRegion = nil
+    local smallestLength = math.huge
+
+    for i = 1, #regions do
+
+        local region = regions[i]
+
+        if position >= region.startPos
+           and position <= region.endPos then
+
+            local length = region.endPos - region.startPos
+
+            if length < smallestLength then
+                smallestLength = length
+                currentRegion = region
             end
 
         end
     end
 
     --------------------------------------------------------
-    -- IF NOT ON A MARKER, CHECK REGIONS
-    -- If regions overlap, use the smallest/innermost one
+    -- If inside a region, region wins.
     --------------------------------------------------------
 
-    if markerName == "" then
+    if currentRegion then
+        return currentRegion.name
+    end
 
-        local smallestRegionLength = math.huge
+    --------------------------------------------------------
+    -- 3. FIND THE MOST RECENT REGION THAT ENDED
+    --    BEFORE THE CURSOR
+    --------------------------------------------------------
 
-        for i = 0, reaper.CountProjectMarkers(0) - 1 do
+    local lastRegion = nil
 
-            local retval, isrgn, markerPos, regionEnd,
-                  markerNameAtPos, markerIndex =
-                reaper.EnumProjectMarkers3(0, i)
+    for i = 1, #regions do
 
-            if isrgn then
+        local region = regions[i]
 
-                if position >= markerPos and position <= regionEnd then
+        if region.endPos < position then
 
-                    local regionLength = regionEnd - markerPos
+            if not lastRegion
+               or region.endPos > lastRegion.endPos then
 
-                    if regionLength < smallestRegionLength then
-                        smallestRegionLength = regionLength
-                        markerName = markerNameAtPos or ""
-                    end
+                lastRegion = region
+
+            end
+        end
+    end
+
+    --------------------------------------------------------
+    -- 4. FIND THE MOST RECENT MARKER BEFORE THE CURSOR
+    --------------------------------------------------------
+
+    local lastMarker = nil
+
+    for i = 1, #markers do
+
+        local marker = markers[i]
+
+        if marker.pos < position then
+
+            if not lastMarker
+               or marker.pos > lastMarker.pos then
+
+                lastMarker = marker
+
+            end
+        end
+    end
+
+    --------------------------------------------------------
+    -- 5. IF THERE IS A MARKER AFTER THE LAST REGION,
+    --    THAT MARKER IS THE CURRENT STATE.
+    --
+    -- Example:
+    --
+    -- Region A [ Marker B ] ---- Marker C ---->
+    --
+    -- After Marker C:
+    --     Marker C
+    --
+    -- NOT Marker B.
+    --------------------------------------------------------
+
+    if lastMarker then
+
+        if not lastRegion
+           or lastMarker.pos > lastRegion.endPos then
+
+            return lastMarker.name
+        end
+    end
+
+    --------------------------------------------------------
+    -- 6. WE ARE AFTER A REGION, AND THERE HAS NOT BEEN
+    --    A NEW MARKER SINCE THAT REGION ENDED.
+    --
+    -- Look for the LAST marker that was INSIDE that region.
+    --------------------------------------------------------
+
+    if lastRegion then
+
+        local lastMarkerInsideRegion = nil
+
+        for i = 1, #markers do
+
+            local marker = markers[i]
+
+            if marker.pos >= lastRegion.startPos
+               and marker.pos <= lastRegion.endPos then
+
+                if not lastMarkerInsideRegion
+                   or marker.pos > lastMarkerInsideRegion.pos then
+
+                    lastMarkerInsideRegion = marker
 
                 end
             end
         end
+
+        ----------------------------------------------------
+        -- If the region contained a marker, keep displaying
+        -- that marker after leaving the region.
+        ----------------------------------------------------
+
+        if lastMarkerInsideRegion then
+            return lastMarkerInsideRegion.name
+        end
+
+        ----------------------------------------------------
+        -- Otherwise keep displaying the region name.
+        ----------------------------------------------------
+
+        return lastRegion.name
     end
 
-    return markerName
-end
+    --------------------------------------------------------
+    -- 7. NO REGION HAS BEEN PASSED.
+    --
+    -- A standalone marker persists until another marker
+    -- or a region is encountered.
+    --------------------------------------------------------
 
+    if lastMarker then
+        return lastMarker.name
+    end
+
+    --------------------------------------------------------
+    -- NOTHING YET
+    --------------------------------------------------------
+
+    return ""
+end
 ------------------------------------------------------------
 -- MAIN LOOP
 ------------------------------------------------------------
@@ -111,10 +261,10 @@ local function loop()
 
     reaper.ImGui_PushStyleColor(
         imgui,
-       reaper.ImGui_Col_WindowBg(),
+        reaper.ImGui_Col_WindowBg(),
         0x000000FF
     )
-    
+
     local visible, open =
         reaper.ImGui_Begin(
             imgui,
@@ -223,7 +373,8 @@ local function loop()
 
         local y =
             areaY +
-            (areaHeight - textHeight) / 2 - (fontSize * 0.04)
+            (areaHeight - textHeight) / 2 -
+            (fontSize * 0.04)
 
         ----------------------------------------------------
         -- DRAW TEXT
@@ -244,15 +395,12 @@ local function loop()
 
         ----------------------------------------------------
         -- END WINDOW
-        --
-        -- IMPORTANT:
-        -- End() belongs inside the visible block.
         ----------------------------------------------------
 
         reaper.ImGui_End(imgui)
 
     end
-    
+
     reaper.ImGui_PopStyleColor(imgui)
 
     --------------------------------------------------------

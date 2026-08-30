@@ -68,8 +68,7 @@ change the shortcut for ***Show Spotlight search*** to "opt + space"
 change the shortcut for ***Show Finder search window*** to "opt + cmd + space"
 
 
-
-### For future Updates
+# For future Updates
 1) If you have tweaked your sws auto color and screensets, when you import my next configuration they will get reset
 
 so to avoid redoing the settings manually go to the REAPER resource folder

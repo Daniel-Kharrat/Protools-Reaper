@@ -41,7 +41,7 @@ in the **MCP Layout** column, right click and choose the appropriate size for ea
 
 Under **General settings** click on **"Advanced UI/system tweaks..."** on the bottom of the page
 
-Under **Custom splash screen image:** click ***Browse...*** and select my custom image
+Under **Custom splash screen image:** paste the path of the image
 
 (you will find it in the ColorThemes folder inside the REAPER resource path)
 
@@ -81,9 +81,35 @@ find the 2 files you saved and replace them in the REAPER resource folder
 
 then open reaper and you will have the new configuration with your old screensets and auto color unchanged
 
-2) If you only want to update the scripts you can go to:
+2) If you're using a default project template you'll have to select it again
 
-**Extensions → ReaPack → Synchronize packages**
+3) If you want my custom splash screen you'll have to select it again by going to: **Options → Preferences**
+
+Under **General settings** click on **"Advanced UI/system tweaks..."** on the bottom of the page
+
+Under **Custom splash screen image:** paste the path of the image
+
+(you will find it in the ColorThemes folder inside the REAPER resource path)
+
+4) If you only want to update the scripts you can go to:
+
+**Extensions → ReaPack → Synchronize packages** (this will update all the repositories)
+
+or to update my repository only you can go to: **Extensions → ReaPack → Manage repositories...** 
+
+Click on **Install/update Daniel Kharrat → Install all packages in this repository**
+
+5) If you reinstall the REAPER program itself it will overwrite the toolbar icons to the default green
+
+so you'll have to replace them with my icons again by going to: **Extensions → ReaPack → Manage repositories...** 
+
+Double click on **Daniel Kharrat** and click on the [hyperlink](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/toolbar_icons.zip) (it will download them automatically)
+
+go to your downloads folder, unzip the toolbar_icons folder
+
+go to the REAPER resource folder → Data folder
+
+replace the toolbar icons folder with the new one and restart reaper
 
 
 ## If you wish to install some of the Scripts or FX without my config

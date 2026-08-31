@@ -399,7 +399,6 @@
     </reapack>
     
   </category>
-
   
 <!-- ________Utility Scripts________ -->
   
@@ -534,6 +533,24 @@
     <reapack name="Daniel_Show big marker name.lua" type="script" desc="Daniel_Show big marker name.lua">
       <version name="1.2" author="Daniel" time="2026-08">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Show%20big%20marker%20name.lua</source>
+      </version>
+    </reapack>
+    
+  </category>
+
+<!-- ________Updater Scripts________ -->
+  
+  <category name="Updater">
+    
+    <reapack name="Daniel_Save personal settings.lua" type="script" desc="Daniel_Save personal settings.lua">
+      <version name="1.0" author="Daniel" time="2026-08">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Save%20personal%20settings.lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Restore personal settings.lua" type="script" desc="Daniel_Restore personal settings.lua">
+      <version name="1.0" author="Daniel" time="2026-08">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore%20personal%20settings.lua</source>
       </version>
     </reapack>
     

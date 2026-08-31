@@ -8,7 +8,7 @@
 ### Step 0:
 Install Reapack and the SWS Extensions for reaper if you haven't already
 ### Step 1:
-Download latest version from the [Configurations](Configurations) folder
+Download latest version from the [Configurations]([Configurations](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Configurations/Daniel_Reaper_Protools%20v3.4.ReaperConfigZip)) folder
 
 In Reaper go to: **Options → Preferences**
 

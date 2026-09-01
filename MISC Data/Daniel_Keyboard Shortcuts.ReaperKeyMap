@@ -3176,6 +3176,8 @@ SCR 4 0 RSb188ca992fb7f08eba2ac3633ab1972d2a6604bd "Custom: Daniel_Toggle horizo
 SCR 4 0 RS2859602fd33f70b9e0b51e734d4c5f5a291c655a "Custom: Daniel_Volume automation ramp up.lua" "Daniel Kharrat/Utility/Daniel_Volume automation ramp up.lua"
 SCR 4 0 RS771de6da4537693d4de9ac77621d0185807f3d9f "Custom: Daniel_Volume automation ramp down.lua" "Daniel Kharrat/Utility/Daniel_Volume automation ramp down.lua"
 SCR 4 0 RS28b2f9e3de9bb609d9febfaa1e1d3198d4bab8b3 "Custom: Daniel_Show big marker name.lua" "Daniel Kharrat/Utility/Daniel_Show big marker name.lua"
+SCR 4 0 RSf89a24b662003075fe0b5358f5fc3789ecdd3234 "Custom: Daniel_Save personal settings.lua" "Daniel Kharrat/Updater/Daniel_Save personal settings.lua"
+SCR 4 0 RS9c74b59a915d0e474815f9b087a7ec7724dfecba "Custom: Daniel_Restore personal settings.lua" "Daniel Kharrat/Updater/Daniel_Restore personal settings.lua"
 KEY 1 109 0 0		 # Main : NumPad - : DISABLED DEFAULT
 KEY 255 250 0 0		 # Main : Alt+Mousewheel : DISABLED DEFAULT
 KEY 255 218 0 0		 # Main : Alt+HorizWheel : DISABLED DEFAULT

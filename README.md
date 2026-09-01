@@ -69,33 +69,13 @@ change the shortcut for ***Show Finder search window*** to "opt + cmd + space"
 
 
 ## For future Updates
-1) If you have tweaked your sws auto color and screensets, when you import my next configuration they will get reset
+1) run the script called: Daniel_Save personal settings.lua
 
-so to avoid redoing the settings manually go to the REAPER resource folder
+2) import the new config file
 
-copy the file named ***sws-autocoloricon.ini*** and the file named ***reaper-screensets.ini*** to somewhere else
+3) run the script called: Daniel_Restore personal settings.lua
 
-import your new configuration and close reaper (⚠️it's important to have reaper closed for the next step⚠️)
-
-find the 2 files you saved and replace them in the REAPER resource folder
-
-then open reaper and you will have the new configuration with your old screensets and auto color unchanged
-
-2) If you're using a default project template you'll have to select it again
-
-3) If you want my custom splash screen you'll have to select it again by going to: **Options → Preferences**
-
-Under **General settings** click on **"Advanced UI/system tweaks..."** on the bottom of the page
-
-Under **Custom splash screen image:** paste the path of the image
-
-(you will find it in the ColorThemes folder inside the REAPER resource path)
-
-4) If you only want to update the scripts you can go to:
-
-**Extensions → ReaPack → Synchronize packages** (this will update all the repositories)
-
-or to update my repository only you can go to: **Extensions → ReaPack → Manage repositories...** 
+4) update the scripts by going to: **Extensions → ReaPack → Manage repositories...** 
 
 Click on **Install/update Daniel Kharrat → Install all packages in this repository**
 

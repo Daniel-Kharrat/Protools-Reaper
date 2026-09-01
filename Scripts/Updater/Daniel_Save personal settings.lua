@@ -70,8 +70,9 @@ end
 ------------------------------------------------------------
 
 local splashimage = GetIniValue("splashimage")
-local newprojtmpl  = GetIniValue("newprojtmpl")
-local vstpath      = GetIniValue("vstpath")
+local newprojtmpl = GetIniValue("newprojtmpl")
+local vstpath = GetIniValue("vstpath")
+local vstpath_arm64 = GetIniValue("vstpath_arm64")
 
 
 ------------------------------------------------------------
@@ -90,6 +91,9 @@ if vstpath == nil then
     vstpath = ""
 end
 
+if vstpath_arm64 == nil then
+    vstpath_arm64 = ""
+end
 
 ------------------------------------------------------------
 -- Save settings to Personal_Settings.ini
@@ -114,6 +118,7 @@ file:write("[PERSONAL]\n")
 file:write("splashimage=" .. splashimage .. "\n")
 file:write("newprojtmpl=" .. newprojtmpl .. "\n")
 file:write("vstpath=" .. vstpath .. "\n")
+file:write("vstpath_arm64=" .. vstpath_arm64 .. "\n")
 
 file:close()
 
@@ -199,6 +204,10 @@ local message =
 
     "VST paths:\n" ..
     (vstpath ~= "" and vstpath or "(none)") ..
+    "\n\n" ..
+    
+    "VST ARM64 paths:\n" ..
+    (vstpath_arm64 ~= "" and vstpath_arm64 or "(none)") ..
     "\n\n" ..
 
     "Files:\n" ..

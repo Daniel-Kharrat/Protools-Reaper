@@ -139,7 +139,8 @@ settings_file:close()
 
 local splashimage = GetSetting("splashimage")
 local newprojtmpl = GetSetting("newprojtmpl")
-local vstpath     = GetSetting("vstpath")
+local vstpath = GetSetting("vstpath")
+local vstpath_arm64 = GetSetting("vstpath_arm64")
 
 
 ------------------------------------------------------------
@@ -149,6 +150,7 @@ local vstpath     = GetSetting("vstpath")
 local splash_restored = false
 local project_restored = false
 local vst_restored = false
+local vst_arm64_restored = false
 
 
 if splashimage ~= nil then
@@ -174,6 +176,14 @@ if vstpath ~= nil then
         SetIniValue(
             "vstpath",
             vstpath
+        )
+end
+
+if vstpath_arm64 ~= nil then
+    vst_arm64_restored =
+        SetIniValue(
+            "vstpath_arm64",
+            vstpath_arm64
         )
 end
 
@@ -225,7 +235,11 @@ local message =
     "\n" ..
 
     "VST paths: " ..
-    (vst_restored and "Restored" or "Failed")
+    (vst_restored and "Restored" or "Failed") ..
+    "\n" ..
+    
+    "VST ARM64 paths: " ..
+    (vst_arm64_restored and "Restored" or "Failed")
 
 
 reaper.ShowMessageBox(

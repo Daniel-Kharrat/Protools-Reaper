@@ -112,36 +112,6 @@ end
 
 
 ------------------------------------------------------------
--- Copy a file
-------------------------------------------------------------
-
-local function CopyFile(source, destination)
-
-    local source_file = io.open(source, "rb")
-
-    if not source_file then
-        return false
-    end
-
-    local data = source_file:read("*all")
-    source_file:close()
-
-
-    local destination_file =
-        io.open(destination, "wb")
-
-    if not destination_file then
-        return false
-    end
-
-    destination_file:write(data)
-    destination_file:close()
-
-    return true
-end
-
-
-------------------------------------------------------------
 -- Check that Personal_Settings.ini exists
 ------------------------------------------------------------
 
@@ -168,8 +138,8 @@ settings_file:close()
 ------------------------------------------------------------
 
 local splashimage = GetSetting("splashimage")
-local newprojtmpl  = GetSetting("newprojtmpl")
-local vstpath      = GetSetting("vstpath")
+local newprojtmpl = GetSetting("newprojtmpl")
+local vstpath     = GetSetting("vstpath")
 
 
 ------------------------------------------------------------
@@ -209,67 +179,34 @@ end
 
 
 ------------------------------------------------------------
--- File paths
+-- Restore helper path
 ------------------------------------------------------------
 
-local screensets_source =
-    SETTINGS_FOLDER .. "/reaper-screensets.ini"
-
-local screensets_destination =
-    RESOURCE_PATH .. "/reaper-screensets.ini"
-
-
-local sws_autocolor_source =
-    SETTINGS_FOLDER .. "/sws-autocoloricon.ini"
-
-local sws_autocolor_destination =
-    RESOURCE_PATH .. "/sws-autocoloricon.ini"
-
-
-local vstplugins_source =
-    SETTINGS_FOLDER .. "/reaper-vstplugins64.ini"
-
-local vstplugins_destination =
-    RESOURCE_PATH .. "/reaper-vstplugins64.ini"
-
-
-local vstshells_source =
-    SETTINGS_FOLDER .. "/reaper-vstshells64.ini"
-
-local vstshells_destination =
-    RESOURCE_PATH .. "/reaper-vstshells64.ini"
+local restore_script =
+    RESOURCE_PATH ..
+    "/Scripts/Daniel Kharrat/Updater/Daniel_Restore_ini_files.sh"
 
 
 ------------------------------------------------------------
--- Restore files
+-- Check that restore helper exists
 ------------------------------------------------------------
 
-local screensets_restored =
-    CopyFile(
-        screensets_source,
-        screensets_destination
+local restore_script_file =
+    io.open(restore_script, "rb")
+
+if not restore_script_file then
+
+    reaper.ShowMessageBox(
+        "Could not find the restore helper:\n\n" ..
+        restore_script,
+        "Settings Restore",
+        0
     )
 
+    return
+end
 
-local sws_autocolor_restored =
-    CopyFile(
-        sws_autocolor_source,
-        sws_autocolor_destination
-    )
-
-
-local vstplugins_restored =
-    CopyFile(
-        vstplugins_source,
-        vstplugins_destination
-    )
-
-
-local vstshells_restored =
-    CopyFile(
-        vstshells_source,
-        vstshells_destination
-    )
+restore_script_file:close()
 
 
 ------------------------------------------------------------
@@ -288,27 +225,7 @@ local message =
     "\n" ..
 
     "VST paths: " ..
-    (vst_restored and "Restored" or "Failed") ..
-    "\n\n" ..
-
-    "Files:\n" ..
-
-    "reaper-screensets.ini: " ..
-    (screensets_restored and "Restored" or "Not found") ..
-    "\n" ..
-
-    "sws-autocoloricon.ini: " ..
-    (sws_autocolor_restored and "Restored" or "Not found") ..
-    "\n\n" ..
-
-    "VST scan database:\n" ..
-    
-    "reaper-vstplugins64.ini: " ..
-    (vstplugins_restored and "Restored" or "Not found") ..
-    "\n" ..
-
-    "reaper-vstshells64.ini: " ..
-    (vstshells_restored and "Restored" or "Not found")
+    (vst_restored and "Restored" or "Failed")
 
 
 reaper.ShowMessageBox(
@@ -316,3 +233,24 @@ reaper.ShowMessageBox(
     "Settings Restored",
     0
 )
+
+
+------------------------------------------------------------
+-- Launch restore helper in background
+------------------------------------------------------------
+
+local command =
+    'nohup /bin/bash "' ..
+    restore_script ..
+    '" "' ..
+    RESOURCE_PATH ..
+    '" >/dev/null 2>&1 &'
+
+os.execute(command)
+
+
+------------------------------------------------------------
+-- Quit REAPER
+------------------------------------------------------------
+
+reaper.Main_OnCommand(40004, 0)

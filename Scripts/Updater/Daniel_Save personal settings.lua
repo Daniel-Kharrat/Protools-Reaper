@@ -136,20 +136,6 @@ local sws_autocolor_destination =
     SETTINGS_FOLDER .. "/sws-autocoloricon.ini"
 
 
-local vst_plugins_source =
-    RESOURCE_PATH .. "/reaper-vstplugins64.ini"
-
-local vst_plugins_destination =
-    SETTINGS_FOLDER .. "/reaper-vstplugins64.ini"
-
-
-local vst_shells_source =
-    RESOURCE_PATH .. "/reaper-vstshells64.ini"
-
-local vst_shells_destination =
-    SETTINGS_FOLDER .. "/reaper-vstshells64.ini"
-
-
 local keyboard_source =
     RESOURCE_PATH .. "/reaper-kb.ini"
 
@@ -179,20 +165,6 @@ local sws_autocolor_saved =
     CopyFile(
         sws_autocolor_source,
         sws_autocolor_destination
-    )
-
-
-local vst_plugins_saved =
-    CopyFile(
-        vst_plugins_source,
-        vst_plugins_destination
-    )
-
-
-local vst_shells_saved =
-    CopyFile(
-        vst_shells_source,
-        vst_shells_destination
     )
 
 
@@ -237,16 +209,6 @@ local message =
 
     "sws-autocoloricon.ini: " ..
     (sws_autocolor_saved and "Saved" or "Not found") ..
-    "\n\n" ..
-
-    "VST scan database:\n" ..
-    
-    "reaper-vstplugins64.ini: " ..
-    (vst_plugins_saved and "Saved" or "Not found") ..
-    "\n" ..
-
-    "reaper-vstshells64.ini: " ..
-    (vst_shells_saved and "Saved" or "Not found") ..
     "\n\n" ..
 
     "Backup-only files:\n" ..

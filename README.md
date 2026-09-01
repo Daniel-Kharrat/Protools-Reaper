@@ -75,7 +75,9 @@ change the shortcut for ***Show Finder search window*** to "opt + cmd + space"
 
 3) run the script called: Daniel_Restore personal settings.lua
 
-4) update the scripts by going to: **Extensions → ReaPack → Manage repositories...** 
+4) update the scripts by going to: **Extensions → ReaPack → Manage repositories...**
+
+Double click on **Daniel Kharrat**
 
 Click on **Install/update Daniel Kharrat → Install all packages in this repository**
 

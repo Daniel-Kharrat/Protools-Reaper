@@ -1,30 +1,25 @@
 #!/bin/bash
 
-# ============================================================
-# REAPER File Restore Helper
-#
-# macOS / Linux
-#
-# Argument:
-#   $1 = REAPER Resource Path
-# ============================================================
-
-
-# ============================================================
-# REAPER RESOURCE PATH
-# ============================================================
+============================================================
+REAPER File Restore Helper
+macOS / Linux
+Argument:
+$1 = REAPER Resource Path
+============================================================
+============================================================
+REAPER RESOURCE PATH
+============================================================
 
 RESOURCE_PATH="$1"
 
 if [ -z "$RESOURCE_PATH" ]; then
-    echo "ERROR: REAPER resource path was not provided."
-    exit 1
+echo "ERROR: REAPER resource path was not provided."
+exit 1
 fi
 
-
-# ============================================================
-# PATHS
-# ============================================================
+============================================================
+PATHS
+============================================================
 
 PERSONAL_SETTINGS="$RESOURCE_PATH/Personal Settings"
 
@@ -34,134 +29,169 @@ SWS_TARGET="$RESOURCE_PATH/sws-autocoloricon.ini"
 SCREENSETS_SOURCE="$PERSONAL_SETTINGS/reaper-screensets.ini"
 SCREENSETS_TARGET="$RESOURCE_PATH/reaper-screensets.ini"
 
-
-# ============================================================
-# CHECK SOURCE FILES
-# ============================================================
+============================================================
+CHECK SOURCE FILES
+============================================================
 
 if [ ! -f "$SWS_SOURCE" ]; then
-    echo "ERROR: File not found:"
-    echo "$SWS_SOURCE"
-    exit 1
+echo "ERROR: File not found:"
+echo "$SWS_SOURCE"
+exit 1
 fi
 
 if [ ! -f "$SCREENSETS_SOURCE" ]; then
-    echo "ERROR: File not found:"
-    echo "$SCREENSETS_SOURCE"
-    exit 1
+echo "ERROR: File not found:"
+echo "$SCREENSETS_SOURCE"
+exit 1
 fi
 
-
-# ============================================================
-# DETERMINE OPERATING SYSTEM
-# ============================================================
+============================================================
+DETERMINE OPERATING SYSTEM
+============================================================
 
 OS="$(uname)"
 
+============================================================
+DETERMINE REAPER PROCESS
+============================================================
 
-# ============================================================
-# DETERMINE REAPER PROCESS
-# ============================================================
+REAPER_PID=""
+REAPER_EXECUTABLE=""
 
 if [ "$OS" = "Darwin" ]; then
 
-    # macOS REAPER process name
-    REAPER_PROCESS="REAPER"
+# --------------------------------------------------------
+# macOS
+# --------------------------------------------------------
 
-elif [ "$OS" = "Linux" ]; then
+REAPER_PROCESS="REAPER"
 
-    # Linux REAPER process name
-    REAPER_PROCESS="reaper"
+REAPER_PID="$(pgrep -x "$REAPER_PROCESS" | head -n 1)"
 
-    # Find REAPER executable for relaunch
-    REAPER_EXECUTABLE="$(command -v reaper)"
-
-    if [ -z "$REAPER_EXECUTABLE" ]; then
-        echo "ERROR: Could not find 'reaper' in PATH."
-        exit 1
-    fi
-
-else
-
-    echo "ERROR: Unsupported operating system: $OS"
-    exit 1
-
-fi
-
-
-# ============================================================
-# VERIFY REAPER IS CURRENTLY RUNNING
-# ============================================================
-
-if ! pgrep -x "$REAPER_PROCESS" > /dev/null 2>&1; then
+if [ -z "$REAPER_PID" ]; then
     echo "ERROR: Could not find the running REAPER process."
     exit 1
 fi
 
+elif [ "$OS" = "Linux" ]; then
 
-# ============================================================
-# WAIT FOR REAPER TO CLOSE
-# ============================================================
+# --------------------------------------------------------
+# Linux
+# --------------------------------------------------------
 
+REAPER_PROCESS="reaper"
+
+# Find the currently running REAPER process.
+# This does NOT depend on REAPER being in PATH.
+REAPER_PID="$(pgrep -x "$REAPER_PROCESS" | head -n 1)"
+
+if [ -z "$REAPER_PID" ]; then
+    echo "ERROR: Could not find the running REAPER process."
+    exit 1
+fi
+
+# Get the actual REAPER executable from /proc.
+# This works even when REAPER is installed as a portable copy
+# or is not present in the system PATH.
+REAPER_EXECUTABLE="$(readlink -f "/proc/$REAPER_PID/exe" 2>/dev/null)"
+
+if [ -z "$REAPER_EXECUTABLE" ] || [ ! -x "$REAPER_EXECUTABLE" ]; then
+    echo "ERROR: Could not determine the REAPER executable."
+    exit 1
+fi
+
+else
+
+echo "ERROR: Unsupported operating system: $OS"
+exit 1
+
+fi
+
+============================================================
+VERIFY REAPER IS CURRENTLY RUNNING
+============================================================
+
+if [ -z "$REAPER_PID" ]; then
+echo "ERROR: Could not find the running REAPER process."
+exit 1
+fi
+
+echo "REAPER process found."
+echo "PID: $REAPER_PID"
+
+if [ "$OS" = "Linux" ]; then
+echo "Executable: $REAPER_EXECUTABLE"
+fi
+
+============================================================
+WAIT FOR REAPER TO CLOSE
+============================================================
+
+echo ""
 echo "Waiting for REAPER to close..."
 
-while pgrep -x "$REAPER_PROCESS" > /dev/null 2>&1; do
-    sleep 0.5
+while kill -0 "$REAPER_PID" 2>/dev/null; do
+sleep 0.5
 done
 
 echo "REAPER has completely closed."
 
+============================================================
+RESTORE SWS AUTO COLOR / ICON
+============================================================
 
-# ============================================================
-# RESTORE SWS AUTO COLOR / ICON
-# ============================================================
-
+echo ""
 echo "Restoring sws-autocoloricon.ini..."
 
 if cp -f "$SWS_SOURCE" "$SWS_TARGET"; then
-    echo "SWS auto color restored successfully."
+echo "SWS auto color restored successfully."
 else
-    echo "ERROR: Failed to restore sws-autocoloricon.ini."
-    exit 1
+echo "ERROR: Failed to restore sws-autocoloricon.ini."
+exit 1
 fi
 
+============================================================
+RESTORE REAPER SCREENSETS
+============================================================
 
-# ============================================================
-# RESTORE REAPER SCREENSETS
-# ============================================================
-
+echo ""
 echo "Restoring reaper-screensets.ini..."
 
 if cp -f "$SCREENSETS_SOURCE" "$SCREENSETS_TARGET"; then
-    echo "REAPER screensets restored successfully."
+echo "REAPER screensets restored successfully."
 else
-    echo "ERROR: Failed to restore reaper-screensets.ini."
-    exit 1
+echo "ERROR: Failed to restore reaper-screensets.ini."
+exit 1
 fi
 
+============================================================
+RELAUNCH REAPER
+============================================================
 
-# ============================================================
-# RELAUNCH REAPER
-# ============================================================
-
+echo ""
 echo "Launching REAPER..."
 
 if [ "$OS" = "Darwin" ]; then
 
-    # macOS
-    open -a "REAPER"
+# --------------------------------------------------------
+# macOS
+# --------------------------------------------------------
+
+open -a "REAPER"
 
 elif [ "$OS" = "Linux" ]; then
 
-    # Linux
-    "$REAPER_EXECUTABLE" >/dev/null 2>&1 &
+# --------------------------------------------------------
+# Linux
+# --------------------------------------------------------
+
+"$REAPER_EXECUTABLE" >/dev/null 2>&1 &
 
 fi
 
-
-# ============================================================
-# FINISHED
-# ============================================================
+============================================================
+FINISHED
+============================================================
 
 echo ""
 echo "============================================"

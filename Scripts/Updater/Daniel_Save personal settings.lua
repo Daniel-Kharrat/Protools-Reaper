@@ -74,6 +74,8 @@ local newprojtmpl = GetIniValue("newprojtmpl")
 local vstpath = GetIniValue("vstpath")
 local vstpath64 = GetIniValue("vstpath64")
 local vstpath_arm64 = GetIniValue("vstpath_arm64")
+local deftrackrecflags = GetIniValue("deftrackrecflags")
+local deftrackrecinput = GetIniValue("deftrackrecinput")
 
 
 ------------------------------------------------------------
@@ -98,6 +100,14 @@ end
 
 if vstpath_arm64 == nil then
     vstpath_arm64 = ""
+end
+
+if deftrackrecflags == nil then
+    deftrackrecflags = ""
+end
+
+if deftrackrecinput == nil then
+    deftrackrecinput = ""
 end
 
 ------------------------------------------------------------
@@ -125,6 +135,8 @@ file:write("newprojtmpl=" .. newprojtmpl .. "\n")
 file:write("vstpath=" .. vstpath .. "\n")
 file:write("vstpath64=" .. vstpath64 .. "\n")
 file:write("vstpath_arm64=" .. vstpath_arm64 .. "\n")
+file:write("deftrackrecflags=" .. deftrackrecflags .. "\n")
+file:write("deftrackrecinput=" .. deftrackrecinput .. "\n")
 
 file:close()
 
@@ -218,6 +230,14 @@ local message =
     
     "VST ARM64 paths:\n" ..
     (vstpath_arm64 ~= "" and vstpath_arm64 or "(none)") ..
+    "\n\n" ..
+    
+    "Default record configuration:\n" ..
+    (deftrackrecflags ~= "" and deftrackrecflags or "(none)") ..
+    "\n\n" ..
+    
+    "Default record input:\n" ..
+    (deftrackrecinput ~= "" and deftrackrecinput or "(default)") ..
     "\n\n" ..
 
     "Files:\n" ..

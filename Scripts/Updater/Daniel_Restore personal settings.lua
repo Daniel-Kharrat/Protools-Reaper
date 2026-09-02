@@ -134,6 +134,8 @@ local newprojtmpl = GetSetting("newprojtmpl")
 local vstpath = GetSetting("vstpath")
 local vstpath64 = GetSetting("vstpath64")
 local vstpath_arm64 = GetSetting("vstpath_arm64")
+local deftrackrecflags = GetSetting("deftrackrecflags")
+local deftrackrecinput = GetSetting("deftrackrecinput")
 
 
 ------------------------------------------------------------
@@ -145,6 +147,8 @@ local project_restored = false
 local vst_restored = false
 local vst64_restored = false
 local vst_arm64_restored = false
+local deftrackrecflags_restored = false
+local deftrackrecinput_restored = false
 
 
 if splashimage ~= nil then
@@ -186,6 +190,22 @@ if vstpath_arm64 ~= nil then
         SetIniValue(
             "vstpath_arm64",
             vstpath_arm64
+        )
+end
+
+if deftrackrecflags ~= nil then
+    deftrackrecflags_restored =
+       SetIniValue(
+           "deftrackrecflags",
+           deftrackrecflags
+        )
+end
+
+if deftrackrecinput ~= nil then
+    deftrackrecinput_restored =
+        SetIniValue(
+            "deftrackrecinput",
+            deftrackrecinput
         )
 end
 
@@ -252,7 +272,15 @@ local message =
     "\n" ..
     
     "VST ARM64 paths: " ..
-    (vst_arm64_restored and "Restored" or "Failed")
+    (vst_arm64_restored and "Restored" or "Failed") ..
+    "\n" ..
+    
+    "Default record configuration: " ..
+    (deftrackrecflags_restored and "Restored" or "Failed") ..
+    "\n" ..
+    
+    "Default record input: " ..
+    (deftrackrecinput_restored and "Restored" or "Failed")
 
 
 reaper.ShowMessageBox(

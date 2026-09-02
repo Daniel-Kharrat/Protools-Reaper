@@ -140,6 +140,7 @@ settings_file:close()
 local splashimage = GetSetting("splashimage")
 local newprojtmpl = GetSetting("newprojtmpl")
 local vstpath = GetSetting("vstpath")
+local vstpath64 = GetSetting("vstpath64")
 local vstpath_arm64 = GetSetting("vstpath_arm64")
 
 
@@ -150,6 +151,7 @@ local vstpath_arm64 = GetSetting("vstpath_arm64")
 local splash_restored = false
 local project_restored = false
 local vst_restored = false
+local vst64_restored = false
 local vst_arm64_restored = false
 
 
@@ -176,6 +178,14 @@ if vstpath ~= nil then
         SetIniValue(
             "vstpath",
             vstpath
+        )
+end
+
+if vstpath64 ~= nil then
+    vst64_restored =
+          SetIniValue(
+              "vstpath64",
+              vstpath64
         )
 end
 
@@ -236,6 +246,10 @@ local message =
 
     "VST paths: " ..
     (vst_restored and "Restored" or "Failed") ..
+    "\n" ..
+    
+    "VST 64-bit paths: " ..
+    (vst64_restored and "Restored" or "Failed") ..
     "\n" ..
     
     "VST ARM64 paths: " ..

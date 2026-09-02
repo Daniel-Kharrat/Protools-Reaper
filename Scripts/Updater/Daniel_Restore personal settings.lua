@@ -47,11 +47,7 @@ local function SetIniValue(key, value)
 
     local pattern = "\n" .. key .. "=[^\r\n]*"
 
-    local new_contents, count =
-        contents:gsub(
-            pattern,
-            "\n" .. key .. "=" .. value
-        )
+    local new_contents, count = contents:gsub( pattern, function() return "\n" .. key .. "=" .. value end )
 
     -- If the key is the first line of the file
     if count == 0 then
@@ -59,11 +55,7 @@ local function SetIniValue(key, value)
         local first_pattern =
             "^" .. key .. "=[^\r\n]*"
 
-        new_contents, count =
-            contents:gsub(
-                first_pattern,
-                key .. "=" .. value
-            )
+        new_contents, count = contents:gsub( first_pattern, function() return key .. "=" .. value end )
     end
 
     -- If the key doesn't already exist, add it
@@ -202,9 +194,16 @@ end
 -- Restore helper path
 ------------------------------------------------------------
 
-local restore_script =
-    RESOURCE_PATH ..
-    "/Scripts/Daniel Kharrat/Updater/Daniel_Restore_ini_files.sh"
+local OS = reaper.GetOS()
+local restore_script
+
+if OS:find("Win") then
+  restore_script = RESOURCE_PATH ..
+  "/Scripts/Daniel Kharrat/Updater/Daniel_Restore_ini_files.bat"
+else
+  restore_script = RESOURCE_PATH ..
+  "/Scripts/Daniel Kharrat/Updater/Daniel_Restore_ini_files.sh"
+end
 
 
 ------------------------------------------------------------
@@ -267,12 +266,21 @@ reaper.ShowMessageBox(
 -- Launch restore helper in background
 ------------------------------------------------------------
 
-local command =
-    'nohup /bin/bash "' ..
-    restore_script ..
-    '" "' ..
-    RESOURCE_PATH ..
-    '" >/dev/null 2>&1 &'
+local command
+
+if OS:find("Win") then
+  command = 'start "" /min cmd /c ""' ..
+  restore_script ..
+  '" "' ..
+  RESOURCE_PATH ..
+  '""'
+else
+  command = 'nohup /bin/bash "' ..
+  restore_script ..
+  '" "' ..
+  RESOURCE_PATH ..
+  '" >/dev/null 2>&1 &'
+end
 
 os.execute(command)
 

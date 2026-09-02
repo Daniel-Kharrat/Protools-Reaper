@@ -543,13 +543,13 @@
   <category name="Updater">
     
     <reapack name="Daniel_Save personal settings.lua" type="script" desc="Daniel_Save personal settings.lua">
-      <version name="1.4" author="Daniel" time="2026-09">
+      <version name="1.5" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Save%20personal%20settings.lua</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Restore personal settings.lua" type="script" desc="Daniel_Restore personal settings.lua">
-      <version name="1.4" author="Daniel" time="2026-09">
+      <version name="1.5" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore%20personal%20settings.lua</source>
       </version>
     </reapack>
@@ -557,6 +557,12 @@
     <reapack name="Daniel_Restore_ini_files.sh" type="script" desc="Daniel_Restore_ini_files.sh">
       <version name="1.1" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore_ini_files.sh</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Restore_ini_files.bat" type="script" desc="Daniel_Restore_ini_files.bat">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore_ini_files.bat</source>
       </version>
     </reapack>
     

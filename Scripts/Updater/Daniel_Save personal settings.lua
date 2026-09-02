@@ -72,6 +72,7 @@ end
 local splashimage = GetIniValue("splashimage")
 local newprojtmpl = GetIniValue("newprojtmpl")
 local vstpath = GetIniValue("vstpath")
+local vstpath64 = GetIniValue("vstpath64")
 local vstpath_arm64 = GetIniValue("vstpath_arm64")
 
 
@@ -89,6 +90,10 @@ end
 
 if vstpath == nil then
     vstpath = ""
+end
+
+if vstpath64 == nil then
+    vstpath64 = ""
 end
 
 if vstpath_arm64 == nil then
@@ -118,6 +123,7 @@ file:write("[PERSONAL]\n")
 file:write("splashimage=" .. splashimage .. "\n")
 file:write("newprojtmpl=" .. newprojtmpl .. "\n")
 file:write("vstpath=" .. vstpath .. "\n")
+file:write("vstpath64=" .. vstpath64 .. "\n")
 file:write("vstpath_arm64=" .. vstpath_arm64 .. "\n")
 
 file:close()
@@ -204,6 +210,10 @@ local message =
 
     "VST paths:\n" ..
     (vstpath ~= "" and vstpath or "(none)") ..
+    "\n\n" ..
+    
+    "VST 64-bit paths:\n" ..
+    (vstpath64 ~= "" and vstpath64 or "(none)") ..
     "\n\n" ..
     
     "VST ARM64 paths:\n" ..

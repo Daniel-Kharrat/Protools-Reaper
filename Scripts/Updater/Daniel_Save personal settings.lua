@@ -212,7 +212,7 @@ local message =
     (vstpath ~= "" and vstpath or "(none)") ..
     "\n\n" ..
     
-    "VST 64-bit paths:\n" ..
+    "VST64 paths:\n" ..
     (vstpath64 ~= "" and vstpath64 or "(none)") ..
     "\n\n" ..
     

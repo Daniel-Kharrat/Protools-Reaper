@@ -1,6 +1,14 @@
 local RESOURCE_PATH = reaper.GetResourcePath()
 local OS = reaper.GetOS()
 
+if OS == "Other" then
+    local f = io.open("/proc/version", "r")
+    if f then
+        f:close()
+        OS = "Linux"
+    end
+end
+
 -- ------------------------------------------------------------
 -- Windows
 -- ------------------------------------------------------------
@@ -92,62 +100,20 @@ if OS:find("macOS") then
 -- ------------------------------------------------------------
 -- Linux
 -- ------------------------------------------------------------
-
 elseif OS:find("Linux") then
 
     local function shell_single_quote(str)
         return "'" .. str:gsub("'", "'\\''") .. "'"
     end
 
-    local terminal_command
+    local terminal_command =
+        "ptyxis -- bash -c " ..
+        shell_single_quote(command)
 
-    if os.execute("command -v gnome-terminal >/dev/null 2>&1") then
-
-        terminal_command =
-            "gnome-terminal -- bash -c " ..
-            shell_single_quote(command) ..
-            " >/dev/null 2>&1 &"
-
-    elseif os.execute("command -v konsole >/dev/null 2>&1") then
-
-        terminal_command =
-            "konsole -e bash -c " ..
-            shell_single_quote(command) ..
-            " >/dev/null 2>&1 &"
-
-    elseif os.execute("command -v xfce4-terminal >/dev/null 2>&1") then
-
-        terminal_command =
-            "xfce4-terminal --command=" ..
-            shell_single_quote(
-                "bash -c " .. shell_single_quote(command)
-            ) ..
-            " >/dev/null 2>&1 &"
-
-    elseif os.execute("command -v xterm >/dev/null 2>&1") then
-
-        terminal_command =
-            "xterm -e bash -c " ..
-            shell_single_quote(command) ..
-            " >/dev/null 2>&1 &"
-
-    else
-
-        reaper.ShowMessageBox(
-            "Could not find a supported terminal emulator.\n\n" ..
-            "Supported terminals:\n" ..
-            "• GNOME Terminal\n" ..
-            "• Konsole\n" ..
-            "• XFCE Terminal\n" ..
-            "• xterm",
-            "Toolbar Icons",
-            0
-        )
-        return
-
-    end
-
-    os.execute(terminal_command)
+    os.execute(
+        terminal_command ..
+        " >/dev/null 2>&1 &"
+    )
 
 end
 
@@ -155,4 +121,15 @@ end
 -- Close REAPER
 -- ------------------------------------------------------------
 
-reaper.Main_OnCommand(40004, 0)
+local start_time = reaper.time_precise()
+
+local function close_reaper_after_delay()
+    if reaper.time_precise() - start_time >= 2 then
+        reaper.Main_OnCommand(40004, 0)
+        return
+    end
+
+    reaper.defer(close_reaper_after_delay)
+end
+
+reaper.defer(close_reaper_after_delay)

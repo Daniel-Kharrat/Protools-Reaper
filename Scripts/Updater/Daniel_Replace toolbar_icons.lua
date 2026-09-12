@@ -102,21 +102,38 @@ if OS:find("macOS") then
 -- ------------------------------------------------------------
 elseif OS:find("Linux") then
 
-    local function shell_single_quote(str)
-        return "'" .. str:gsub("'", "'\\''") .. "'"
+    local terminal_command = nil
+
+    local ptyxis = os.execute("command -v ptyxis >/dev/null 2>&1")
+    if ptyxis then
+        terminal_command = "ptyxis"
+    else
+        local gnome_terminal = os.execute("command -v gnome-terminal >/dev/null 2>&1")
+        if gnome_terminal then
+            terminal_command = "gnome-terminal"
+        end
     end
 
-    local terminal_command =
-        "ptyxis -- bash -c " ..
-        shell_single_quote(command)
+    if terminal_command then
 
-    os.execute(
-        terminal_command ..
-        " >/dev/null 2>&1 &"
-    )
+        local linux_command =
+            terminal_command ..
+            " -- bash -c " ..
+            string.format("%q", command) ..
+            " &"
 
+        os.execute(linux_command)
+
+    else
+
+        os.execute(
+            "bash -c " ..
+            string.format("%q", command) ..
+            " >/dev/null 2>&1 &"
+        )
+
+    end
 end
-
 -- ------------------------------------------------------------
 -- Close REAPER
 -- ------------------------------------------------------------

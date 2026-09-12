@@ -58,6 +58,42 @@ exit 1
 
 fi
 
+REAPER_EXECUTABLE=""
+
+if [ "$OS" = "Linux" ]; then
+
+    echo "Finding running REAPER process..."
+
+    REAPER_PID=""
+
+    for i in {1..20}; do
+
+        REAPER_PID="$(pgrep -x "$REAPER_PROCESS" | head -n 1)"
+
+        if [ -n "$REAPER_PID" ]; then
+            break
+        fi
+
+        sleep 0.25
+
+    done
+
+    if [ -z "$REAPER_PID" ]; then
+        echo "ERROR: Could not find the running REAPER process."
+        exit 1
+    fi
+
+    REAPER_EXECUTABLE="$(readlink -f "/proc/$REAPER_PID/exe" 2>/dev/null)"
+
+    if [ -z "$REAPER_EXECUTABLE" ] || [ ! -x "$REAPER_EXECUTABLE" ]; then
+        echo "ERROR: Could not determine the REAPER executable."
+        exit 1
+    fi
+
+    echo "REAPER executable found:"
+    echo "$REAPER_EXECUTABLE"
+
+fi
 # ------------------------------------------------------------
 # Validate required programs
 # ------------------------------------------------------------
@@ -305,16 +341,25 @@ if [ "$OS" = "Darwin" ]; then
 open -a "REAPER"
 
 elif [ "$OS" = "Linux" ]; then
+    if [ -n "$REAPER_EXECUTABLE" ] && [ -x "$REAPER_EXECUTABLE" ]; then
 
-if command -v reaper >/dev/null 2>&1; then
+    echo "REAPER executable:"
+    echo "$REAPER_EXECUTABLE"
+    echo "Starting REAPER..."
 
-    reaper >/dev/null 2>&1 &
+    nohup "$REAPER_EXECUTABLE" >/dev/null 2>&1 &
+
+    sleep 2
+
+    if pgrep -x "$REAPER_PROCESS" >/dev/null 2>&1; then
+        echo "REAPER started successfully."
+    else
+        echo "ERROR: REAPER did not start."
+    fi
 
 else
-
-    echo "ERROR: Could not find REAPER executable for relaunch."
+    echo "ERROR: Could not determine REAPER executable for relaunch."
     exit 1
-
 fi
 
 fi

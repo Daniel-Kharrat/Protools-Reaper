@@ -14,13 +14,35 @@ end
 -- ------------------------------------------------------------
 
 if OS:find("Win") then
-    reaper.ShowMessageBox(
-        "Windows is not supported yet.\n\n" ..
-        "The toolbar icon updater currently supports macOS and Linux only.",
-        "Toolbar Icons",
-        0
-    )
-    return
+
+    local update_script =
+        RESOURCE_PATH ..
+        "/Scripts/Daniel Kharrat/Updater/Daniel_Replace toolbar_icons.bat"
+
+    local script_file =
+        io.open(update_script, "rb")
+
+    if not script_file then
+        reaper.ShowMessageBox(
+            "Could not find the toolbar icon updater:\n\n" ..
+            update_script,
+            "Toolbar Icons",
+            0
+        )
+        return
+    end
+
+    script_file:close()
+
+    local command =
+        'start "" /min cmd /c ""' ..
+        update_script ..
+        '" "' ..
+        RESOURCE_PATH ..
+        '""'
+
+    os.execute(command)
+
 end
 
 -- ------------------------------------------------------------

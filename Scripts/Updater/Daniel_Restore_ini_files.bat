@@ -33,6 +33,9 @@ set "SWS_TARGET=%RESOURCE_PATH%\sws-autocoloricon.ini"
 set "SCREENSETS_SOURCE=%PERSONAL_SETTINGS%\reaper-screensets.ini"
 set "SCREENSETS_TARGET=%RESOURCE_PATH%\reaper-screensets.ini"
 
+set "REAPACK_SOURCE=%PERSONAL_SETTINGS%\reapack.ini"
+set "REAPACK_TARGET=%RESOURCE_PATH%\reapack.ini"
+
 REM ============================================================
 REM CHECK SOURCE FILES
 REM ============================================================
@@ -46,6 +49,12 @@ exit /b 1
 if not exist "%SCREENSETS_SOURCE%" (
 echo ERROR: File not found:
 echo %SCREENSETS_SOURCE%
+exit /b 1
+)
+
+if not exist "%REAPACK_SOURCE%" (
+echo ERROR: File not found:
+echo %REAPACK_SOURCE%
 exit /b 1
 )
 
@@ -139,6 +148,22 @@ exit /b 1
 )
 
 echo REAPER screensets restored successfully.
+
+REM ============================================================
+REM RESTORE REAPACK
+REM ============================================================
+
+echo.
+echo Restoring reapack.ini...
+
+copy /Y "%REAPACK_SOURCE%" "%REAPACK_TARGET%" >nul
+
+if errorlevel 1 (
+echo ERROR: Failed to restore reapack.ini.
+exit /b 1
+)
+
+echo ReaPack configuration restored successfully.
 
 REM ============================================================
 REM RELAUNCH REAPER

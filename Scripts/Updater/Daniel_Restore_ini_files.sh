@@ -29,6 +29,9 @@ SWS_TARGET="$RESOURCE_PATH/sws-autocoloricon.ini"
 SCREENSETS_SOURCE="$PERSONAL_SETTINGS/reaper-screensets.ini"
 SCREENSETS_TARGET="$RESOURCE_PATH/reaper-screensets.ini"
 
+REAPACK_SOURCE="$PERSONAL_SETTINGS/reapack.ini"
+REAPACK_TARGET="$RESOURCE_PATH/reapack.ini"
+
 ============================================================
 CHECK SOURCE FILES
 ============================================================
@@ -42,6 +45,12 @@ fi
 if [ ! -f "$SCREENSETS_SOURCE" ]; then
 echo "ERROR: File not found:"
 echo "$SCREENSETS_SOURCE"
+exit 1
+fi
+
+if [ ! -f "$REAPACK_SOURCE" ]; then
+echo "ERROR: File not found:"
+echo "$REAPACK_SOURCE"
 exit 1
 fi
 
@@ -161,6 +170,20 @@ if cp -f "$SCREENSETS_SOURCE" "$SCREENSETS_TARGET"; then
 echo "REAPER screensets restored successfully."
 else
 echo "ERROR: Failed to restore reaper-screensets.ini."
+exit 1
+fi
+
+============================================================
+RESTORE REAPACK
+============================================================
+
+echo ""
+echo "Restoring reapack.ini..."
+
+if cp -f "$REAPACK_SOURCE" "$REAPACK_TARGET"; then
+echo "ReaPack configuration restored successfully."
+else
+echo "ERROR: Failed to restore reapack.ini."
 exit 1
 fi
 

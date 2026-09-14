@@ -6,7 +6,12 @@
 [<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="165" alt="Watch the video">](https://youtu.be/CJbhZe4WvC8)
 
 ### Step 0:
-Install Reapack
+Install Reapack:
+
+In Reaper go to: **Options → Show REAPER resource path in Explorer/finder...**
+
+Look for a folder called **UserPlugins** and put the reapack file in it
+
 ### Step 1:
 Download the latest [Configuration file](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Configurations/Daniel_Reaper_Protools%20v3.6.ReaperConfigZip)
 

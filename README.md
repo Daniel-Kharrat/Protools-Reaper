@@ -6,7 +6,7 @@
 [<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="165" alt="Watch the video">](https://youtu.be/CJbhZe4WvC8)
 
 ### Step 0:
-Install Reapack:
+Install Reapack if you haven't already:
 
 In Reaper go to: **Options → Show REAPER resource path in Explorer/finder...**
 

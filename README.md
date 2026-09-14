@@ -47,7 +47,7 @@ Under **Custom splash screen image:** paste the path of the image
 open the actions list and run the script called: Daniel_Replace toolbar_icons.lua
 
 
-5) On mac change the shortcut for spotlight search because we're using cmd + space to record
+4) On mac change the shortcut for spotlight search because we're using cmd + space to record
 
 go to System Settings... → Keyboard → Keyboard Shortcuts... → Spotlight
 

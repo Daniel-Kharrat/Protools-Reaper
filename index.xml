@@ -542,6 +542,12 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Show%20big%20marker%20name.lua</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Set time selection for render.lua" type="script" desc="Daniel_Set time selection for render.lua">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Set%20time%20selection%20for%20render.lua</source>
+      </version>
+    </reapack>
     
   </category>
 

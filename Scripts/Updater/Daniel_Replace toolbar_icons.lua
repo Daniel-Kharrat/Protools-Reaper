@@ -92,7 +92,7 @@ local command =
 -- macOS
 -- ------------------------------------------------------------
 
-if OS:find("macOS") then
+if OS:find("macOS") or OS:find("OSX") then
 
     local function apple_escape(str)
         str = str:gsub("\\", "\\\\")

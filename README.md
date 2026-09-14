@@ -26,7 +26,7 @@ Go to: **Extensions → ReaPack → Synchronize packages**
 
 (it will install **Daniel Kharrat** and **ReaTeam Extensions**)
 
-After both repositories finish installing, restart reaper and you'll be ready to go
+After both repositories finish installing, **RESTART** reaper and you'll be ready to go
 
 
 ## You may need to do some tweaks on different computers

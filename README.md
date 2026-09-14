@@ -6,7 +6,7 @@
 [<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="165" alt="Watch the video">](https://youtu.be/CJbhZe4WvC8)
 
 ### Step 0:
-Install Reapack and the SWS Extensions for reaper if you haven't already
+Install Reapack
 ### Step 1:
 Download the latest [Configuration file](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Configurations/Daniel_Reaper_Protools%20v3.6.ReaperConfigZip)
 
@@ -17,13 +17,9 @@ Under **General settings** click on **"Import configuration..."**
 Find the file you just downloaded and click **"Open"** then **"Import"** (⚠️this will overwrite your existing config⚠️)
 
 ### Step 2:
-Go to: **Extensions → ReaPack → Manage repositories...** 
+Go to: **Extensions → ReaPack → Synchronize packages** 
 
-Double click on **Daniel Kharrat**
-
-Click on **Install/update Daniel Kharrat → Install all packages in this repository**
-
-Also install the **ReaTeam Extensions** in the same manner
+(it will install **Daniel Kharrat** and **ReaTeam Extensions**)
 
 After both repositories finish installing, restart reaper and you'll be ready to go
 
@@ -46,20 +42,12 @@ Under **Custom splash screen image:** paste the path of the image
 (you will find it in the ColorThemes folder inside the REAPER resource path)
 
 
-3) Replace toolbar icons to have the correct blue color instead of green
+3) Replace toolbar icons if you're using my theme
 
-Go to: **Extensions → ReaPack → Manage repositories...** 
-
-Double click on **Daniel Kharrat** and click on the [hyperlink](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/toolbar_icons.zip) (it will download them automatically)
-
-go to your downloads folder, unzip the toolbar_icons folder
-
-go to the REAPER resource folder → Data folder
-
-replace the toolbar icons folder with the new one and restart reaper
+open the actions list and run the script called: Daniel_Replace toolbar_icons.lua
 
 
-4) On mac change the shortcut for spotlight search because we're using cmd + space to record
+5) On mac change the shortcut for spotlight search because we're using cmd + space to record
 
 go to System Settings... → Keyboard → Keyboard Shortcuts... → Spotlight
 
@@ -83,15 +71,9 @@ Click on **Install/update Daniel Kharrat → Install all packages in this reposi
 
 5) If you reinstall the REAPER program itself it will overwrite the toolbar icons to the default green
 
-so you'll have to replace them with my icons again by going to: **Extensions → ReaPack → Manage repositories...** 
+so you'll have to replace them with my icons again by going to the actions list and run the script called:
 
-Double click on **Daniel Kharrat** and click on the [hyperlink](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/toolbar_icons.zip) (it will download them automatically)
-
-go to your downloads folder, unzip the toolbar_icons folder
-
-go to the REAPER resource folder → Data folder
-
-replace the toolbar icons folder with the new one and restart reaper
+Daniel_Replace toolbar_icons.lua
 
 
 ## If you wish to install some of the Scripts or FX without my config

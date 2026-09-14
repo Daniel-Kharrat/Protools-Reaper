@@ -97,4 +97,7 @@ reaper.Main_OnCommand(40295,0)
 --Peaks: Reset peaks display zoom for project
 reaper.Main_OnCommand(42449,0)
 
+--Move edit cursor to the beginning
+reaper.SetEditCurPos(0, false, false)
+
 reaper.UpdateArrange()

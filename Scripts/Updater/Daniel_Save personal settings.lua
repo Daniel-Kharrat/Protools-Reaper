@@ -172,6 +172,12 @@ local mouse_source =
 local mouse_destination =
     SETTINGS_FOLDER .. "/reaper-mouse.ini"
 
+local reapack_source =
+    RESOURCE_PATH .. "/reapack.ini"
+
+local reapack_destination =
+    SETTINGS_FOLDER .. "/reapack.ini"
+
 
 ------------------------------------------------------------
 -- Copy files
@@ -204,6 +210,11 @@ local mouse_saved =
         mouse_destination
     )
 
+local reapack_saved =
+    CopyFile(
+        reapack_source,
+        reapack_destination
+    )
 
 ------------------------------------------------------------
 -- Display result
@@ -248,6 +259,10 @@ local message =
 
     "sws-autocoloricon.ini: " ..
     (sws_autocolor_saved and "Saved" or "Not found") ..
+    "\n" ..
+
+    "reapack.ini: " ..
+    (reapack_saved and "Saved" or "Not found") ..
     "\n\n" ..
 
     "Backup-only files:\n" ..

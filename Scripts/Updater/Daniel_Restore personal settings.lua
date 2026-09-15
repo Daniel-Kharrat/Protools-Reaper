@@ -139,6 +139,7 @@ local deftrackrecinput = GetSetting("deftrackrecinput")
 local defsavepath = GetSetting("defsavepath")
 local defrenderpath = GetSetting("defrenderpath")
 local defrecpath = GetSetting("defrecpath")
+local saveFlags = GetSetting("saveFlags")
 
 ------------------------------------------------------------
 -- Restore settings to reaper.ini
@@ -154,6 +155,7 @@ local deftrackrecinput_restored = false
 local defsavepath_restored = false
 local defrenderpath_restored = false
 local defrecpath_restored = false
+local saveFlags_restored = false
 
 if splashimage ~= nil then
     splash_restored =
@@ -234,6 +236,14 @@ if defrecpath ~= nil then
         SetIniValue(
             "defrecpath",
             defrecpath
+        )
+end
+
+if saveFlags ~= nil then
+    saveFlags_restored =
+        SetIniValue(
+            "saveFlags",
+            saveFlags
         )
 end
 
@@ -318,8 +328,12 @@ local message =
     (defrenderpath_restored and "Restored" or "Failed") ..
     "\n" ..
 
-    "Default recording path: " ..
-    (defrecpath_restored and "Restored" or "Failed")
+   "Default recording path: " ..
+    (defrecpath_restored and "Restored" or "Failed") ..
+    "\n" ..
+
+    "Save Project options: " ..
+    (saveFlags_restored and "Restored" or "Failed")
 
 
 reaper.ShowMessageBox(

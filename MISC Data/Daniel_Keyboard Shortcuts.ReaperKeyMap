@@ -3176,8 +3176,44 @@ SCR 4 0 RSb188ca992fb7f08eba2ac3633ab1972d2a6604bd "Custom: Daniel_Toggle horizo
 SCR 4 0 RS2859602fd33f70b9e0b51e734d4c5f5a291c655a "Custom: Daniel_Volume automation ramp up.lua" "Daniel Kharrat/Utility/Daniel_Volume automation ramp up.lua"
 SCR 4 0 RS771de6da4537693d4de9ac77621d0185807f3d9f "Custom: Daniel_Volume automation ramp down.lua" "Daniel Kharrat/Utility/Daniel_Volume automation ramp down.lua"
 SCR 4 0 RS28b2f9e3de9bb609d9febfaa1e1d3198d4bab8b3 "Custom: Daniel_Show big marker name.lua" "Daniel Kharrat/Utility/Daniel_Show big marker name.lua"
-SCR 4 0 RSf89a24b662003075fe0b5358f5fc3789ecdd3234 "Custom: Daniel_Save personal settings.lua" "Daniel Kharrat/Updater/Daniel_Save personal settings.lua"
+SCR 4 0 RS10d78e51cc80a9f16c3d22f0dcbdc682056f8951 "Custom: Daniel_Replace toolbar_icons.lua" "Daniel Kharrat/Updater/Daniel_Replace toolbar_icons.lua"
 SCR 4 0 RS9c74b59a915d0e474815f9b087a7ec7724dfecba "Custom: Daniel_Restore personal settings.lua" "Daniel Kharrat/Updater/Daniel_Restore personal settings.lua"
+SCR 4 0 RSf89a24b662003075fe0b5358f5fc3789ecdd3234 "Custom: Daniel_Save personal settings.lua" "Daniel Kharrat/Updater/Daniel_Save personal settings.lua"
+SCR 4 0 RS9ca203e1a2779bff6799bb0c307c9eae19d5eece "Custom: Daniel_Set time selection for render.lua" "Daniel Kharrat/Utility/Daniel_Set time selection for render.lua"
+SCR 4 0 RS883436ba56cc1f851765e4e0f65db457038c8130 "Custom: Daniel_Set splash screen.lua" "Daniel Kharrat/Updater/Daniel_Set splash screen.lua"
+SCR 4 0 RS66e6a2be78b924efe0be390532f621b276441ace "Custom: BirdBird_Envelope Palette.lua" "BirdBird ReaScript Testing/Envelope Palette/BirdBird_Envelope Palette.lua"
+SCR 4 0 RSd8893884211a8c70cbd5b3ee40afd91a677472a8 "Custom: BirdBird_FX Inspector insert parameter capture.lua" "BirdBird ReaScript Testing/FX Inspector/BirdBird_FX Inspector insert parameter capture.lua"
+SCR 4 0 RSd944e018a8c94d824c93271f88c60eb9eb02cb12 "Custom: BirdBird_FX Inspector.lua" "BirdBird ReaScript Testing/FX Inspector/BirdBird_FX Inspector.lua"
+SCR 4 0 RS83031a9d68cf85ac711728c431692ed39a357e16 "Custom: BirdBird_Note Puncher.lua" "BirdBird ReaScript Testing/Note Puncher/BirdBird_Note Puncher.lua"
+SCR 4 0 RSbbefd35e9df1505b208c6146f0cecbf0c5b576d4 "Custom: BirdBird_Track Versions (GUI).lua" "BirdBird ReaScript Testing/Track Versions/BirdBird_Track Versions (GUI).lua"
+SCR 4 0 RS3b699992fa2440ad1b096a142f9f5b8776a2f2a6 "Custom: BirdBird_Track Versions - Cycle to next version.lua" "BirdBird ReaScript Testing/Track Versions/BirdBird_Track Versions - Cycle to next version.lua"
+SCR 4 0 RSb88609c5f427b805ddacca95b08b191b8eaca515 "Custom: BirdBird_Track Versions - Cycle to previous version.lua" "BirdBird ReaScript Testing/Track Versions/BirdBird_Track Versions - Cycle to previous version.lua"
+SCR 4 0 RSb276359ed5453b01acc78192c42bbb840371a801 "Custom: BirdBird_Track Versions Settings.lua" "BirdBird ReaScript Testing/Track Versions/BirdBird_Track Versions Settings.lua"
+SCR 4 0 RS96977fc411a2c0c288c0690f808ac849eab1740f "Custom: BirdBird_Track Versions.lua" "BirdBird ReaScript Testing/Track Versions/BirdBird_Track Versions.lua"
+SCR 4 0 RSaea4bc032a8e5652fe85818e22f6a1a1b38557f3 "Custom: BirdBird_Track Tags.lua" "BirdBird ReaScript Testing/Track Tags/BirdBird_Track Tags.lua"
+SCR 4 0 RS29e9df08de3bacf279e44890abafba4b72225690 "Custom: BirdBird_Razor Edit Utility - Comp to nearest comp track (above).lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility - Comp to nearest comp track (above).lua"
+SCR 4 0 RSd365adcaf4a97364473e426303a7c6868380cab1 "Custom: BirdBird_Razor Edit Utility - Comp to selected track.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility - Comp to selected track.lua"
+SCR 4 0 RSf1005c2ba29402fe0b3b0f30941e9f8a3762a8e9 "Custom: BirdBird_Razor Edit Utility - Move razor edits down by one track.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility - Move razor edits down by one track.lua"
+SCR 4 0 RSa93398aff34a61b7fc77efc87d400d83408e9005 "Custom: BirdBird_Razor Edit Utility - Move razor edits up by one track.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility - Move razor edits up by one track.lua"
+SCR 4 0 RSeecd3fde32af9f76f4ee41b4a25c3d330eb78170 "Custom: BirdBird_Razor Edit Utility - Select Preset 1.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility - Select Preset 1.lua"
+SCR 4 0 RS88964f934d37a924eae078044bf64cfbc5ea95c2 "Custom: BirdBird_Razor Edit Utility - Select Preset 2.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility - Select Preset 2.lua"
+SCR 4 0 RS132c2fe7d37a2b92ba17a2984b765564944778bb "Custom: BirdBird_Razor Edit Utility - Select Preset 3.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility - Select Preset 3.lua"
+SCR 4 0 RS75b421d0fae04055f3d6fae86484db7ed08d7df6 "Custom: BirdBird_Razor Edit Utility - Select Preset 4.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility - Select Preset 4.lua"
+SCR 4 0 RS7c2f4cbca694699ee36aa0f3f2bcdda38f4db21c "Custom: BirdBird_Razor Edit Utility - Select Preset 5.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility - Select Preset 5.lua"
+SCR 4 0 RSf20c7eeade694bd9af55f926b45a461b5a7fe20e "Custom: BirdBird_Razor Edit Utility Settings.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility Settings.lua"
+SCR 4 0 RS142aaf844a4cd01933a2cef0824a3d251de46b08 "Custom: BirdBird_Razor Edit Utility Toolbar.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility Toolbar.lua"
+SCR 4 0 RS3aa5f3335a40097802862e28a23c6e85759d5a5f "Custom: BirdBird_Razor Edit Utility.lua" "BirdBird ReaScript Testing/Razor Edit Utility/BirdBird_Razor Edit Utility.lua"
+SCR 4 0 RS38e4bcecbaa0ef82c155456e35f9fbda3ca358c7 "Custom: BirdBird_Project Tab Sets.lua" "BirdBird ReaScript Testing/Project Tab Sets/BirdBird_Project Tab Sets.lua"
+SCR 4 0 RSe3f42b75fa65698b31e1cf296b2cfd6b682dd903 "Custom: BirdBird_Item Modifier Builder.lua" "BirdBird ReaScript Testing/Item Modifiers/BirdBird_Item Modifier Builder.lua"
+SCR 4 0 RS80fecfd7170a172b41064a4fe940f95016ebb815 "Custom: BirdBird_Item Modifiers.lua" "BirdBird ReaScript Testing/Item Modifiers/BirdBird_Item Modifiers.lua"
+SCR 4 0 RSed7a0fd12e32e980119263c638a8a64cd4ec688c "Custom: BirdBird_Parameter History.lua" "BirdBird ReaScript Testing/Parameter History/BirdBird_Parameter History.lua"
+SCR 4 0 RSb653e5e588e4c2b002adc2190b306731682de08c "Custom: BirdBird_Global Sampler Theme Editor.lua" "BirdBird ReaScript Testing/Global Sampler/BirdBird_Global Sampler Theme Editor.lua"
+SCR 4 0 RSdbf64708ea8abea46b82a08cabc050148d65176c "Custom: BirdBird_Global Sampler.lua" "BirdBird ReaScript Testing/Global Sampler/BirdBird_Global Sampler.lua"
+SCR 4 0 RS946f237a9989f3accd67a4d0bdd668d7d60c8ea7 "Custom: BirdBird_Sample Last Playthrough.lua" "BirdBird ReaScript Testing/Global Sampler/BirdBird_Sample Last Playthrough.lua"
+SCR 4 0 RSce27ff21be8449dc9425f98ea5dfb00421b24487 "Custom: BirdBird_Sample Last X Seconds.lua" "BirdBird ReaScript Testing/Global Sampler/BirdBird_Sample Last X Seconds.lua"
+SCR 4 0 RS300cda2a55a02d8c1cc65011737a5e32d4211858 "Custom: BirdBird_Functional Console Reactive.lua" "BirdBird ReaScript Testing/Functional Console/BirdBird_Functional Console Reactive.lua"
+SCR 4 0 RS81928bfe9c51a26fc3eb878b62d3ab3ca7fcbbe6 "Custom: BirdBird_Functional Console.lua" "BirdBird ReaScript Testing/Functional Console/BirdBird_Functional Console.lua"
+SCR 4 0 RS72df3bb2dcfa49c8e7f74da7c2f5c0a1813e8fae "Custom: BirdBird_FX Mangler.lua" "BirdBird ReaScript Testing/FX Mangler/BirdBird_FX Mangler.lua"
 KEY 1 109 0 0		 # Main : NumPad - : DISABLED DEFAULT
 KEY 255 250 0 0		 # Main : Alt+Mousewheel : DISABLED DEFAULT
 KEY 255 218 0 0		 # Main : Alt+HorizWheel : DISABLED DEFAULT
@@ -3226,7 +3262,6 @@ KEY 1 99 1013 0		 # Main : NumPad 3 : OVERRIDE DEFAULT : Transport: Record
 KEY 9 32 1013 0		 # Main : Ctrl+Space : OVERRIDE DEFAULT : Transport: Record
 KEY 1 100 1068 0		 # Main : NumPad 4 : OVERRIDE DEFAULT : Transport: Toggle repeat
 KEY 0 167 40011 0		 # Main : § : Item properties: Show media item source properties
-KEY 0 96 40011 0		 # Main : ` : OVERRIDE DEFAULT : Item properties: Show media item source properties
 KEY 9 113 40011 0		 # Main : Ctrl+F2 : OVERRIDE DEFAULT : Item properties: Show media item source properties
 KEY 25 66 40015 0		 # Main : Ctrl+Alt+B : OVERRIDE DEFAULT : File: Render project to disk...
 KEY 13 73 40018 0		 # Main : Ctrl+Shift+I : Insert/import media files...
@@ -3272,6 +3307,7 @@ KEY 17 103 40460 0		 # Main : Alt+NumPad 7 : Screenset: Load window set #07
 KEY 17 104 40461 0		 # Main : Alt+NumPad 8 : Screenset: Load window set #08
 KEY 17 105 40462 0		 # Main : Alt+NumPad 9 : Screenset: Load window set #09
 KEY 17 32781 40613 0		 # Main : Alt+NumPad Enter : Markers: Delete marker near cursor
+KEY 0 126 40696 0		 # Main : ~ : OVERRIDE DEFAULT : Track: Rename last touched track
 KEY 8 45 40716 0		 # Main : Ctrl+- : View: Toggle show MIDI editor windows
 KEY 45 83 40745 0		 # Main : Ctrl+Shift+Logo+S : Options: Solo in front
 KEY 0 47 40839 0		 # Main : / : Move edit cursor forward one measure (no seek)
@@ -3293,6 +3329,8 @@ KEY 25 32808 41328 0		 # Main : Ctrl+Alt+Down : OVERRIDE DEFAULT : View: Decreas
 KEY 1 49 41817 0		 # Main : 1 : OVERRIDE DEFAULT : View: Continuous scrolling during playback
 KEY 9 75 41819 0		 # Main : Ctrl+K : Pre-roll: Toggle pre-roll on record
 KEY 1 104 41819 0		 # Main : NumPad 8 : OVERRIDE DEFAULT : Pre-roll: Toggle pre-roll on record
+KEY 1 125 41823 0		 # Main : F14 : File: Add project to render queue, using the most recent render settings
+KEY 1 126 41824 0		 # Main : F15 : File: Render project, using the most recent render settings
 KEY 1 107 41882 0		 # Main : NumPad + : OVERRIDE DEFAULT : View: Show monitoring FX chain
 KEY 1 105 41930 0		 # Main : NumPad 9 : OVERRIDE DEFAULT : Theme development: Show theme tweak/configuration window
 KEY 21 99 42432 0		 # Main : Alt+Shift+NumPad 3 : Item: Glue items within time selection
@@ -3313,7 +3351,6 @@ KEY 5 55 _SWS_TRACKCUSTCOL7 0		 # Main : Shift+7 : OVERRIDE DEFAULT : SWS: Set s
 KEY 5 56 _SWS_TRACKCUSTCOL8 0		 # Main : Shift+8 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 8
 KEY 5 57 _SWS_TRACKCUSTCOL9 0		 # Main : Shift+9 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 9
 KEY 5 48 _SWS_TRACKCUSTCOL10 0		 # Main : Shift+0 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 10
-KEY 0 126 _SWS_TRACKCUSTCOL11 0		 # Main : ~ : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 11
 KEY 0 95 _SWS_TRACKCUSTCOL12 0		 # Main : _ : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 12
 KEY 0 43 _SWS_TRACKCUSTCOL13 0		 # Main : + : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 13
 KEY 17 49 _SWS_ITEMCUSTCOL1 0		 # Main : Alt+1 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 1
@@ -3385,6 +3422,7 @@ KEY 5 88 _RS3c3657bd89fb2a9955f738fb3a0d0fdcad63a642 0		 # Main : Shift+X : OVER
 KEY 1 88 _RS358a7cfe11ba70701049363e1207c764b52605c6 0		 # Main : X : OVERRIDE DEFAULT : Script: Daniel_Cut items,tracks,envelope points (depending on focus) within time selection, if any (smart cut).lua
 KEY 9 88 _RS358a7cfe11ba70701049363e1207c764b52605c6 0		 # Main : Ctrl+X : OVERRIDE DEFAULT : Script: Daniel_Cut items,tracks,envelope points (depending on focus) within time selection, if any (smart cut).lua
 KEY 1 110 _RS00a7cf4dc8b7cd38e1cab0bcb311589dd6db4e67 0		 # Main : NumPad . : Script: Daniel_Insert red marker at current position.lua
+KEY 0 96 _RS85427b4addf151a7c4fbb92cf4c03302655823dc 0		 # Main : ` : OVERRIDE DEFAULT : Script: Daniel_Insert new vo track.lua
 KEY 9 84 _RS85427b4addf151a7c4fbb92cf4c03302655823dc 0		 # Main : Ctrl+T : OVERRIDE DEFAULT : Script: Daniel_Insert new vo track.lua
 KEY 1 129 _RSefb7019012e21ed2d2b0efc04178b8d952898721 0		 # Main : F18 : Script: Daniel_Make item video only (disable audio).lua
 KEY 1 130 _RS0ef2fba5362b3c2c2beb42b5e639dfda61084cc6 0		 # Main : F19 : Script: Daniel_Make item audio only (disable video).lua
@@ -3400,3 +3438,4 @@ KEY 1 83 _RSb188ca992fb7f08eba2ac3633ab1972d2a6604bd 0		 # Main : S : OVERRIDE D
 KEY 1 73 _RS2859602fd33f70b9e0b51e734d4c5f5a291c655a 0		 # Main : I : Script: Daniel_Volume automation ramp up.lua
 KEY 1 85 _RS771de6da4537693d4de9ac77621d0185807f3d9f 0		 # Main : U : OVERRIDE DEFAULT : Script: Daniel_Volume automation ramp down.lua
 KEY 9 100 _RS28b2f9e3de9bb609d9febfaa1e1d3198d4bab8b3 0		 # Main : Ctrl+NumPad 4 : OVERRIDE DEFAULT : Script: Daniel_Show big marker name.lua
+KEY 1 124 _RS9ca203e1a2779bff6799bb0c307c9eae19d5eece 0		 # Main : F13 : Script: Daniel_Set time selection for render.lua

@@ -76,7 +76,9 @@ local vstpath64 = GetIniValue("vstpath64")
 local vstpath_arm64 = GetIniValue("vstpath_arm64")
 local deftrackrecflags = GetIniValue("deftrackrecflags")
 local deftrackrecinput = GetIniValue("deftrackrecinput")
-
+local defsavepath = GetIniValue("defsavepath")
+local defrenderpath = GetIniValue("defrenderpath")
+local defrecpath = GetIniValue("defrecpath")
 
 ------------------------------------------------------------
 -- Convert missing values to empty strings
@@ -110,6 +112,18 @@ if deftrackrecinput == nil then
     deftrackrecinput = ""
 end
 
+if defsavepath == nil then
+    defsavepath = ""
+end
+
+if defrenderpath == nil then
+    defrenderpath = ""
+end
+
+if defrecpath == nil then
+    defrecpath = ""
+end
+
 ------------------------------------------------------------
 -- Save settings to Personal_Settings.ini
 ------------------------------------------------------------
@@ -137,6 +151,9 @@ file:write("vstpath64=" .. vstpath64 .. "\n")
 file:write("vstpath_arm64=" .. vstpath_arm64 .. "\n")
 file:write("deftrackrecflags=" .. deftrackrecflags .. "\n")
 file:write("deftrackrecinput=" .. deftrackrecinput .. "\n")
+file:write("defsavepath=" .. defsavepath .. "\n")
+file:write("defrenderpath=" .. defrenderpath .. "\n")
+file:write("defrecpath=" .. defrecpath .. "\n")
 
 file:close()
 
@@ -260,6 +277,18 @@ local message =
     
     "Default record input:\n" ..
     (deftrackrecinput ~= "" and deftrackrecinput or "(default)") ..
+    "\n\n" ..
+
+    "Default save path:\n" ..
+    (defsavepath ~= "" and defsavepath or "(default)") ..
+    "\n\n" ..
+
+    "Default render path:\n" ..
+    (defrenderpath ~= "" and defrenderpath or "(default)") ..
+    "\n\n" ..
+
+    "Default recording path:\n" ..
+    (defrecpath ~= "" and defrecpath or "(default)") ..
     "\n\n" ..
 
     "Files:\n" ..

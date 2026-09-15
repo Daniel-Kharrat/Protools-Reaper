@@ -298,7 +298,7 @@ local message =
 
     "Default project: " ..
     (project_restored and "Restored" or "Failed") ..
-    "\n" ..
+    "\n\n" ..
 
     "VST paths: " ..
     (vst_restored and "Restored" or "Failed") ..
@@ -310,7 +310,7 @@ local message =
     
     "VST ARM64 paths: " ..
     (vst_arm64_restored and "Restored" or "Failed") ..
-    "\n" ..
+    "\n\n" ..
     
     "Default record configuration: " ..
     (deftrackrecflags_restored and "Restored" or "Failed") ..
@@ -318,7 +318,7 @@ local message =
     
     "Default record input: " ..
     (deftrackrecinput_restored and "Restored" or "Failed") ..
-    "\n" ..
+    "\n\n" ..
 
     "Default save path: " ..
     (defsavepath_restored and "Restored" or "Failed") ..

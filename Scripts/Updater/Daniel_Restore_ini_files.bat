@@ -36,6 +36,9 @@ set "SCREENSETS_TARGET=%RESOURCE_PATH%\reaper-screensets.ini"
 set "REAPACK_SOURCE=%PERSONAL_SETTINGS%\reapack.ini"
 set "REAPACK_TARGET=%RESOURCE_PATH%\reapack.ini"
 
+set "HWOUTFX_SOURCE=%PERSONAL_SETTINGS%\reaper-hwoutfx.ini"
+set "HWOUTFX_TARGET=%RESOURCE_PATH%\reaper-hwoutfx.ini"
+
 REM ============================================================
 REM CHECK SOURCE FILES
 REM ============================================================
@@ -55,6 +58,12 @@ exit /b 1
 if not exist "%REAPACK_SOURCE%" (
 echo ERROR: File not found:
 echo %REAPACK_SOURCE%
+exit /b 1
+)
+
+if not exist "%HWOUTFX_SOURCE%" (
+echo ERROR: File not found:
+echo %HWOUTFX_SOURCE%
 exit /b 1
 )
 
@@ -164,6 +173,22 @@ exit /b 1
 )
 
 echo ReaPack configuration restored successfully.
+
+REM ============================================================
+REM RESTORE REAPER HARDWARE OUTPUT FX
+REM ============================================================
+
+echo.
+echo Restoring reaper-hwoutfx.ini...
+
+copy /Y "%HWOUTFX_SOURCE%" "%HWOUTFX_TARGET%" >nul
+
+if errorlevel 1 (
+echo ERROR: Failed to restore reaper-hwoutfx.ini.
+exit /b 1
+)
+
+echo REAPER hardware output FX restored successfully.
 
 REM ============================================================
 REM RELAUNCH REAPER

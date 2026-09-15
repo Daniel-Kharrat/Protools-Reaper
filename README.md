@@ -38,13 +38,9 @@ After both repositories finish installing, **RESTART** reaper and you'll be read
 in the **MCP Layout** column, right click and choose the appropriate size for each track color (100%, 150%, 200%)
 
 
-2) To get my custom Splash Screen when you launch reaper go to: **Options → Preferences**
+2) To get my custom Splash Screen when you launch reaper
 
-Under **General settings** click on **"Advanced UI/system tweaks..."** on the bottom of the page
-
-Under **Custom splash screen image:** paste the path of the image
-
-(you will find it in the ColorThemes folder inside the REAPER resource path)
+open the actions list and run the script called: Daniel_Set splash screen.lua
 
 
 3) Replace toolbar icons if you're using my theme

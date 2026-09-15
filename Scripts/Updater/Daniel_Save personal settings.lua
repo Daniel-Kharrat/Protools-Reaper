@@ -256,47 +256,47 @@ local hwoutfx_saved =
 
 local message =
 
-    "Splash screen:\n" ..
+    "- Splash screen:\n" ..
     (splashimage ~= "" and splashimage or "(none)") ..
     "\n" ..
 
-    "Default project:\n" ..
+    "- Default project:\n" ..
     (newprojtmpl ~= "" and newprojtmpl or "(none)") ..
     "\n\n" ..
 
-    "VST paths:\n" ..
+    "- VST paths:\n" ..
     (vstpath ~= "" and vstpath or "(none)") ..
     "\n" ..
     
-    "VST64 paths:\n" ..
+    "- VST64 paths:\n" ..
     (vstpath64 ~= "" and vstpath64 or "(none)") ..
     "\n" ..
     
-    "VST ARM64 paths:\n" ..
+    "- VST ARM64 paths:\n" ..
     (vstpath_arm64 ~= "" and vstpath_arm64 or "(none)") ..
     "\n\n" ..
     
-    "Default record configuration:\n" ..
+    "- Default record configuration:\n" ..
     (deftrackrecflags ~= "" and deftrackrecflags or "(none)") ..
     "\n" ..
     
-    "Default record input:\n" ..
+    "- Default record input:\n" ..
     (deftrackrecinput ~= "" and deftrackrecinput or "(default)") ..
-    "\n\n" ..
-    
-    "Save Project options:\n" ..
-    (saveFlags ~= "" and saveFlags or "(default)") ..
     "\n" ..
+    
+    "- Save Project options:\n" ..
+    (saveFlags ~= "" and saveFlags or "(default)") ..
+    "\n\n" ..
 
-    "Default save path:\n" ..
+    "- Default save path:\n" ..
     (defsavepath ~= "" and defsavepath or "(default)") ..
     "\n" ..
 
-    "Default render path:\n" ..
+    "- Default render path:\n" ..
     (defrenderpath ~= "" and defrenderpath or "(default)") ..
     "\n" ..
 
-    "Default recording path:\n" ..
+    "- Default recording path:\n" ..
     (defrecpath ~= "" and defrecpath or "(default)") ..
     "\n\n" ..
 

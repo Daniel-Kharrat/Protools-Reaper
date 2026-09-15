@@ -36,34 +36,6 @@ HWOUTFX_SOURCE="$PERSONAL_SETTINGS/reaper-hwoutfx.ini"
 HWOUTFX_TARGET="$RESOURCE_PATH/reaper-hwoutfx.ini"
 
 ============================================================
-CHECK SOURCE FILES
-============================================================
-
-if [ ! -f "$SWS_SOURCE" ]; then
-echo "ERROR: File not found:"
-echo "$SWS_SOURCE"
-exit 1
-fi
-
-if [ ! -f "$SCREENSETS_SOURCE" ]; then
-echo "ERROR: File not found:"
-echo "$SCREENSETS_SOURCE"
-exit 1
-fi
-
-if [ ! -f "$REAPACK_SOURCE" ]; then
-echo "ERROR: File not found:"
-echo "$REAPACK_SOURCE"
-exit 1
-fi
-
-if [ ! -f "$HWOUTFX_SOURCE" ]; then
-echo "ERROR: File not found:"
-echo "$HWOUTFX_SOURCE"
-exit 1
-fi
-
-============================================================
 DETERMINE OPERATING SYSTEM
 ============================================================
 
@@ -158,6 +130,8 @@ echo "REAPER has completely closed."
 RESTORE SWS AUTO COLOR / ICON
 ============================================================
 
+if [ -f "$SWS_SOURCE" ]; then
+
 echo ""
 echo "Restoring sws-autocoloricon.ini..."
 
@@ -168,9 +142,18 @@ echo "ERROR: Failed to restore sws-autocoloricon.ini."
 exit 1
 fi
 
+else
+
+echo ""
+echo "sws-autocoloricon.ini not found - skipping."
+
+fi
+
 ============================================================
 RESTORE REAPER SCREENSETS
 ============================================================
+
+if [ -f "$SCREENSETS_SOURCE" ]; then
 
 echo ""
 echo "Restoring reaper-screensets.ini..."
@@ -182,9 +165,18 @@ echo "ERROR: Failed to restore reaper-screensets.ini."
 exit 1
 fi
 
+else
+
+echo ""
+echo "reaper-screensets.ini not found - skipping."
+
+fi
+
 ============================================================
 RESTORE REAPACK
 ============================================================
+
+if [ -f "$REAPACK_SOURCE" ]; then
 
 echo ""
 echo "Restoring reapack.ini..."
@@ -196,9 +188,18 @@ echo "ERROR: Failed to restore reapack.ini."
 exit 1
 fi
 
+else
+
+echo ""
+echo "reapack.ini not found - skipping."
+
+fi
+
 ============================================================
 RESTORE REAPER HARDWARE OUTPUT FX
 ============================================================
+
+if [ -f "$HWOUTFX_SOURCE" ]; then
 
 echo ""
 echo "Restoring reaper-hwoutfx.ini..."
@@ -208,6 +209,13 @@ echo "REAPER hardware output FX restored successfully."
 else
 echo "ERROR: Failed to restore reaper-hwoutfx.ini."
 exit 1
+fi
+
+else
+
+echo ""
+echo "reaper-hwoutfx.ini not found - skipping."
+
 fi
 
 ============================================================

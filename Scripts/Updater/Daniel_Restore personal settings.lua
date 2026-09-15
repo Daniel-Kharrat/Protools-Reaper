@@ -136,7 +136,9 @@ local vstpath64 = GetSetting("vstpath64")
 local vstpath_arm64 = GetSetting("vstpath_arm64")
 local deftrackrecflags = GetSetting("deftrackrecflags")
 local deftrackrecinput = GetSetting("deftrackrecinput")
-
+local defsavepath = GetSetting("defsavepath")
+local defrenderpath = GetSetting("defrenderpath")
+local defrecpath = GetSetting("defrecpath")
 
 ------------------------------------------------------------
 -- Restore settings to reaper.ini
@@ -149,7 +151,9 @@ local vst64_restored = false
 local vst_arm64_restored = false
 local deftrackrecflags_restored = false
 local deftrackrecinput_restored = false
-
+local defsavepath_restored = false
+local defrenderpath_restored = false
+local defrecpath_restored = false
 
 if splashimage ~= nil then
     splash_restored =
@@ -209,6 +213,29 @@ if deftrackrecinput ~= nil then
         )
 end
 
+if defsavepath ~= nil then
+    defsavepath_restored =
+        SetIniValue(
+            "defsavepath",
+            defsavepath
+        )
+end
+
+if defrenderpath ~= nil then
+    defrenderpath_restored =
+        SetIniValue(
+            "defrenderpath",
+            defrenderpath
+        )
+end
+
+if defrecpath ~= nil then
+    defrecpath_restored =
+        SetIniValue(
+            "defrecpath",
+            defrecpath
+        )
+end
 
 ------------------------------------------------------------
 -- Restore helper path
@@ -280,7 +307,19 @@ local message =
     "\n" ..
     
     "Default record input: " ..
-    (deftrackrecinput_restored and "Restored" or "Failed")
+    (deftrackrecinput_restored and "Restored" or "Failed") ..
+    "\n" ..
+
+    "Default save path: " ..
+    (defsavepath_restored and "Restored" or "Failed") ..
+    "\n" ..
+
+    "Default render path: " ..
+    (defrenderpath_restored and "Restored" or "Failed") ..
+    "\n" ..
+
+    "Default recording path: " ..
+    (defrecpath_restored and "Restored" or "Failed")
 
 
 reaper.ShowMessageBox(

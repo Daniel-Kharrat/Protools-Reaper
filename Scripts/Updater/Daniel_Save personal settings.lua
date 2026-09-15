@@ -76,6 +76,7 @@ local vstpath64 = GetIniValue("vstpath64")
 local vstpath_arm64 = GetIniValue("vstpath_arm64")
 local deftrackrecflags = GetIniValue("deftrackrecflags")
 local deftrackrecinput = GetIniValue("deftrackrecinput")
+local saveFlags = GetIniValue("saveFlags")
 local defsavepath = GetIniValue("defsavepath")
 local defrenderpath = GetIniValue("defrenderpath")
 local defrecpath = GetIniValue("defrecpath")
@@ -110,6 +111,10 @@ end
 
 if deftrackrecinput == nil then
     deftrackrecinput = ""
+end
+
+if saveFlags == nil then
+    saveFlags = "3"
 end
 
 if defsavepath == nil then
@@ -151,6 +156,7 @@ file:write("vstpath64=" .. vstpath64 .. "\n")
 file:write("vstpath_arm64=" .. vstpath_arm64 .. "\n")
 file:write("deftrackrecflags=" .. deftrackrecflags .. "\n")
 file:write("deftrackrecinput=" .. deftrackrecinput .. "\n")
+file:write("saveFlags=" .. saveFlags .. "\n")
 file:write("defsavepath=" .. defsavepath .. "\n")
 file:write("defrenderpath=" .. defrenderpath .. "\n")
 file:write("defrecpath=" .. defrecpath .. "\n")
@@ -277,6 +283,10 @@ local message =
     
     "Default record input:\n" ..
     (deftrackrecinput ~= "" and deftrackrecinput or "(default)") ..
+    "\n\n" ..
+    
+    "Save Project options:\n" ..
+    (saveFlags ~= "" and saveFlags or "(default)") ..
     "\n\n" ..
 
     "Default save path:\n" ..

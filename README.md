@@ -40,12 +40,12 @@ in the **MCP Layout** column, right click and choose the appropriate size for ea
 
 2) To get my custom Splash Screen when you launch reaper
 
-open the actions list and run the script called: Daniel_Set splash screen.lua
+open the actions list and run the script called: **Daniel_Set splash screen.lua**
 
 
 3) Replace toolbar icons if you're using my theme
 
-open the actions list and run the script called: Daniel_Replace toolbar_icons.lua
+open the actions list and run the script called: **Daniel_Replace toolbar_icons.lua**
 
 
 4) On mac change the shortcut for spotlight search because we're using cmd + space to record
@@ -58,11 +58,11 @@ change the shortcut for ***Show Finder search window*** to "opt + cmd + space"
 
 
 ## For future Updates
-1) run the script called: Daniel_Save personal settings.lua
+1) run the script called: **Daniel_Save personal settings.lua**
 
 2) import the new config file
 
-3) run the script called: Daniel_Restore personal settings.lua
+3) run the script called: **Daniel_Restore personal settings.lua**
 
 4) update the scripts by going to: **Extensions → ReaPack → Manage repositories...**
 
@@ -74,7 +74,7 @@ Click on **Install/update Daniel Kharrat → Install all packages in this reposi
 
 so you'll have to replace them with my icons again by going to the actions list and run the script called:
 
-Daniel_Replace toolbar_icons.lua
+**Daniel_Replace toolbar_icons.lua**
 
 
 ## If you wish to install some of the Scripts or FX without my config

@@ -178,6 +178,11 @@ local reapack_source =
 local reapack_destination =
     SETTINGS_FOLDER .. "/reapack.ini"
 
+local hwoutfx_source =
+    RESOURCE_PATH .. "/reaper-hwoutfx.ini"
+
+local hwoutfx_destination =
+    SETTINGS_FOLDER .. "/reaper-hwoutfx.ini"
 
 ------------------------------------------------------------
 -- Copy files
@@ -214,6 +219,12 @@ local reapack_saved =
     CopyFile(
         reapack_source,
         reapack_destination
+    )
+
+local hwoutfx_saved =
+    CopyFile(
+        hwoutfx_source,
+        hwoutfx_destination
     )
 
 ------------------------------------------------------------
@@ -263,6 +274,10 @@ local message =
 
     "reapack.ini: " ..
     (reapack_saved and "Saved" or "Not found") ..
+    "\n" ..
+
+    "reaper-hwoutfx.ini: " ..
+    (hwoutfx_saved and "Saved" or "Not found") ..
     "\n\n" ..
 
     "Backup-only files:\n" ..

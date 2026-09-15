@@ -211,7 +211,7 @@ exit 1
 fi
 
 ============================================================
-Relaunch REAPER
+RELAUNCH REAPER
 ============================================================
 
 echo ""
@@ -219,34 +219,29 @@ echo "Launching REAPER..."
 
 if [ "$OS" = "Darwin" ]; then
 
+# --------------------------------------------------------
+# macOS
+# --------------------------------------------------------
+
 open -a "REAPER"
 
 elif [ "$OS" = "Linux" ]; then
-    if [ -n "$REAPER_EXECUTABLE" ] && [ -x "$REAPER_EXECUTABLE" ]; then
 
-    echo "REAPER executable:"
-    echo "$REAPER_EXECUTABLE"
-    echo "Starting REAPER..."
+# --------------------------------------------------------
+# Linux
+# --------------------------------------------------------
 
-    nohup "$REAPER_EXECUTABLE" >/dev/null 2>&1 &
-
-    sleep 2
-
-    if pgrep -x "$REAPER_PROCESS" >/dev/null 2>&1; then
-        echo "REAPER started successfully."
-    else
-        echo "ERROR: REAPER did not start."
-    fi
-
-else
-    echo "ERROR: Could not determine REAPER executable for relaunch."
-    exit 1
-fi
+"$REAPER_EXECUTABLE" >/dev/null 2>&1 &
 
 fi
+
+============================================================
+FINISHED
+============================================================
 
 echo ""
-echo "Toolbar icons updated successfully."
-echo "REAPER relaunched."
+echo "============================================"
+echo "REAPER file restore completed successfully."
+echo "============================================"
 
 exit 0

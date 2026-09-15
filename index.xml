@@ -560,6 +560,12 @@
 <!-- ________Updater Scripts________ -->
   
   <category name="Updater">
+
+    <reapack name="Daniel_Set splash screen.lua" type="script" desc="Daniel_Set splash screen.lua">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Set%20splash%20screen.lua</source>
+      </version>
+    </reapack>
     
     <reapack name="Daniel_Save personal settings.lua" type="script" desc="Daniel_Save personal settings.lua">
       <version name="1.8" author="Daniel" time="2026-09">

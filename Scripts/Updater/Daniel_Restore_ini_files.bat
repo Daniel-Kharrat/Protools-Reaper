@@ -40,34 +40,6 @@ set "HWOUTFX_SOURCE=%PERSONAL_SETTINGS%\reaper-hwoutfx.ini"
 set "HWOUTFX_TARGET=%RESOURCE_PATH%\reaper-hwoutfx.ini"
 
 REM ============================================================
-REM CHECK SOURCE FILES
-REM ============================================================
-
-if not exist "%SWS_SOURCE%" (
-echo ERROR: File not found:
-echo %SWS_SOURCE%
-exit /b 1
-)
-
-if not exist "%SCREENSETS_SOURCE%" (
-echo ERROR: File not found:
-echo %SCREENSETS_SOURCE%
-exit /b 1
-)
-
-if not exist "%REAPACK_SOURCE%" (
-echo ERROR: File not found:
-echo %REAPACK_SOURCE%
-exit /b 1
-)
-
-if not exist "%HWOUTFX_SOURCE%" (
-echo ERROR: File not found:
-echo %HWOUTFX_SOURCE%
-exit /b 1
-)
-
-REM ============================================================
 REM DETERMINE REAPER PROCESS
 REM ============================================================
 
@@ -130,6 +102,7 @@ REM ============================================================
 REM RESTORE SWS AUTO COLOR / ICON
 REM ============================================================
 
+if exist "%SWS_SOURCE%" (
 echo.
 echo Restoring sws-autocoloricon.ini...
 
@@ -141,11 +114,16 @@ exit /b 1
 )
 
 echo SWS auto color restored successfully.
+) else (
+echo.
+echo sws-autocoloricon.ini not found - skipping.
+)
 
 REM ============================================================
 REM RESTORE REAPER SCREENSETS
 REM ============================================================
 
+if exist "%SCREENSETS_SOURCE%" (
 echo.
 echo Restoring reaper-screensets.ini...
 
@@ -157,11 +135,16 @@ exit /b 1
 )
 
 echo REAPER screensets restored successfully.
+) else (
+echo.
+echo reaper-screensets.ini not found - skipping.
+)
 
 REM ============================================================
 REM RESTORE REAPACK
 REM ============================================================
 
+if exist "%REAPACK_SOURCE%" (
 echo.
 echo Restoring reapack.ini...
 
@@ -173,11 +156,16 @@ exit /b 1
 )
 
 echo ReaPack configuration restored successfully.
+) else (
+echo.
+echo reapack.ini not found - skipping.
+)
 
 REM ============================================================
 REM RESTORE REAPER HARDWARE OUTPUT FX
 REM ============================================================
 
+if exist "%HWOUTFX_SOURCE%" (
 echo.
 echo Restoring reaper-hwoutfx.ini...
 
@@ -189,6 +177,10 @@ exit /b 1
 )
 
 echo REAPER hardware output FX restored successfully.
+) else (
+echo.
+echo reaper-hwoutfx.ini not found - skipping.
+)
 
 REM ============================================================
 REM RELAUNCH REAPER

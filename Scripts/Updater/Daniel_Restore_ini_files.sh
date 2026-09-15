@@ -32,6 +32,9 @@ SCREENSETS_TARGET="$RESOURCE_PATH/reaper-screensets.ini"
 REAPACK_SOURCE="$PERSONAL_SETTINGS/reapack.ini"
 REAPACK_TARGET="$RESOURCE_PATH/reapack.ini"
 
+HWOUTFX_SOURCE="$PERSONAL_SETTINGS/reaper-hwoutfx.ini"
+HWOUTFX_TARGET="$RESOURCE_PATH/reaper-hwoutfx.ini"
+
 ============================================================
 CHECK SOURCE FILES
 ============================================================
@@ -51,6 +54,12 @@ fi
 if [ ! -f "$REAPACK_SOURCE" ]; then
 echo "ERROR: File not found:"
 echo "$REAPACK_SOURCE"
+exit 1
+fi
+
+if [ ! -f "$HWOUTFX_SOURCE" ]; then
+echo "ERROR: File not found:"
+echo "$HWOUTFX_SOURCE"
 exit 1
 fi
 
@@ -184,6 +193,20 @@ if cp -f "$REAPACK_SOURCE" "$REAPACK_TARGET"; then
 echo "ReaPack configuration restored successfully."
 else
 echo "ERROR: Failed to restore reapack.ini."
+exit 1
+fi
+
+============================================================
+RESTORE REAPER HARDWARE OUTPUT FX
+============================================================
+
+echo ""
+echo "Restoring reaper-hwoutfx.ini..."
+
+if cp -f "$HWOUTFX_SOURCE" "$HWOUTFX_TARGET"; then
+echo "REAPER hardware output FX restored successfully."
+else
+echo "ERROR: Failed to restore reaper-hwoutfx.ini."
 exit 1
 fi
 

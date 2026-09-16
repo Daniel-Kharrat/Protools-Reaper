@@ -28,27 +28,15 @@ Go to: **Extensions → ReaPack → Synchronize packages**
 
 After both repositories finish installing, **RESTART** reaper and you'll be ready to go
 
+### Step 3:
+Open the actions list and run the script called: **Daniel_Set splash screen.lua**
 
-## You may need to do some tweaks on different computers
-
-1) If the track in the mixer window becomes smaller when you arm it you need to go to:
-
-**Extensions → SWS/S&M → Auto Color/Icon/Layout...**
-
-in the **MCP Layout** column, right click and choose the appropriate size for each track color (100%, 150%, 200%)
+After that run the script called: **Daniel_Replace toolbar_icons.lua**
 
 
-2) To get my custom Splash Screen when you launch reaper
+## Optional tweak for macOS
 
-open the actions list and run the script called: **Daniel_Set splash screen.lua**
-
-
-3) Replace toolbar icons if you're using my theme
-
-open the actions list and run the script called: **Daniel_Replace toolbar_icons.lua**
-
-
-4) On mac change the shortcut for spotlight search because we're using cmd + space to record
+Change the shortcut for spotlight search because we're using cmd + space to record
 
 go to System Settings... → Keyboard → Keyboard Shortcuts... → Spotlight
 

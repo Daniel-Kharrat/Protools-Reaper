@@ -12,7 +12,13 @@ reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS73872e52305a191a83f55f1811ac
 --Link Timeline and Edit Selection
 reaper.SetToggleCommandState(0, reaper.NamedCommandLookup("_RSdd4ba6262e05c57604ab621179a4552cf2bad49b"), 1)
 
---Script: BirdBird_Global Sampler.lua
-pcall(function()
-    reaper.Main_OnCommand(reaper.NamedCommandLookup("_RSdbf64708ea8abea46b82a08cabc050148d65176c"), 0)
-end)
+--Script: BirdBird_Global Sampler.lua (only run if the file exists)
+local scriptPath = reaper.GetResourcePath() .. "/Scripts/BirdBird ReaScript Testing/Global Sampler.lua"
+local f = io.open(scriptPath, "r")
+if f then
+    f:close()
+    local cmdID = reaper.NamedCommandLookup("_RSdbf64708ea8abea46b82a08cabc050148d65176c")
+    if cmdID ~= 0 then
+        reaper.Main_OnCommand(cmdID, 0)
+    end
+end

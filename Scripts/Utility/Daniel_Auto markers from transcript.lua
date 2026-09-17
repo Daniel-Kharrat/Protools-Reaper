@@ -668,7 +668,6 @@ local function main()
   local last_speaker = nil
   local divider_idx = 1
   local in_wanted_section = false
-  local sample_matches = {}
 
   for _, m in ipairs(matches) do
     while divider_idx <= #dividers and dividers[divider_idx].pos <= m.pos do
@@ -684,9 +683,6 @@ local function main()
         local pos = m.seconds + OFFSET_SECONDS
         reaper.AddProjectMarker2(0, false, pos, 0, m.speaker, -1, get_marker_color())
         added = added + 1
-        if #sample_matches < 10 then
-          table.insert(sample_matches, string.format("%s -> %s", tostring(m.seconds), m.speaker))
-        end
       end
       last_speaker = m.speaker
     end
@@ -700,9 +696,6 @@ local function main()
     #matches, added)
   if txt_path ~= file_path then
     msg = msg .. "\n\nConverted text saved to:\n" .. txt_path
-  end
-  if #sample_matches > 0 then
-    msg = msg .. "\n\nFirst few markers added:\n- " .. table.concat(sample_matches, "\n- ")
   end
   if #matches == 0 then
     msg = msg .. "\n\nNo speaker tags were found at all -- open the converted .txt file above and check it actually contains readable '(timestamp)' text with names before them, not garbled characters."

@@ -224,8 +224,14 @@ end
 -- (á é í ó ú ñ ã õ ç etc, upper and lower) -- deliberately NOT a blanket
 -- \128-255 allowance, so smart quotes/dashes (different lead byte)
 -- correctly break the match instead of being swallowed into a word.
+-- The word's FIRST letter can be a plain ASCII uppercase letter (%u)
+-- OR an accented uppercase one (Á É Í Ó Ú Ñ Ç etc -- byte 195 followed
+-- by a second byte in 128-158, the uppercase half of that block) --
+-- names like "Élida" need this, since %u alone only matches A-Z.
 local function is_plain_name_word(tok)
-  if not tok:match("^%u[%a'%-\195\128-\191]*$") then
+  local ascii_start = tok:match("^%u[%a'%-\195\128-\191]*$")
+  local accented_start = tok:match("^\195[\128-\158][%a'%-\195\128-\191]*$")
+  if not (ascii_start or accented_start) then
     return false
   end
   local letters = tok:gsub("[^%a]", "")

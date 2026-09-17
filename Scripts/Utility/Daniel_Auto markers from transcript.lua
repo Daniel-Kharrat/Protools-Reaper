@@ -3,60 +3,27 @@
   ----------------------
   Reads an episode script (.doc, .docx, or .txt) and inserts a project
   marker, named after the speaker, at each point the speaker changes.
+  If the same person speaks several times in a row, only one marker is
+  added, at the first occurrence.
 
-  KEY BEHAVIOR: if the same person speaks several times in a row
-  (e.g. a repeated song/prayer where Pr. Jayme's name tag appears 20
-  times back to back), only ONE marker is added, at the first
-  occurrence. A new marker is only added when the speaker actually
-  changes from whoever spoke last.
-
-  HOW IT PARSES (no reliance on line breaks, blank lines, or any
-  specific separator character at all):
-  It scans the whole document as one continuous block of text for every
-  "(timestamp)" occurrence -- e.g. "(0:19)" -- regardless of what comes
-  right after it (a colon, a dash, an en dash, nothing at all -- real
-  scripts turn out to be inconsistent about this). For each one, it
-  looks at the text immediately before it and works BACKWARD, word by
-  word, to figure out how much of that text is actually the speaker's
-  name versus the end of the previous sentence or a section heading.
-
-  A word counts as "part of the name" if it's:
-    - a normal Title-Case word (Soares, Angela, Letícia, Gleceir) --
-      but NOT if it's written in ALL CAPS (SOARES, SUARES) -- that
-      pattern is reserved for section headings and production labels
-      in these scripts (OPEN YOUR HEART, SOARES ANSWERS, VOZERIO), not
-      real speaker names
-    - a short, known title abbreviation ending in a period (Dr., Pr.,
-      Mr., St., etc -- see TITLE_ABBREVIATIONS below)
-    - a bare number, but ONLY when it's the very last word before the
-      timestamp (Man 1, Man 2) -- not a number further back, which is
-      far more likely to be an unrelated year or verse number
-  Anything else (a lowercase word, an ALL-CAPS word, a word ending in a
-  period that isn't a known abbreviation, punctuation) stops the walk
-  right there. That's what lets it correctly split apart something like
-  "...FAITH SHOW 1991 Dr. Soares (0:19)" into the show's own title (not
-  part of any name) and the real name "Dr. Soares" -- without needing
-  any blank line, paragraph break, or consistent punctuation to go on.
+  PARSING: works on the whole document as one continuous block of text
+  (no reliance on line breaks or separators). It scans for every
+  "(timestamp)" occurrence, e.g. "(0:19)", then walks backward from
+  each one, word by word, to find the speaker name. A word counts as
+  part of the name if it's Title-Case (not ALL CAPS -- that's reserved
+  for section headings), a known title abbreviation ending in a period
+  (Dr., Pr., ... see TITLE_ABBREVIATIONS), or a bare number immediately
+  before the timestamp (Man 1, Man 2). Anything else stops the walk,
+  which is what lets it split something like "...SHOW TITLE 2024
+  Dr. Smith (0:19)" into the heading and the real name "Dr. Smith".
 
   SPEAKER-LINE FORMAT: Name (timestamp) [optional : or dash] dialogue
 
-  WORD DOCUMENT SUPPORT: .docx files are read natively, with no
-  external programs and nothing to install -- this script parses the
-  .docx ZIP container and decompresses it using a pure-Lua DEFLATE
-  implementation built into this file. This works identically on
-  Windows, Mac, and Linux. Old binary .doc files are only auto-
-  converted on macOS, via the built-in 'textutil' command (there's no
-  pure-Lua path for that older, more complex format); on Windows/Linux,
-  save a .doc as .docx or .txt first.
-
-  USAGE:
-    1. REAPER: Actions > Show action list > New action... > Load
-       ReaScript, select this file.
-    2. Run it, pick your transcript -- .doc, .docx, or .txt all work.
-       .docx and .txt work directly on any OS with nothing to install;
-       .doc auto-converts on macOS only (see above).
-    3. It reports how many markers were added and shows a few sample
-       matches, so you can check it read your document correctly.
+  WORD DOCUMENT SUPPORT: .docx is read natively with a pure-Lua ZIP +
+  DEFLATE reader built into this file -- nothing to install, works the
+  same on Windows/Mac/Linux. .doc (old binary format) only auto-
+  converts on macOS via the built-in 'textutil'; elsewhere, save it as
+  .docx or .txt first.
 
   Timestamps are treated as seconds from project start. If your audio
   doesn't start at 0:00 in the timeline, set OFFSET_SECONDS below.
@@ -64,38 +31,28 @@
 
 local OFFSET_SECONDS = 0.0
 local DEDUPE_CONSECUTIVE_SPEAKERS = true  -- true = only mark when the speaker changes from the previous one
-local SKIP_FIRST_SPEAKER = true  -- true = don't add a marker for the very first speaker tag in the episode (you already have that one in your template)
 local INCLUDE_UNNAMED_TIMESTAMPS = false  -- true = also mark timestamps where no name could be determined, as "Note"
 
--- Every marker uses this single RGB color (all speakers alike).
 local MARKER_COLOR_R = 245
 local MARKER_COLOR_G = 195
 local MARKER_COLOR_B = 72
 
--- Known title abbreviations that count as part of a name even though
--- they end in a period (Dr., Pr., St., ...). Add more here if a script
--- uses one that's missing -- e.g. add "PROF" for "Prof.".
+-- Title abbreviations that count as part of a name (Dr., Pr., ...).
 local TITLE_ABBREVIATIONS = {
   DR = true, PR = true, MR = true, MRS = true, MS = true, ST = true,
   FR = true, JR = true, SR = true, REV = true, PROF = true,
   PASTOR = true, CAPT = true,
 }
 
--- Names that get picked up by the pattern but AREN'T actually a
--- speaker (transcription/production labels etc). Treated as if that
--- turn doesn't exist at all -- no marker, and it doesn't break the
--- consecutive-speaker dedup on either side of it. Case-insensitive.
--- (Note: ALL-CAPS labels like "VOZERIO" are usually already excluded
--- automatically -- see the header comment above -- but you can still
--- list them here too, or add ones that aren't all-caps.)
+-- Names that get matched but aren't real speakers (production labels
+-- etc). Skipped entirely -- no marker, doesn't break the dedup.
 local EXCLUDED_SPEAKER_NAMES = {
   "Vozerio",
 }
 
 -- Set to true to only mark turns inside segments matching the keywords
 -- below (segments are detected via a run of 10+ underscores followed
--- by the segment name). Leave false if your scripts don't reliably use
--- that separator -- most don't.
+-- by the segment name). Leave false if your scripts don't use that.
 local ONLY_WANTED_SECTIONS = false
 local WANTED_SECTION_KEYWORDS = {
   "DRAMA",
@@ -107,17 +64,14 @@ local WANTED_SECTION_KEYWORDS = {
 }
 
 -- ---------------------------------------------------------------------
--- Pure-Lua .docx reader (zero dependencies, works on any OS)
--- .docx is a ZIP file containing XML; this parses the ZIP container
--- and, since Word compresses its entries, includes a small pure-Lua
--- DEFLATE decompressor to unpack word/document.xml -- no unzip, no
--- textutil, no LibreOffice, nothing external at all.
+-- Pure-Lua .docx reader: parses the ZIP container and inflates the
+-- DEFLATE-compressed word/document.xml entry, no external tools.
 -- ---------------------------------------------------------------------
 
 local Docx = {}
 
 do
-  -- ---- raw DEFLATE (RFC 1951) decompressor -----------------------
+  -- raw DEFLATE (RFC 1951) decompressor
 
   local function new_bitreader(data)
     return { data = data, pos = 1, buf = 0, bitcnt = 0, len = #data }
@@ -125,12 +79,7 @@ do
 
   local function getbits(br, n)
     while br.bitcnt < n do
-      local b
-      if br.pos <= br.len then
-        b = string.byte(br.data, br.pos)
-      else
-        b = 0
-      end
+      local b = br.pos <= br.len and string.byte(br.data, br.pos) or 0
       br.pos = br.pos + 1
       br.buf = br.buf | (b << br.bitcnt)
       br.bitcnt = br.bitcnt + 8
@@ -301,6 +250,7 @@ do
       if final == 1 then break end
     end
 
+    -- string.char/table.unpack choke past ~8000 args; stitch in chunks
     local CHUNK = 4096
     local chunks = {}
     local ci = 0
@@ -312,18 +262,16 @@ do
     return table.concat(chunks)
   end
 
-  -- ---- minimal ZIP central-directory reader -----------------------
+  -- minimal ZIP central-directory reader
 
   local function find_eocd(data)
     local sig = "PK\5\6"
     local search_start = math.max(1, #data - 65557)
-    local last = nil
-    local from = search_start
+    local last, from = nil, search_start
     while true do
       local s = data:find(sig, from, true)
       if not s then break end
-      last = s
-      from = s + 1
+      last, from = s, s + 1
     end
     return last
   end
@@ -358,13 +306,10 @@ do
     return data:sub(data_start, data_start + entry.comp_size - 1)
   end
 
-  -- ---- w:t-aware text reconstruction --------------------------------
-  -- Word constantly splits a single word across multiple <w:t> runs
-  -- (spell-check, revisions), with NO space between them -- so we
-  -- concatenate run contents directly and only insert a separating
-  -- space at paragraph/tab/line-break boundaries. A blind
-  -- "replace every tag with a space" would fracture names like
-  -- "Soares" into "So ares".
+  -- w:t-aware text reconstruction: Word splits a single word across
+  -- multiple <w:t> runs with no space between them, so runs are
+  -- concatenated directly, and a space is only inserted at paragraph/
+  -- tab/line-break boundaries.
 
   local function decode_entities(s)
     s = s:gsub("&lt;", "<")
@@ -390,8 +335,7 @@ do
       local best_s, kind = nil, nil
       for _, cand in ipairs({ {ts, "t"}, {ps, "p"}, {bs, "tab"}, {brs, "br"} }) do
         if cand[1] and (not best_s or cand[1] < best_s) then
-          best_s = cand[1]
-          kind = cand[2]
+          best_s, kind = cand[1], cand[2]
         end
       end
       if not best_s then break end
@@ -410,8 +354,7 @@ do
     return table.concat(out)
   end
 
-  -- Reads a .docx file from disk and returns its plain-text content
-  -- (or nil, error-message).
+  -- Reads a .docx file and returns its plain-text content, or nil+err.
   function Docx.to_text(file_path)
     local f, ferr = io.open(file_path, "rb")
     if not f then return nil, "couldn't open file: " .. tostring(ferr) end
@@ -426,7 +369,7 @@ do
 
     local raw = get_entry_bytes(data, entry)
 
-    local xml, ierr
+    local xml
     if entry.method == 0 then
       xml = raw
     elseif entry.method == 8 then
@@ -468,8 +411,6 @@ local function timestamp_to_seconds(ts)
   return h * 3600 + m * 60 + s
 end
 
--- Fixed marker color, computed once (reaper.ColorToNative needs the
--- REAPER API to be loaded, so this happens inside main() instead of here).
 local MARKER_COLOR = nil
 local function get_marker_color()
   if not MARKER_COLOR then
@@ -514,18 +455,14 @@ local function shell_quote(path)
   return '"' .. path:gsub('"', '\\"') .. '"'
 end
 
--- Is REAPER running on a Mac? (textutil, used for auto-converting old
--- .doc files, only exists on macOS.) reaper.GetOS() returns strings
--- like "OSX32", "OSX64", "macOS-arm64" on Mac, and "Win32"/"Win64"/
--- "Other" elsewhere.
+-- reaper.GetOS() returns "OSX32"/"OSX64"/"macOS-arm64" on Mac.
 local function is_mac()
   local os_str = reaper.GetOS() or ""
   return os_str:find("OSX") ~= nil or os_str:find("macOS") ~= nil or os_str:find("Mac") ~= nil
 end
 
--- Convert an old binary .doc file to text using macOS's built-in
--- 'textutil' command (Mac only -- there's no pure-Lua path for the
--- old binary format, unlike .docx). Returns txt_path, err.
+-- Convert an old binary .doc file via macOS's built-in 'textutil'
+-- (Mac only -- no pure-Lua path for the old binary format).
 local function convert_doc_via_textutil(file_path)
   if not is_mac() then
     return nil, "Old-format .doc files aren't supported on this OS.\n\n" ..
@@ -549,13 +486,8 @@ local function convert_doc_via_textutil(file_path)
   return txt_path, nil
 end
 
--- .docx is read with the pure-Lua reader above (works identically on
--- every OS -- nothing external, no install). .doc (the old binary
--- format) goes through macOS's built-in 'textutil' when running on a
--- Mac, since that format needs a much heavier OLE/binary parser that
--- isn't worth writing from scratch -- on Windows/Linux it isn't
--- supported and the user is asked to save as .docx or .txt instead.
--- .txt is returned as-is. Returns txt_path, err (err is nil on success).
+-- .docx -> pure-Lua reader (any OS). .doc -> textutil (macOS only).
+-- .txt -> returned as-is. Returns txt_path, err.
 local function get_text_path(file_path)
   local ext = file_path:match("%.([%a%d]+)$")
   ext = ext and ext:lower() or ""
@@ -589,19 +521,9 @@ local function get_text_path(file_path)
   return txt_path, nil
 end
 
--- A "plain" name word: starts with an uppercase ASCII letter, followed
--- by letters/accented-letter-bytes/apostrophe/hyphen -- but rejected if
--- the whole word (letters only) is ALL CAPS and more than one letter
--- long, since that pattern is used for headings/labels in these
--- scripts (OPEN YOUR HEART, VOZERIO), not real names.
--- \195 + \128-\191 covers UTF-8 Latin-1 Supplement accented letters
--- (á é í ó ú ñ ã õ ç etc, upper and lower) -- deliberately NOT a blanket
--- \128-255 allowance, so smart quotes/dashes (different lead byte)
--- correctly break the match instead of being swallowed into a word.
--- The word's FIRST letter can be a plain ASCII uppercase letter (%u)
--- OR an accented uppercase one (Á É Í Ó Ú Ñ Ç etc -- byte 195 followed
--- by a second byte in 128-158, the uppercase half of that block) --
--- names like "Élida" need this, since %u alone only matches A-Z.
+-- A "plain" name word: Title-Case, not ALL CAPS (that's headings/
+-- labels, not names). \195 + \128-\191 covers UTF-8 accented letters
+-- (á é í ó ú ñ ã õ ç, upper and lower) so accented names match too.
 local function is_plain_name_word(tok)
   local ascii_start = tok:match("^%u[%a'%-\195\128-\191]*$")
   local accented_start = tok:match("^\195[\128-\158][%a'%-\195\128-\191]*$")
@@ -620,9 +542,8 @@ local function is_title_abbreviation(tok)
   return word ~= nil and TITLE_ABBREVIATIONS[word:upper()] == true
 end
 
--- Given the text immediately preceding a "(timestamp)" tag, work
--- backward token by token to find just the speaker name portion.
--- Returns the name string, or nil if nothing name-like was found.
+-- Walks backward from just before a "(timestamp)" to find the speaker
+-- name. Returns the name, or nil if nothing name-like was found.
 local function extract_name_before(window)
   local tokens = {}
   for tok in window:gmatch("%S+") do
@@ -633,10 +554,9 @@ local function extract_name_before(window)
   local name_tokens = {}
   local i = #tokens
 
-  -- A bare number only counts as part of the name if it's the token
-  -- immediately before the timestamp (e.g. the "1" in "Man 1") -- not
-  -- if it shows up further back, which is far more likely to be an
-  -- unrelated number (a year, a verse reference, etc).
+  -- A bare number only counts if it's the token right before the
+  -- timestamp (e.g. "1" in "Man 1") -- not further back, which is more
+  -- likely an unrelated number (a year, a verse reference, etc).
   if tokens[i]:match("^%d+$") then
     table.insert(name_tokens, 1, tokens[i])
     i = i - 1
@@ -654,9 +574,7 @@ local function extract_name_before(window)
 
   if #name_tokens == 0 then return nil end
 
-  -- Safety net: a real name/title is at most a few words. If we
-  -- somehow walked back further than that, keep only the words
-  -- closest to the timestamp.
+  -- Safety net: a real name is at most a few words.
   if #name_tokens > 4 then
     local trimmed = {}
     for j = #name_tokens - 3, #name_tokens do
@@ -668,9 +586,8 @@ local function extract_name_before(window)
   return table.concat(name_tokens, " ")
 end
 
--- Scan the whole text for every "(timestamp)" occurrence and figure
--- out the speaker name before each one. Returns a list of
--- {pos, seconds, speaker, has_name}, in document order.
+-- Finds every "(timestamp)" in the text and its speaker name. Returns
+-- a list of {pos, seconds, speaker, has_name}, in document order.
 local function find_matches(text)
   local out = {}
   local prev_end = 1
@@ -694,8 +611,8 @@ local function find_matches(text)
   return out
 end
 
--- Segment dividers: runs of 10+ underscores. For each, capture whether
--- the text right after it matches a wanted-section keyword.
+-- Segment dividers: runs of 10+ underscores, flagged by whether the
+-- text right after matches a wanted-section keyword.
 local function find_dividers(text)
   local out = {}
   local search_from = 1
@@ -714,16 +631,13 @@ end
 -- ---------------------------------------------------------------------
 
 local function main()
-  -- Remember the folder the last file was picked from (across REAPER
-  -- sessions too, via ExtState), independent of REAPER's own file
-  -- dialog memory -- so the picker opens back where you left off even
-  -- if REAPER's Finder/Explorer state has since moved elsewhere.
+  -- Remember the last folder picked from, across REAPER sessions too.
   local last_path = reaper.GetExtState("TranscriptToMarkers", "last_path")
 
   local retval, file_path = reaper.GetUserFileNameForRead(last_path, "Select transcript (.doc, .docx, or .txt)", "")
   if not retval then return end
 
-  reaper.SetExtState("TranscriptToMarkers", "last_path", file_path, true)  -- true = persist across sessions
+  reaper.SetExtState("TranscriptToMarkers", "last_path", file_path, true)
 
   local txt_path, err = get_text_path(file_path)
   if not txt_path then
@@ -740,9 +654,8 @@ local function main()
   f:close()
 
   raw = clean_text(raw)
-  -- Collapse ALL whitespace (spaces, tabs, any kind of line break) down
-  -- to single spaces. This is what makes parsing independent of line
-  -- breaks/paragraph structure entirely.
+  -- Collapse all whitespace to single spaces, so parsing is
+  -- independent of line breaks/paragraph structure entirely.
   local text = raw:gsub("%s+", " ")
   text = trim(text)
 
@@ -753,7 +666,6 @@ local function main()
 
   local added = 0
   local last_speaker = nil
-  local seen_first_speaker = false
   local divider_idx = 1
   local in_wanted_section = false
   local sample_matches = {}
@@ -767,22 +679,16 @@ local function main()
     local should_consider = (not ONLY_WANTED_SECTIONS) or in_wanted_section
 
     if should_consider and not is_excluded_speaker(m.speaker) then
-      if SKIP_FIRST_SPEAKER and not seen_first_speaker then
-        seen_first_speaker = true
-        last_speaker = m.speaker
-      else
-        seen_first_speaker = true
-        local is_repeat = DEDUPE_CONSECUTIVE_SPEAKERS and (m.speaker == last_speaker)
-        if not is_repeat then
-          local pos = m.seconds + OFFSET_SECONDS
-          reaper.AddProjectMarker2(0, false, pos, 0, m.speaker, -1, get_marker_color())
-          added = added + 1
-          if #sample_matches < 10 then
-            table.insert(sample_matches, string.format("%s -> %s", tostring(m.seconds), m.speaker))
-          end
+      local is_repeat = DEDUPE_CONSECUTIVE_SPEAKERS and (m.speaker == last_speaker)
+      if not is_repeat then
+        local pos = m.seconds + OFFSET_SECONDS
+        reaper.AddProjectMarker2(0, false, pos, 0, m.speaker, -1, get_marker_color())
+        added = added + 1
+        if #sample_matches < 10 then
+          table.insert(sample_matches, string.format("%s -> %s", tostring(m.seconds), m.speaker))
         end
-        last_speaker = m.speaker
       end
+      last_speaker = m.speaker
     end
   end
 

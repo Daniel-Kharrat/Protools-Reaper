@@ -340,8 +340,16 @@ end
 -- ---------------------------------------------------------------------
 
 local function main()
-  local retval, file_path = reaper.GetUserFileNameForRead("", "Select transcript (.doc, .docx, or .txt)", "")
+  -- Remember the folder the last file was picked from (across REAPER
+  -- sessions too, via ExtState), independent of REAPER's own file
+  -- dialog memory -- so the picker opens back where you left off even
+  -- if REAPER's Finder/Explorer state has since moved elsewhere.
+  local last_path = reaper.GetExtState("TranscriptToMarkers", "last_path")
+
+  local retval, file_path = reaper.GetUserFileNameForRead(last_path, "Select transcript (.doc, .docx, or .txt)", "")
   if not retval then return end
+
+  reaper.SetExtState("TranscriptToMarkers", "last_path", file_path, true)  -- true = persist across sessions
 
   local txt_path, err = get_text_path(file_path)
   if not txt_path then

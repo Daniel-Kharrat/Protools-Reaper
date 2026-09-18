@@ -237,14 +237,20 @@
       </version>
     </reapack>
 
+    <reapack name="Daniel_Insertion follows playback (toolbar toggle).lua" type="script" desc="Daniel_Insertion follows playback (toolbar toggle).lua">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Insertion%20follows%20playback%20(toolbar%20toggle).lua</source>
+      </version>
+    </reapack>
+
     <reapack name="Daniel_Insertion follows playback.lua" type="script" desc="Daniel_Insertion follows playback.lua">
-      <version name="1.1" author="Daniel" time="2025-08">
+      <version name="1.2" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Insertion%20follows%20playback.lua</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Link Timeline and Edit Selection.lua" type="script" desc="Daniel_Link Timeline and Edit Selection.lua">
-      <version name="1.3" author="Daniel" time="2025-08">
+      <version name="1.4" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Link%20Timeline%20and%20Edit%20Selection.lua</source>
       </version>
     </reapack>
@@ -526,7 +532,7 @@
     </reapack>
 
     <reapack name="Daniel_Toggle horizontal scroll 50%.lua" type="script" desc="Daniel_Toggle horizontal scroll 50%.lua">
-      <version name="1.1" author="Daniel" time="2026-07">
+      <version name="1.2" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Toggle%20horizontal%20scroll%2050%25.lua</source>
       </version>
     </reapack>
@@ -561,15 +567,15 @@
       </version>
     </reapack>
 
-    <reapack name="Daniel_Always Recording.lua" type="script" desc="Daniel_Always Recording.lua">
-      <version name="1.1" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording.lua</source>
+    <reapack name="Daniel_Always Recording (toolbar toggle).lua" type="script" desc="Daniel_Always Recording (toolbar toggle).lua">
+      <version name="1.3" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording%20(toolbar%20toggle).lua</source>
       </version>
     </reapack>
 
-    <reapack name="Daniel_Always Recording (toolbar toggle).lua" type="script" desc="Daniel_Always Recording (toolbar toggle).lua">
-      <version name="1.2" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording%20(toolbar%20toggle).lua</source>
+    <reapack name="Daniel_Always Recording.lua" type="script" desc="Daniel_Always Recording.lua">
+      <version name="1.1" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording.lua</source>
       </version>
     </reapack>
     

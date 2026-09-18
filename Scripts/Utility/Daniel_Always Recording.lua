@@ -33,9 +33,63 @@
 reaper.set_action_options(1)
 local _, _, section_id, cmd_id = reaper.get_action_context()
 
-local function set_button_state(on)
-  reaper.SetToggleCommandState(section_id, cmd_id, on and 1 or 0)
+-- Keeps the SEPARATE toolbar-toggle script's button + the shared ini file
+-- in sync with this script's actual running state, no matter how THIS
+-- script was launched (toolbar button, action list, keyboard shortcut,
+-- startup action) -- so they can never show a different on/off state than
+-- what's actually true.
+local personal_settings = reaper.GetResourcePath() .. "/Personal Settings"
+local toggle_file = personal_settings .. "/Toolbar_Toggles.ini"
+local toggle_button_cmd_id = reaper.NamedCommandLookup("_RS1d334413686175f313d60578bea01a827ae4e954")
+
+local function write_ini_value(value)
+  reaper.RecursiveCreateDirectory(personal_settings, 0)
+  local lines = {}
+  local found = false
+  local file = io.open(toggle_file, "r")
+  if file then
+    for line in file:lines() do
+      if line:match("^Always_Recording=") then
+        table.insert(lines, "Always_Recording=" .. tostring(value))
+        found = true
+      else
+        table.insert(lines, line)
+      end
+    end
+    file:close()
+  end
+  if not found then
+    table.insert(lines, "Always_Recording=" .. tostring(value))
+  end
+  file = io.open(toggle_file, "w")
+  if file then
+    file:write(table.concat(lines, "\n"))
+    file:write("\n")
+    file:close()
+  end
+end
+
+local function set_visual_state(on)
+  local v = on and 1 or 0
+  -- this script's own action (used internally for reentrancy handling)
+  reaper.SetToggleCommandState(section_id, cmd_id, v)
   reaper.RefreshToolbar2(section_id, cmd_id)
+  -- the actual visible toolbar button, bound to the separate toggle script
+  if toggle_button_cmd_id and toggle_button_cmd_id ~= 0 then
+    reaper.SetToggleCommandState(0, toggle_button_cmd_id, v)
+    reaper.RefreshToolbar2(0, toggle_button_cmd_id)
+  end
+end
+
+-- Use this ONLY for genuine, intentional on/off decisions (starting up, or
+-- the deliberate "second press closes it" branch) -- it persists to the
+-- ini file that the startup action reads. Do NOT call this from atexit:
+-- REAPER quitting also fires atexit, and if that wrote 0 to the file, a
+-- normal quit-while-on would wipe out the "relaunch me on next startup"
+-- flag, which defeats the entire point of that file.
+local function set_button_state(on)
+  set_visual_state(on)
+  write_ini_value(on and 1 or 0)
 end
 
 if reaper.GetToggleCommandStateEx(section_id, cmd_id) == 1 then
@@ -399,7 +453,7 @@ end
 local function exit()
   local window_state = gfx.dock(-1)
   reaper.SetExtState(EXT_SECTION, "dockstate", tostring(window_state), true)
-  set_button_state(false)
+  set_visual_state(false) -- visual only -- does NOT touch the persisted ini value
 end
 
 local w, h = 520, 130

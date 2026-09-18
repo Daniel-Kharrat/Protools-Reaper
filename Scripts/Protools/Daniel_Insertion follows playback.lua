@@ -4,14 +4,53 @@ local was_playing = false
 local play_cursor = nil
 local is_active = true
 
+local personal_settings = reaper.GetResourcePath() .. "/Personal Settings"
+local toggle_file = personal_settings .. "/Toolbar_Toggles.ini"
+
+reaper.RecursiveCreateDirectory(personal_settings, 0)
+
+local function set_button_state(value)
+  local lines = {}
+  local found = false
+
+  local file = io.open(toggle_file, "r")
+
+  if file then
+    for line in file:lines() do
+      if line:match("^Horizontal_Scroll_50=") then
+        table.insert(lines, "Horizontal_Scroll_50=" .. tostring(value))
+        found = true
+      else
+        table.insert(lines, line)
+      end
+    end
+    file:close()
+  end
+
+  if not found then
+    table.insert(lines, "Horizontal_Scroll_50=" .. tostring(value))
+  end
+
+  file = io.open(toggle_file, "w")
+
+  if file then
+    file:write(table.concat(lines, "\n"))
+    file:write("\n")
+    file:close()
+  end
+end
+
+local _, _, _, command_id = reaper.get_action_context()
+local state = reaper.GetToggleCommandState(command_id)
+
 function update_toolbar_button()
 
-    local command_id = reaper.NamedCommandLookup("_RS3954f4d6fde790290a4c7e86538380193bf6db74")
-
-    if is_active then
-        reaper.SetToggleCommandState(0, command_id, 1)
-    else
+    if state == 1 then
         reaper.SetToggleCommandState(0, command_id, 0)
+        set_button_state(0)
+    else
+        reaper.SetToggleCommandState(0, command_id, 1)
+        set_button_state(1)
     end
 
     reaper.RefreshToolbar2(0, command_id)
@@ -41,4 +80,3 @@ end
 
 update_toolbar_button()
 follow()
-

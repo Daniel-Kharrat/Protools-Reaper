@@ -1,3 +1,4 @@
+desc: Daniel_Mid-Side Width
 slider1: 0<0,1,1{Mid (L) Side (R),Side (L) Mid (R)}>Select input
 
 slider2:1.0<0,3,0.01>Mid

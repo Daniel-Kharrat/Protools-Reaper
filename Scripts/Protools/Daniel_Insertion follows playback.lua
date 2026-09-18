@@ -17,8 +17,8 @@ local function set_button_state(value)
 
   if file then
     for line in file:lines() do
-      if line:match("^Horizontal_Scroll_50=") then
-        table.insert(lines, "Horizontal_Scroll_50=" .. tostring(value))
+      if line:match("^Insertion_Follows_Playback=") then
+        table.insert(lines, "Insertion_Follows_Playback=" .. tostring(value))
         found = true
       else
         table.insert(lines, line)
@@ -28,7 +28,7 @@ local function set_button_state(value)
   end
 
   if not found then
-    table.insert(lines, "Horizontal_Scroll_50=" .. tostring(value))
+    table.insert(lines, "Insertion_Follows_Playback=" .. tostring(value))
   end
 
   file = io.open(toggle_file, "w")

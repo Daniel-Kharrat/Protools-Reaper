@@ -3,7 +3,7 @@ local toggle_file = personal_settings .. "/Toolbar_Toggles.ini"
 
 reaper.RecursiveCreateDirectory(personal_settings, 0)
 
-local function set_always_recording_state(value)
+local function set_button_state(value)
   local lines = {}
   local found = false
 
@@ -39,7 +39,7 @@ local toggle_file = personal_settings .. "/Toolbar_Toggles.ini"
 
 reaper.RecursiveCreateDirectory(personal_settings, 0)
 
-local function set_always_recording_state(value)
+local function set_button_state(value)
   local lines = {}
   local found = false
 
@@ -77,10 +77,10 @@ function update_toolbar_button()
 
     if state == 1 then
         reaper.SetToggleCommandState(0, command_id, 0)
-        set_always_recording_state(0)
+        set_button_state(0)
     else
         reaper.SetToggleCommandState(0, command_id, 1)
-        set_always_recording_state(1)
+        set_button_state(1)
     end
 
     reaper.RefreshToolbar2(0, command_id)
@@ -90,4 +90,3 @@ update_toolbar_button()
 
 --Script: Daniel_Always Recording.lua
 reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS22184bfd14ba6fe71f7c982d8354aec893c6d2ba"),0)
-

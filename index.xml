@@ -628,37 +628,37 @@
   <category name="utility">
     
     <reapack name="Daniel_Floating Meter" type="effect" desc="Daniel_Floating Meter">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Floating%20Meter</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Simple Delay" type="effect" desc="Daniel_Simple Delay">
-      <version name="1.2" author="Daniel" time="2025-08">
+      <version name="1.3" author="Daniel" time="2025-08">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Delay</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Simple Gain" type="effect" desc="Daniel_Simple Gain">
-      <version name="1.0" author="Daniel" time="2025-05">
+      <version name="1.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Simple%20Gain</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Stereo Width" type="effect" desc="Daniel_Stereo Width">
-      <version name="1.0" author="Daniel" time="2026-02">
+      <version name="1.1" author="Daniel" time="2026-02">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Stereo%20Width</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Mid-Side Width" type="effect" desc="Daniel_Mid-Side Width">
-      <version name="1.1" author="Daniel" time="2026-02">
+      <version name="1.2" author="Daniel" time="2026-02">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Mid-Side%20Width</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Always Recording" type="effect" desc="Daniel_Always Recording">
-      <version name="1.0" author="Daniel" time="2026-09">
+      <version name="1.1" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Always%20Recording</source>
       </version>
     </reapack>
@@ -669,7 +669,7 @@
   
   <category name="Real Time">
     <reapack name="Daniel_Live Vocal Rider" type="effect" desc="Daniel_Live Vocal Rider">
-      <version name="1.1" author="Daniel" time="2025-08">
+      <version name="1.2" author="Daniel" time="2025-08">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Real%20Time/Daniel_Live%20Vocal%20Rider</source>
       </version>
     </reapack>

@@ -1,3 +1,5 @@
+desc: Daniel_Live Vocal Rider
+
 slider1: -21 <-42, 0, 0.1> Target Level (dB)
 slider2: 200 <20,500,1> Speed (ms)
 slider3: -3 <-12,11,1> Min Gain (dB)

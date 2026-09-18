@@ -1,3 +1,5 @@
+desc: Daniel_Mid-Side Width
+
 in_pin:Left in
 in_pin:Right in
 out_pin:Left out

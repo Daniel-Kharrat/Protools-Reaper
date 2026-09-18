@@ -568,7 +568,7 @@
     </reapack>
 
     <reapack name="Daniel_Always Recording (toolbar toggle).lua" type="script" desc="Daniel_Always Recording (toolbar toggle).lua">
-      <version name="1.1" author="Daniel" time="2026-09">
+      <version name="1.2" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording%20(toolbar%20toggle).lua</source>
       </version>
     </reapack>

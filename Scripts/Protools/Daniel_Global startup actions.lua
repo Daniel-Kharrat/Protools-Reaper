@@ -13,7 +13,7 @@ reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS089967a15b5ae97c96687243d33f
 reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS73872e52305a191a83f55f1811ac45c380e98ff5"), 0)
 
 --------------------------------------------------
--- Read Toolbar_Toggles.ini file
+--Read Toolbar_Toggles.ini file
 --------------------------------------------------
 
 local toggles = {}
@@ -29,7 +29,7 @@ if file then
 end
 
 --------------------------------------------------
---Horizontal Scroll 50%.lua
+--Horizontal Scroll 50%
 --------------------------------------------------
 
 if toggles["Horizontal_Scroll_50"] == "1" then
@@ -39,13 +39,24 @@ if toggles["Horizontal_Scroll_50"] == "1" then
 end
 
 --------------------------------------------------
+--Insertion follows playback
+--------------------------------------------------
+
+if toggles["Insertion_Follows_Playback"] == "1" then
+    local id2 = reaper.NamedCommandLookup("_RSa29e1e48bb9514773a2b5118f69ddff709c406db")
+    reaper.SetToggleCommandState(0, id2, 1)
+    reaper.RefreshToolbar2(0, id2)
+    reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS3954f4d6fde790290a4c7e86538380193bf6db74"), 0)
+end
+
+--------------------------------------------------
 --Link Timeline and Edit Selection
 --------------------------------------------------
 
 if toggles["Link_Timeline_and_Edit_Selection"] == "1" then
-    local id2 = reaper.NamedCommandLookup("_RSdd4ba6262e05c57604ab621179a4552cf2bad49b")
-    reaper.SetToggleCommandState(0, id2, 1)
-    reaper.RefreshToolbar2(0, id2)
+    local id3 = reaper.NamedCommandLookup("_RSdd4ba6262e05c57604ab621179a4552cf2bad49b")
+    reaper.SetToggleCommandState(0, id3, 1)
+    reaper.RefreshToolbar2(0, id3)
 end
 
 --------------------------------------------------
@@ -53,8 +64,8 @@ end
 --------------------------------------------------
 
 if toggles["Always_Recording"] == "1" then
-    local id3 = reaper.NamedCommandLookup("_RS1d334413686175f313d60578bea01a827ae4e954")
-    reaper.SetToggleCommandState(0, id3, 1)
-    reaper.RefreshToolbar2(0, id3)
+    local id4 = reaper.NamedCommandLookup("_RS1d334413686175f313d60578bea01a827ae4e954")
+    reaper.SetToggleCommandState(0, id4, 1)
+    reaper.RefreshToolbar2(0, id4)
     reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS22184bfd14ba6fe71f7c982d8354aec893c6d2ba"), 0)
 end

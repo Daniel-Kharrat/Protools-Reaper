@@ -13,7 +13,7 @@ In Reaper go to: **Options → Show REAPER resource path in Explorer/finder...**
 Look for a folder called **UserPlugins** and put the reapack file in it
 
 ### Step 1:
-Download the latest [Configuration v3.8](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Configurations/Daniel_Reaper_Protools%20v3.8.ReaperConfigZip)
+Download the latest [Configuration v3.9](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Configurations/Daniel_Reaper_Protools%20v3.9.ReaperConfigZip)
 
 In Reaper go to: **Options → Preferences**
 

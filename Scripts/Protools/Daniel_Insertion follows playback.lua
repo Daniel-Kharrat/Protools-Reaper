@@ -4,7 +4,7 @@ local _, _, section_id, cmd_id = reaper.get_action_context()
 
 local personal_settings = reaper.GetResourcePath() .. "/Personal Settings"
 local toggle_file = personal_settings .. "/Toolbar_Toggles.ini"
-local toggle_button_cmd_id = reaper.NamedCommandLookup("_RSa29e1e48bb9514773a2b5118f69ddff709c406db")
+local toggle_button_cmd_id = reaper.NamedCommandLookup("_RSb019784d274d4c4efd2649de77c3ce2bc86d5d2e")
 
 local function write_ini_value(value)
   reaper.RecursiveCreateDirectory(personal_settings, 0)

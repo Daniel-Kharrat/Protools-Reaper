@@ -1,0 +1,128 @@
+desc: Daniel_Always Recording
+//   Continuously buffers the incoming mic signal in a private, per-instance
+//   rolling buffer. A small, shared gmem channel feeds a live waveform
+//   preview and grab-requests to the paired "Daniel_Always Recording.lua"
+//   script -- the actual audio (buf_pos) is never stored in gmem.
+//
+//   This ONE file is used by every project -- no numbering, no copies.
+//   Isolation between simultaneously-open projects is handled by the
+//   display script, which automatically keeps only the instance in your
+//   CURRENTLY FOCUSED project turned on, and switches every other open
+//   project's instance off (TrackFX offline/bypass) -- so only one
+//   instance is ever actually processing audio at a time, and there's
+//   nothing left to collide over the shared channel.
+//
+//   Put this on the Input FX of your voiceover track.
+//   Audio passes through completely untouched.
+
+options:gmem=Daniel_Always_Recording, maxmem=50000000, gfx_idle=1
+
+slider1:buf_seconds=30<5,60,1>Rolling buffer length (seconds)
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+ext_noinit = 1;
+MAX_BUF = 24000000;     // private local buffer capacity, 60s stereo @ up to 192kHz
+scratch_buf = MAX_BUF;  // private scratch region for contiguous export copy
+DISP_N = 600;           // number of waveform display buckets
+DISP_BASE = 7;          // gmem[7 .. 7+DISP_N-1] = display peaks (shared, tiny)
+last_srate = 0;
+last_buf_seconds = -1;
+counter = 0;
+have_wrapped = 0;
+cur_bucket = -1;
+cur_bucket_peak = 0;
+gmem[0] = 0;  // export request flag, set by Lua script, cleared here once handled
+gmem[8] = -1; // optional explicit target track override (0-based), -1 = use this track
+gmem[13] = 0; // 1 = export as mono (host track's input is a single mono channel), 0 = stereo
+
+@block
+(last_srate != srate) || (last_buf_seconds != buf_seconds) ? (
+  requested = floor(buf_seconds*srate)*2;
+  requested > MAX_BUF ? requested = MAX_BUF - (MAX_BUF % 2);
+  buf_len = requested;
+  counter = 0;
+  have_wrapped = 0;
+  cur_bucket = -1;
+  cur_bucket_peak = 0;
+  last_srate = srate;
+  last_buf_seconds = buf_seconds;
+  gmem[4] = buf_seconds;
+  i = 0;
+  while (i < DISP_N) (
+    gmem[DISP_BASE + i] = 0;
+    i += 1;
+  );
+);
+
+gmem[3] = DISP_N;
+// Update UI-facing state once per block, not once per sample -- writing to
+// shared gmem at audio-sample rate is unnecessary and can cause glitching.
+gmem[5] = have_wrapped;
+gmem[6] = counter/buf_len;
+
+@sample
+buf_pos[counter]   = spl0;
+buf_pos[counter+1] = spl1;
+
+disp_val = abs(spl0 + spl1) * 0.5;
+bkt = floor((counter/buf_len) * DISP_N);
+bkt != cur_bucket ? (
+  cur_bucket >= 0 ? gmem[DISP_BASE + cur_bucket] = cur_bucket_peak;
+  cur_bucket = bkt;
+  cur_bucket_peak = disp_val;
+) : (
+  disp_val > cur_bucket_peak ? cur_bucket_peak = disp_val;
+);
+
+counter += 2;
+counter >= buf_len ? (
+  counter = 0;
+  have_wrapped = 1;
+);
+
+@gfx
+// gfx_idle=1 means this keeps running in the background even while its
+// window is closed.
+
+function wmod(num, mod) (
+  num < 0 ? mod - ((-num) % mod) : num % mod;
+);
+
+export_req = gmem[0];
+export_req == 1 ? (
+  target_track = gmem[8];
+  target_track < 0 ? target_track = get_host_placement();
+  target_track >= 0 ? (
+    sn = gmem[1];
+    wn = gmem[2];
+    is_mono = gmem[13];
+    start_samp = floor(sn*buf_len);
+    start_samp -= start_samp % 2;
+    n_pairs = floor(wn*buf_len/2);
+    n_pairs < 1 ? n_pairs = 1;
+    is_mono == 1 ? (
+      i = 0;
+      while (i < n_pairs) (
+        x = wmod(start_samp + i*2, buf_len);
+        scratch_buf[i] = (buf_pos[x] + buf_pos[x+1]) * 0.5;
+        i += 1;
+      );
+      export_buffer_to_project(scratch_buf, n_pairs, 1, srate, target_track, 0);
+    ) : (
+      i = 0;
+      while (i < n_pairs*2) (
+        x = wmod(start_samp + i, buf_len);
+        scratch_buf[i] = buf_pos[x];
+        i += 1;
+      );
+      export_buffer_to_project(scratch_buf, n_pairs, 2, srate, target_track, 0);
+    );
+  );
+  gmem[0] = 0;
+  gmem[8] = -1;
+);

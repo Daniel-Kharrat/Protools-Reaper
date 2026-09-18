@@ -172,7 +172,7 @@
     </reapack>
 
     <reapack name="Daniel_Global startup actions.lua" type="script" desc="Daniel_Global startup actions.lua">
-      <version name="2.0" author="Daniel" time="2025-05">
+      <version name="2.1" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Global%20startup%20actions.lua</source>
       </version>
     </reapack>
@@ -526,7 +526,7 @@
     </reapack>
 
     <reapack name="Daniel_Toggle horizontal scroll 50%.lua" type="script" desc="Daniel_Toggle horizontal scroll 50%.lua">
-      <version name="1.0" author="Daniel" time="2026-07">
+      <version name="1.1" author="Daniel" time="2026-07">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Toggle%20horizontal%20scroll%2050%25.lua</source>
       </version>
     </reapack>

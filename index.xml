@@ -172,7 +172,7 @@
     </reapack>
 
     <reapack name="Daniel_Global startup actions.lua" type="script" desc="Daniel_Global startup actions.lua">
-      <version name="1.8" author="Daniel" time="2025-05">
+      <version name="1.9" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Global%20startup%20actions.lua</source>
       </version>
     </reapack>
@@ -244,7 +244,7 @@
     </reapack>
 
     <reapack name="Daniel_Link Timeline and Edit Selection.lua" type="script" desc="Daniel_Link Timeline and Edit Selection.lua">
-      <version name="1.1" author="Daniel" time="2025-08">
+      <version name="1.2" author="Daniel" time="2025-08">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Link%20Timeline%20and%20Edit%20Selection.lua</source>
       </version>
     </reapack>
@@ -564,6 +564,12 @@
     <reapack name="Daniel_Always Recording.lua" type="script" desc="Daniel_Always Recording.lua">
       <version name="1.0" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording.lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Always Recording (toolbar toggle).lua" type="script" desc="Daniel_Always Recording (toolbar toggle).lua">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording%20(toolbar%20toggle).lua</source>
       </version>
     </reapack>
     

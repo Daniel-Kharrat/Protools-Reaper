@@ -560,6 +560,12 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Auto%20markers%20from%20transcript.lua</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Always Recording.lua" type="script" desc="Daniel_Always Recording.lua">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording.lua</source>
+      </version>
+    </reapack>
     
   </category>
 
@@ -648,6 +654,12 @@
     <reapack name="Daniel_Mid-Side Width" type="effect" desc="Daniel_Mid-Side Width">
       <version name="1.1" author="Daniel" time="2026-02">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Mid-Side%20Width</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Always Recording" type="effect" desc="Daniel_Always Recording">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Always%20Recording</source>
       </version>
     </reapack>
     

@@ -1,3 +1,5 @@
+desc: Daniel_Simple Gain
+
 slider1:Gain_db=0<-12,12,1>Gain (dB)
 
 in_pin:left input

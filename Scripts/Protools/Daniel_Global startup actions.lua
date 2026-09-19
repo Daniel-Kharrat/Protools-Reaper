@@ -1,7 +1,6 @@
 -- Master script to run multiple actions at startup
 
-local personal_settings = reaper.GetResourcePath() .. "/Personal Settings"
-local toggle_file = personal_settings .. "/Toolbar_Toggles.ini"
+local REAPER_INI = reaper.GetResourcePath() .. "/reaper.ini"
 
 --Check for armed tracks
 reaper.Main_OnCommand(reaper.NamedCommandLookup("_RSe07de25faddbad1a82edccb0cf675ab4014f4a5a"), 0)
@@ -13,19 +12,26 @@ reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS089967a15b5ae97c96687243d33f
 reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS73872e52305a191a83f55f1811ac45c380e98ff5"), 0)
 
 --------------------------------------------------
---Read Toolbar_Toggles.ini file
+--Read toggle values from reaper.ini
 --------------------------------------------------
 
 local toggles = {}
-local file = io.open(toggle_file, "r")
+local file = io.open(REAPER_INI, "rb")
 if file then
-    for line in file:lines() do
-        local key, value = line:match("^([%w_]+)=(%d+)$")
-        if key then
-            toggles[key] = value
-        end
-    end
+    local contents = file:read("*all")
     file:close()
+
+    local keys = {
+        "Horizontal_Scroll_50",
+        "Insertion_Follows_Playback",
+        "Link_Timeline_and_Edit_Selection",
+        "Always_Recording",
+    }
+
+    for _, key in ipairs(keys) do
+        toggles[key] = contents:match("\n" .. key .. "=(%d+)")
+                    or contents:match("^" .. key .. "=(%d+)")
+    end
 end
 
 --------------------------------------------------

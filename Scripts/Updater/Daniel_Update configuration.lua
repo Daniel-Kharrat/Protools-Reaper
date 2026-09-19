@@ -14,13 +14,14 @@
 -- before that point cleans up the staging folder and leaves REAPER running.
 --
 -- Files are replaced as they are, EXCEPT:
---   reaper.ini       merged key by key: yours replace theirs, everything else of
---                    theirs stays. Never touched: the audio setup ([audioconfig])
---                    and the audio / MIDI device, window position and folder path
---                    keys listed below. Toolbar toggle states ([toolbar button
---                    states]) keep their values, but any toggle line they don't
---                    have yet is added as it is in the configuration.
---                    A blank value in your file never overwrites theirs.
+--   reaper.ini       merged, not replaced: EVERY line in your file is written
+--                    into theirs (a value they already have is overwritten, a
+--                    line they don't have is added), and everything of theirs
+--                    that isn't in your file stays. Nothing is skipped - keep
+--                    personal settings out by deleting them from the reaper.ini
+--                    inside the archive. One exception: the toolbar toggle
+--                    states ([toolbar button states]) keep the values they
+--                    already have, and only the lines they are missing are added.
 --   reaper-kb.ini    replaced in a Full install; in "Merge keyboard shortcuts" it
 --                    is merged by Daniel_Merge keyboard shortcuts.lua instead.
 --   reaper-configzip-info is never copied.
@@ -35,29 +36,10 @@ local POINTER_FILE = "latest.txt"
 
 local TITLE = "Update Configuration"
 
--- reaper.ini: whole sections that are never touched
-local KEEP_SECTIONS = {
-    ["audioconfig"] = true,             -- audio device, inputs/outputs, sample rate, buffer sizes
-}
-
 -- reaper.ini: sections where their values are kept, but lines they don't have
 -- yet are added from the configuration (the toolbar button toggle states)
 local ADD_ONLY_SECTIONS = {
     ["toolbar button states"] = true,
-}
-
--- reaper.ini, section [reaper]: keys that stay theirs (Lua patterns)
-local KEEP_KEYS_SECTION = "reaper"
-local KEEP_KEYS = {
-    -- audio
-    "^alsa_", "^linux_audio_", "^jack_", "^audiocloseinactive", "^audiothreadpr$",
-    -- MIDI devices
-    "^midiins$", "^midiouts$", "^midiinflag%d+$",
-    -- window position and size
-    "^wnd_[xywh]$", "^wnd_state$", "^fullscreenRect",
-    -- folders and files on their machine
-    "path$", "paths$", "pathlist$", "dir$", "^vstpath", "^lv2path",
-    "^newprojtmpl$", "^splashimage$",
 }
 
 
@@ -340,18 +322,6 @@ end
 -- reaper.ini merge
 ------------------------------------------------------------
 
-local function keep_key(section, key)
-    if section ~= KEEP_KEYS_SECTION then
-        return false
-    end
-    for _, pattern in ipairs(KEEP_KEYS) do
-        if key:find(pattern) then
-            return true
-        end
-    end
-    return false
-end
-
 -- Merges the shipped reaper.ini into the person's. Keeps their line ending,
 -- their order and every key of theirs that the shipped file doesn't mention.
 local function merge_ini(target_text, shipped_text)
@@ -399,25 +369,22 @@ local function merge_ini(target_text, shipped_text)
     local new_sections = {}   -- sections the person doesn't have yet
     local new_by_name = {}
 
-    local section, skip, add_only = nil, false, false
+    local section, add_only = nil, false
 
     for _, line in ipairs(shipped) do
         local name = line:match("^%[(.-)%]%s*$")
         if name then
             section = name
-            skip = KEEP_SECTIONS[name] or false
             add_only = ADD_ONLY_SECTIONS[name] or false
-            if not skip and not sections[name] and not new_by_name[name] then
+            if not sections[name] and not new_by_name[name] then
                 local entry = { name = name, lines = {} }
                 new_sections[#new_sections + 1] = entry
                 new_by_name[name] = entry
             end
-        elseif section and not skip then
+        elseif section then
             local key, value = line:match("^([^=]+)=(.*)$")
             if key then
-                if value == "" or keep_key(section, key) then
-                    stats.kept = stats.kept + 1
-                elseif sections[section] then
+                if sections[section] then
                     local at = sections[section].keys[key]
                     if at then
                         if add_only then
@@ -565,7 +532,7 @@ local function main()
 
         "CANCEL = Do nothing\n\n" ..
 
-        "Your audio and MIDI devices, window position and folder paths are always kept.\n" ..
+        "Settings in your own reaper.ini that are not part of the configuration are kept.\n" ..
         "REAPER will close and restart to apply the update."
 
     local answer = reaper.ShowMessageBox(text, TITLE, 3)

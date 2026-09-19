@@ -46,19 +46,11 @@ change the shortcut for ***Show Finder search window*** to "opt + cmd + space"
 
 
 ## For future Updates
-1) run the script called: **Daniel_Save personal settings.lua**
+1) update the scripts: **Extensions → ReaPack → Synchronize packages** 
 
-2) import the new config file
-
-3) run the script called: **Daniel_Restore personal settings.lua**
-
-4) update the scripts by going to: **Extensions → ReaPack → Manage repositories...**
-
-Double click on **Daniel Kharrat**
-
-Click on **Install/update Daniel Kharrat → Install all packages in this repository**
-
-5) If you reinstall the REAPER program itself it will overwrite the toolbar icons to the default green
+2) run the script called: **Daniel_Update configuration.lua**
+ 
+3) If you reinstall the REAPER program itself it will overwrite the toolbar icons to the default green
 
 so you'll have to replace them with my icons again by going to the actions list and run the script called:
 

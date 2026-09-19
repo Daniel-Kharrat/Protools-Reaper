@@ -25,6 +25,12 @@
 --   reaper-kb.ini    replaced in a Full install; in "Merge keyboard shortcuts" it
 --                    is merged by Daniel_Merge keyboard shortcuts.lua instead.
 --   reaper-configzip-info is never copied.
+--
+-- Existing configuration: if the person already has your configuration (there is a
+-- recorded version, or your repository is in their reapack.ini), the files in
+-- KEEP_IF_CONFIGURED are NOT copied, so their own screen sets, SWS auto colors,
+-- S&M settings and ReaPack repositories stay. On a first installation
+-- everything is copied.
 
 
 ------------------------------------------------------------
@@ -35,6 +41,19 @@ local BASE_URL = "https://raw.githubusercontent.com/Daniel-Kharrat/Protools-Reap
 local POINTER_FILE = "latest.txt"
 
 local TITLE = "Update Configuration"
+
+-- Your ReaPack repository (as it appears in the URL in reapack.ini). If it is there,
+-- the person already has your configuration.
+local MY_REPOSITORY = "Daniel-Kharrat/Protools-Reaper"
+
+-- Files that are copied on a first installation only. Once the person has your
+-- configuration they are left alone.
+local KEEP_IF_CONFIGURED = {
+    "reaper-screensets.ini",
+    "sws-autocoloricon.ini",
+    "S&M.ini",
+    "reapack.ini",
+}
 
 -- reaper.ini: sections where their values are kept, but lines they don't have
 -- yet are added from the configuration (the toolbar button toggle states)
@@ -442,6 +461,16 @@ end
 
 
 ------------------------------------------------------------
+-- Does the person already have your configuration?
+------------------------------------------------------------
+
+local function repository_in_reapack()
+    local reapack = read_file(RESOURCE_PATH .. "/reapack.ini")
+    return reapack ~= nil and reapack:lower():find(MY_REPOSITORY:lower(), 1, true) ~= nil
+end
+
+
+------------------------------------------------------------
 -- Main
 ------------------------------------------------------------
 
@@ -511,6 +540,10 @@ local function main()
         installed = nil
     end
 
+    -- an installed version was recorded by an earlier update, or your repository
+    -- is in their ReaPack list (older installs made by importing the configuration)
+    local configured = (installed ~= nil) or repository_in_reapack()
+
     ----------------------------------------------------
     -- Ask
     ----------------------------------------------------
@@ -533,6 +566,9 @@ local function main()
         "CANCEL = Do nothing\n\n" ..
 
         "Settings in your own reaper.ini that are not part of the configuration are kept.\n" ..
+        (configured
+            and "Existing configuration found: your screen sets, SWS auto colors, S&M settings and ReaPack repositories are kept.\n"
+            or  "First installation: all files are copied.\n") ..
         "REAPER will close and restart to apply the update."
 
     local answer = reaper.ShowMessageBox(text, TITLE, 3)
@@ -576,6 +612,25 @@ local function main()
     local files = list_files(EXTRACTED)
     if #files == 0 then
         return abort("The downloaded configuration is empty.")
+    end
+
+    ----------------------------------------------------
+    -- Existing configuration: leave their own copies of some files alone
+    ----------------------------------------------------
+
+    if configured then
+        local leave = {}
+        for _, name in ipairs(KEEP_IF_CONFIGURED) do
+            leave[name] = true
+            os.remove(EXTRACTED .. "/" .. name)
+        end
+        local remaining = {}
+        for _, rel in ipairs(files) do
+            if not leave[rel] then
+                remaining[#remaining + 1] = rel
+            end
+        end
+        files = remaining
     end
 
     ----------------------------------------------------

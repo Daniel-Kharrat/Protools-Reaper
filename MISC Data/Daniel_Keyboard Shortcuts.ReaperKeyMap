@@ -3214,7 +3214,10 @@ SCR 4 0 RSce27ff21be8449dc9425f98ea5dfb00421b24487 "Custom: BirdBird_Sample Last
 SCR 4 0 RS300cda2a55a02d8c1cc65011737a5e32d4211858 "Custom: BirdBird_Functional Console Reactive.lua" "BirdBird ReaScript Testing/Functional Console/BirdBird_Functional Console Reactive.lua"
 SCR 4 0 RS81928bfe9c51a26fc3eb878b62d3ab3ca7fcbbe6 "Custom: BirdBird_Functional Console.lua" "BirdBird ReaScript Testing/Functional Console/BirdBird_Functional Console.lua"
 SCR 4 0 RS72df3bb2dcfa49c8e7f74da7c2f5c0a1813e8fae "Custom: BirdBird_FX Mangler.lua" "BirdBird ReaScript Testing/FX Mangler/BirdBird_FX Mangler.lua"
-KEY 1 109 0 0		 # Main : NumPad - : DISABLED DEFAULT
+SCR 4 0 RS4a1885b58b1bc249e3136917310b6b1c33cba5f3 "Custom: Daniel_Auto markers from transcript.lua" "Daniel Kharrat/Utility/Daniel_Auto markers from transcript.lua"
+SCR 4 0 RS22184bfd14ba6fe71f7c982d8354aec893c6d2ba "Custom: Daniel_Always Recording.lua" "Daniel Kharrat/Utility/Daniel_Always Recording.lua"
+SCR 4 0 RS1d334413686175f313d60578bea01a827ae4e954 "Custom: Daniel_Always Recording (toolbar toggle).lua" "Daniel Kharrat/Utility/Daniel_Always Recording (toolbar toggle).lua"
+SCR 4 0 RSb019784d274d4c4efd2649de77c3ce2bc86d5d2e "Custom: Daniel_Insertion follows playback (toolbar toggle).lua" "Daniel Kharrat/Protools/Daniel_Insertion follows playback (toolbar toggle).lua"
 KEY 255 250 0 0		 # Main : Alt+Mousewheel : DISABLED DEFAULT
 KEY 255 218 0 0		 # Main : Alt+HorizWheel : DISABLED DEFAULT
 KEY 13 83 0 0		 # Main : Ctrl+Shift+S : DISABLED DEFAULT
@@ -3273,7 +3276,7 @@ KEY 5 90 40030 0		 # Main : Shift+Z : OVERRIDE DEFAULT : Edit: Redo
 KEY 13 90 40030 0		 # Main : Ctrl+Shift+Z : OVERRIDE DEFAULT : Edit: Redo
 KEY 9 65 40035 0		 # Main : Ctrl+A : OVERRIDE DEFAULT : Select all items/tracks/envelope points (depending on focus)
 KEY 1 50 40036 0		 # Main : 2 : OVERRIDE DEFAULT : View: Toggle auto-view-scroll during playback
-KEY 1 67 40057 0		 # Main : C : OVERRIDE DEFAULT : Edit: Copy items/tracks/envelope points (depending on focus) ignoring time selection
+KEY 1 67 40057 0		 # Main : C : Edit: Copy items/tracks/envelope points (depending on focus) ignoring time selection
 KEY 9 67 40057 0		 # Main : Ctrl+C : OVERRIDE DEFAULT : Edit: Copy items/tracks/envelope points (depending on focus) ignoring time selection
 KEY 21 68 40062 0		 # Main : Alt+Shift+D : Track: Duplicate tracks
 KEY 1 102 40076 0		 # Main : NumPad 6 : OVERRIDE DEFAULT : Record: Set record mode to time selection auto-punch
@@ -3284,6 +3287,7 @@ KEY 255 6632 40116 0		 # Main :  : Track: Nudge track volume down
 KEY 16 125 40155 0		 # Main : Alt+} : Peaks: Increase peaks display zoom for project
 KEY 16 123 40156 0		 # Main : Alt+{ : Peaks: Decrease peaks display zoom for project
 KEY 1 32781 40171 0		 # Main : NumPad Enter : Markers: Insert and/or edit marker at current position
+KEY 1 106 40178 0		 # Main : NumPad * : Item properties: Set take channel mode to mono (downmix)
 KEY 9 77 40183 0		 # Main : Ctrl+M : OVERRIDE DEFAULT : Item properties: Toggle items/tracks mute (depending on focus)
 KEY 1 101 40252 0		 # Main : NumPad 5 : Record: Set record mode to normal
 KEY 255 3048 40285 0		 # Main :  : Track: Go to next track
@@ -3341,31 +3345,6 @@ KEY 1 112 42455 0		 # Main : F1 : FX: Toggle delta solo for last focused FX
 KEY 9 105 50125 0		 # Main : Ctrl+NumPad 9 : Video: Show/hide video window
 KEY 13 86 50125 0		 # Main : Ctrl+Shift+V : OVERRIDE DEFAULT : Video: Show/hide video window
 KEY 5 67 _RSb6cc7725bdd9ccbaa7d8258af9d957467ae9e697 0		 # Main : Shift+C : OVERRIDE DEFAULT : Script: Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua
-KEY 5 49 _SWS_TRACKCUSTCOL1 0		 # Main : Shift+1 : SWS: Set selected track(s) to custom color 1
-KEY 5 50 _SWS_TRACKCUSTCOL2 0		 # Main : Shift+2 : SWS: Set selected track(s) to custom color 2
-KEY 5 51 _SWS_TRACKCUSTCOL3 0		 # Main : Shift+3 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 3
-KEY 5 52 _SWS_TRACKCUSTCOL4 0		 # Main : Shift+4 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 4
-KEY 5 53 _SWS_TRACKCUSTCOL5 0		 # Main : Shift+5 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 5
-KEY 5 54 _SWS_TRACKCUSTCOL6 0		 # Main : Shift+6 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 6
-KEY 5 55 _SWS_TRACKCUSTCOL7 0		 # Main : Shift+7 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 7
-KEY 5 56 _SWS_TRACKCUSTCOL8 0		 # Main : Shift+8 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 8
-KEY 5 57 _SWS_TRACKCUSTCOL9 0		 # Main : Shift+9 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 9
-KEY 5 48 _SWS_TRACKCUSTCOL10 0		 # Main : Shift+0 : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 10
-KEY 0 95 _SWS_TRACKCUSTCOL12 0		 # Main : _ : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 12
-KEY 0 43 _SWS_TRACKCUSTCOL13 0		 # Main : + : OVERRIDE DEFAULT : SWS: Set selected track(s) to custom color 13
-KEY 17 49 _SWS_ITEMCUSTCOL1 0		 # Main : Alt+1 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 1
-KEY 17 50 _SWS_ITEMCUSTCOL2 0		 # Main : Alt+2 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 2
-KEY 17 51 _SWS_ITEMCUSTCOL3 0		 # Main : Alt+3 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 3
-KEY 17 52 _SWS_ITEMCUSTCOL4 0		 # Main : Alt+4 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 4
-KEY 17 53 _SWS_ITEMCUSTCOL5 0		 # Main : Alt+5 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 5
-KEY 17 54 _SWS_ITEMCUSTCOL6 0		 # Main : Alt+6 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 6
-KEY 17 55 _SWS_ITEMCUSTCOL7 0		 # Main : Alt+7 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 7
-KEY 17 56 _SWS_ITEMCUSTCOL8 0		 # Main : Alt+8 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 8
-KEY 17 57 _SWS_ITEMCUSTCOL9 0		 # Main : Alt+9 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 9
-KEY 17 48 _SWS_ITEMCUSTCOL10 0		 # Main : Alt+0 : OVERRIDE DEFAULT : SWS: Set selected item(s) to custom color 10
-KEY 16 96 _SWS_ITEMCUSTCOL11 0		 # Main : Alt+` : SWS: Set selected item(s) to custom color 11
-KEY 16 45 _SWS_ITEMCUSTCOL12 0		 # Main : Alt+- : SWS: Set selected item(s) to custom color 12
-KEY 16 61 _SWS_ITEMCUSTCOL13 0		 # Main : Alt+= : SWS: Set selected item(s) to custom color 13
 KEY 1 79 _RSb52f439c3fdfa36bc5dc9f2b7acfe62d8e67f9bf 0		 # Main : O : Script: Daniel_Change track routing from main to processing bus.lua
 KEY 5 76 _RSffe1527d99e5f80610a082b66923bca59d6b9e8e 0		 # Main : Shift+L : OVERRIDE DEFAULT : Script: Daniel_Extend razor edit area to the left.lua
 KEY 1 89 _RS9a3c45ee0677ca7673f897a0785dc7f2180d2f06 0		 # Main : Y : OVERRIDE DEFAULT : Script: Daniel_Move selected item to start of project.lua
@@ -3397,7 +3376,6 @@ KEY 1 32806 _RS18168549856c262e5943c8d4c0a6e676b5dbb1b3 0		 # Main : Up : OVERRI
 KEY 1 32808 _RS18168549856c262e5943c8d4c0a6e676b5dbb1b3 0		 # Main : Down : OVERRIDE DEFAULT : Script: Daniel_Move edit cursor to play cursor.lua
 KEY 9 86 _RSa405821fb80d64b8aa5261a7f041fdaf96be4268 0		 # Main : Ctrl+V : OVERRIDE DEFAULT : Script: Daniel_Paste items-tracks.lua
 KEY 1 86 _RSa405821fb80d64b8aa5261a7f041fdaf96be4268 0		 # Main : V : OVERRIDE DEFAULT : Script: Daniel_Paste items-tracks.lua
-KEY 1 78 _RS3954f4d6fde790290a4c7e86538380193bf6db74 0		 # Main : N : OVERRIDE DEFAULT : Script: Daniel_Insertion follows playback.lua
 KEY 1 72 _RS800b2174ef3d288a17d08b43cbd0285cb1d4377d 0		 # Main : H : Script: Daniel_Heal splits.lua
 KEY 9 72 _RS800b2174ef3d288a17d08b43cbd0285cb1d4377d 0		 # Main : Ctrl+H : Script: Daniel_Heal splits.lua
 KEY 5 32 _RS3103e156db24ecdfcea3113b3d1550de3515754d 0		 # Main : Shift+Space : Script: Daniel_Half speed playback.lua
@@ -3439,3 +3417,30 @@ KEY 1 73 _RS2859602fd33f70b9e0b51e734d4c5f5a291c655a 0		 # Main : I : Script: Da
 KEY 1 85 _RS771de6da4537693d4de9ac77621d0185807f3d9f 0		 # Main : U : OVERRIDE DEFAULT : Script: Daniel_Volume automation ramp down.lua
 KEY 9 100 _RS28b2f9e3de9bb609d9febfaa1e1d3198d4bab8b3 0		 # Main : Ctrl+NumPad 4 : OVERRIDE DEFAULT : Script: Daniel_Show big marker name.lua
 KEY 1 124 _RS9ca203e1a2779bff6799bb0c307c9eae19d5eece 0		 # Main : F13 : Script: Daniel_Set time selection for render.lua
+KEY 1 109 _RS4a1885b58b1bc249e3136917310b6b1c33cba5f3 0		 # Main : NumPad - : OVERRIDE DEFAULT : Script: Daniel_Auto markers from transcript.lua
+KEY 1 78 _RSb019784d274d4c4efd2649de77c3ce2bc86d5d2e 0		 # Main : N : OVERRIDE DEFAULT : Script: Daniel_Insertion follows playback (toolbar toggle).lua
+KEY 5 49 _SWS_TRACKCUSTCOL1 0		 # Main : Shift+1 : 
+KEY 5 50 _SWS_TRACKCUSTCOL2 0		 # Main : Shift+2 : 
+KEY 5 51 _SWS_TRACKCUSTCOL3 0		 # Main : Shift+3 : OVERRIDE DEFAULT : 
+KEY 5 52 _SWS_TRACKCUSTCOL4 0		 # Main : Shift+4 : OVERRIDE DEFAULT : 
+KEY 5 53 _SWS_TRACKCUSTCOL5 0		 # Main : Shift+5 : OVERRIDE DEFAULT : 
+KEY 5 54 _SWS_TRACKCUSTCOL6 0		 # Main : Shift+6 : OVERRIDE DEFAULT : 
+KEY 5 55 _SWS_TRACKCUSTCOL7 0		 # Main : Shift+7 : OVERRIDE DEFAULT : 
+KEY 5 56 _SWS_TRACKCUSTCOL8 0		 # Main : Shift+8 : OVERRIDE DEFAULT : 
+KEY 5 57 _SWS_TRACKCUSTCOL9 0		 # Main : Shift+9 : OVERRIDE DEFAULT : 
+KEY 5 48 _SWS_TRACKCUSTCOL10 0		 # Main : Shift+0 : OVERRIDE DEFAULT : 
+KEY 0 95 _SWS_TRACKCUSTCOL12 0		 # Main : _ : OVERRIDE DEFAULT : 
+KEY 0 43 _SWS_TRACKCUSTCOL13 0		 # Main : + : OVERRIDE DEFAULT : 
+KEY 17 49 _SWS_ITEMCUSTCOL1 0		 # Main : Alt+1 : OVERRIDE DEFAULT : 
+KEY 17 50 _SWS_ITEMCUSTCOL2 0		 # Main : Alt+2 : OVERRIDE DEFAULT : 
+KEY 17 51 _SWS_ITEMCUSTCOL3 0		 # Main : Alt+3 : OVERRIDE DEFAULT : 
+KEY 17 52 _SWS_ITEMCUSTCOL4 0		 # Main : Alt+4 : OVERRIDE DEFAULT : 
+KEY 17 53 _SWS_ITEMCUSTCOL5 0		 # Main : Alt+5 : OVERRIDE DEFAULT : 
+KEY 17 54 _SWS_ITEMCUSTCOL6 0		 # Main : Alt+6 : OVERRIDE DEFAULT : 
+KEY 17 55 _SWS_ITEMCUSTCOL7 0		 # Main : Alt+7 : OVERRIDE DEFAULT : 
+KEY 17 56 _SWS_ITEMCUSTCOL8 0		 # Main : Alt+8 : OVERRIDE DEFAULT : 
+KEY 17 57 _SWS_ITEMCUSTCOL9 0		 # Main : Alt+9 : OVERRIDE DEFAULT : 
+KEY 17 48 _SWS_ITEMCUSTCOL10 0		 # Main : Alt+0 : OVERRIDE DEFAULT : 
+KEY 16 96 _SWS_ITEMCUSTCOL11 0		 # Main : Alt+` : 
+KEY 16 45 _SWS_ITEMCUSTCOL12 0		 # Main : Alt+- : 
+KEY 16 61 _SWS_ITEMCUSTCOL13 0		 # Main : Alt+= : 

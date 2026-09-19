@@ -32,6 +32,7 @@
 <!-- ________Color Themes________ -->
   
   <category name="ColorThemes">
+    
     <reapack name="Default_7.0_Daniel.ReaperThemeZip" type="theme" desc="Default_7.0_Daniel.ReaperThemeZip">
      <version name="1.6" author="Daniel" time="2025-07">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Default_7.0_Daniel.ReaperThemeZip</source>
@@ -45,6 +46,7 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/MISC%20Data/Daniel_Splash%20Screen.jpg</source>
       </version>
     </reapack>
+    
   </category>
 
 <!-- ________Shortcuts________ -->
@@ -52,17 +54,29 @@
   <category name="Shortcuts">
     
     <reapack name="Daniel_Keyboard Shortcuts.ReaperKeyMap" type="data" desc="Daniel_Keyboard Shortcuts.ReaperKeyMap">
-     <version name="2.5" author="Daniel" time="2026-02">
+     <version name="2.6" author="Daniel" time="2026-02">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Keyboard%20Shortcuts.ReaperKeyMap</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Mouse Modifiers.ReaperMouseMap" type="data" desc="Daniel_Mouse Modifiers.ReaperMouseMap">
-     <version name="1.1" author="Daniel" time="2025-07">
+     <version name="1.1" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Mouse%20Modifiers.ReaperMouseMap</source>
       </version>
     </reapack>
     
+  </category>
+
+  <!-- ________Toolbars, Menus________ -->
+  
+  <category name="Toolbars">
+    
+    <reapack name="Daniel_Toolbars, Menus.ReaperMenuSet" type="data" desc="Daniel_Toolbars, Menus.ReaperMenuSet">
+     <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Toolbars,%20Menus.ReaperMenuSet</source>
+      </version>
+    </reapack>
+
   </category>
   
 <!-- ________Protools Scripts________ -->

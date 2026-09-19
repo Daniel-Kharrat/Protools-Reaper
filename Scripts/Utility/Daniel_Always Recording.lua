@@ -461,7 +461,7 @@ local _, _, sw, sh = reaper.my_getViewport(0, 0, 0, 0, 0, 0, 0, 0, 1)
 gfx.init("Daniel_Always Recording", w, h, 0, sw/2 - w/2, sh/2 - h/2)
 
 
-local DEFAULT_DOCK = 513
+local DEFAULT_DOCK = 769
 local saved_dock = tonumber(reaper.GetExtState(EXT_SECTION, "dockstate"))
 if saved_dock and saved_dock ~= 0 then
   gfx.dock(saved_dock)

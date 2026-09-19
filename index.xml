@@ -54,13 +54,13 @@
   <category name="Shortcuts">
     
     <reapack name="Daniel_Keyboard Shortcuts.ReaperKeyMap" type="data" desc="Daniel_Keyboard Shortcuts.ReaperKeyMap">
-     <version name="2.6" author="Daniel" time="2026-02">
+     <version name="2.7" author="Daniel" time="2026-02">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Keyboard%20Shortcuts.ReaperKeyMap</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Modified keyboard shortcuts only.ReaperKeyMap" type="data" desc="Daniel_Modified keyboard shortcuts only.ReaperKeyMap">
-     <version name="1.0" author="Daniel" time="2026-02">
+     <version name="1.1" author="Daniel" time="2026-02">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Modified%20keyboard%20shortcuts%20only.ReaperKeyMap</source>
       </version>
     </reapack>

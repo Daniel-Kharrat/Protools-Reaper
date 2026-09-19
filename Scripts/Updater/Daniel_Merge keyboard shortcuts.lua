@@ -14,6 +14,12 @@
 --     theirs is left alone.
 --   Any other line type in the shipped file is appended if not already there.
 --
+-- PREPARE-ONLY MODE: another script (Daniel_Update configuration.lua) can run this
+-- file with dofile() after setting the global DANIEL_KB_MERGE = {
+--   shipped_file = <keymap to merge in>, merged_file = <where to write the result> }.
+-- In that mode there is no dialog, no helper and no REAPER quit: it only writes
+-- the merged file and returns { ok = true/false, changed = ..., stats = ... }.
+--
 -- REAPER rewrites reaper-kb.ini from memory when it quits, so this script does
 -- NOT edit reaper-kb.ini directly. It writes the merged result to
 -- Data/reaper-kb.merged.ini, then quits REAPER. Its own helper
@@ -22,9 +28,13 @@
 
 local RESOURCE_PATH  = reaper.GetResourcePath()
 local DATA_FOLDER   = RESOURCE_PATH .. "/Data"
-local SHIPPED_FILE = DATA_FOLDER .. "/Daniel_Modified keyboard shortcuts only.ReaperKeyMap"
+local PREPARE = rawget(_G, "DANIEL_KB_MERGE") -- nil when run as a normal action
+
+local SHIPPED_FILE = (PREPARE and PREPARE.shipped_file) or
+    (DATA_FOLDER .. "/Daniel_Modified keyboard shortcuts only.ReaperKeyMap")
 local KB_FILE      = RESOURCE_PATH .. "/reaper-kb.ini"
-local MERGED_FILE  = DATA_FOLDER .. "/reaper-kb.merged.ini"
+local MERGED_FILE  = (PREPARE and PREPARE.merged_file) or
+    (DATA_FOLDER .. "/reaper-kb.merged.ini")
 local BACKUP_FILE  = DATA_FOLDER .. "/reaper-kb.original-backup.ini"
 
 local TITLE = "Keyboard Shortcuts"
@@ -265,6 +275,9 @@ end
 local shipped_text = read_file(SHIPPED_FILE)
 
 if not shipped_text then
+    if PREPARE then
+        return { ok = false, error = "Could not find " .. SHIPPED_FILE }
+    end
     message("Could not find:\n\n" .. SHIPPED_FILE)
     return
 end
@@ -273,6 +286,13 @@ end
 local kb_text = read_file(KB_FILE) or ""
 
 local merged_text, stats = merge(kb_text, shipped_text)
+
+if PREPARE then
+    if stats.changed and not write_file(MERGED_FILE, merged_text) then
+        return { ok = false, error = "Could not write " .. MERGED_FILE }
+    end
+    return { ok = true, changed = stats.changed, stats = stats }
+end
 
 if not stats.changed then
     message("Your keyboard shortcuts are already up to date.\n\nNothing was changed.")

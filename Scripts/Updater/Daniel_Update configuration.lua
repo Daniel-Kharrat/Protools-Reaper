@@ -15,9 +15,11 @@
 --
 -- Files are replaced as they are, EXCEPT:
 --   reaper.ini       merged key by key: yours replace theirs, everything else of
---                    theirs stays. Never touched: the audio setup ([audioconfig]),
---                    their toolbar toggle states, and the audio / MIDI device,
---                    window position and folder path keys listed below.
+--                    theirs stays. Never touched: the audio setup ([audioconfig])
+--                    and the audio / MIDI device, window position and folder path
+--                    keys listed below. Toolbar toggle states ([toolbar button
+--                    states]) keep their values, but any toggle line they don't
+--                    have yet is added as it is in the configuration.
 --                    A blank value in your file never overwrites theirs.
 --   reaper-kb.ini    replaced in a Full install; in "Merge keyboard shortcuts" it
 --                    is merged by Daniel_Merge keyboard shortcuts.lua instead.
@@ -36,7 +38,12 @@ local TITLE = "Update Configuration"
 -- reaper.ini: whole sections that are never touched
 local KEEP_SECTIONS = {
     ["audioconfig"] = true,             -- audio device, inputs/outputs, sample rate, buffer sizes
-    ["toolbar button states"] = true,   -- their own toolbar toggle states
+}
+
+-- reaper.ini: sections where their values are kept, but lines they don't have
+-- yet are added from the configuration (the toolbar button toggle states)
+local ADD_ONLY_SECTIONS = {
+    ["toolbar button states"] = true,
 }
 
 -- reaper.ini, section [reaper]: keys that stay theirs (Lua patterns)
@@ -127,6 +134,22 @@ local function file_exists(path)
     return false
 end
 
+-- Full path of a command-line tool. A program started from the Finder or Dock
+-- may not have the same PATH as Terminal, so on macOS and Linux look in the
+-- usual folders first and fall back to the bare name.
+local function tool(name)
+    if IS_WIN then
+        return name
+    end
+    for _, folder in ipairs({ "/usr/bin", "/bin", "/usr/local/bin", "/opt/homebrew/bin" }) do
+        local path = folder .. "/" .. name
+        if file_exists(path) then
+            return path
+        end
+    end
+    return name
+end
+
 local function copy_file(source, destination)
     local data = read_file(source)
     if not data then
@@ -143,14 +166,15 @@ local function trim(text)
     return (text:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
--- Runs a command line. Returns the exit code (or nil) and its output.
+-- Runs a command line. Returns the exit code (or nil), its output, and exactly
+-- what REAPER returned (for error messages).
 local function run(command, timeout_ms)
     local result = reaper.ExecProcess(command, timeout_ms or 60000)
     if not result then
-        return nil, ""
+        return nil, "", nil
     end
     local code, output = result:match("^(%-?%d+)\n?(.*)$")
-    return tonumber(code), output or ""
+    return tonumber(code), output or "", result
 end
 
 -- Deletes a staging or backup folder. Refuses any other path.
@@ -161,7 +185,7 @@ local function remove_dir(path)
     if IS_WIN then
         run("cmd.exe /c if exist " .. q(path) .. " rmdir /s /q " .. q(path), 60000)
     else
-        run("rm -rf " .. q(path), 60000)
+        run(tool("rm") .. " -rf " .. q(path), 60000)
     end
 end
 
@@ -241,7 +265,7 @@ end
 
 local function download(url, destination, max_seconds)
     os.remove(destination)
-    local command = "curl -f -s -S -L --connect-timeout 15 --max-time " .. max_seconds ..
+    local command = tool("curl") .. " -f -s -S -L --connect-timeout 15 --max-time " .. max_seconds ..
         " -o " .. q(destination) .. ' "' .. url .. '"'
     local code, output = run(command, (max_seconds + 15) * 1000)
     local data = read_file(destination)
@@ -257,15 +281,26 @@ local function sha256_of(path)
     if IS_WIN then
         command = "certutil -hashfile " .. q(path) .. " SHA256"
     elseif IS_MAC then
-        command = "shasum -a 256 " .. q(path)
+        command = tool("shasum") .. " -a 256 " .. q(path)
     else
-        command = "sha256sum " .. q(path)
+        command = tool("sha256sum") .. " " .. q(path)
     end
     local code, output = run(command, 120000)
     if code ~= 0 then
         return nil
     end
-    return (output:gsub("%s", ""):lower())
+
+    -- the hash as a single 64-character word, if the tool printed it that way
+    local hash = nil
+    for word in output:gmatch("%S+") do
+        if #word == 64 and word:match("^%x+$") then
+            hash = word:lower()
+            break
+        end
+    end
+
+    -- everything without whitespace (some tools print the hash in groups)
+    return (output:gsub("%s", ""):lower()), hash
 end
 
 
@@ -283,9 +318,9 @@ local function extract(zip_path, destination)
         }
     else
         attempts = {
-            "unzip -q -o " .. q(zip_path) .. " -d " .. q(destination),
-            "tar -xf " .. q(zip_path) .. " -C " .. q(destination),
-            "python3 -m zipfile -e " .. q(zip_path) .. " " .. q(destination),
+            tool("unzip") .. " -q -o " .. q(zip_path) .. " -d " .. q(destination),
+            tool("tar") .. " -xf " .. q(zip_path) .. " -C " .. q(destination),
+            tool("python3") .. " -m zipfile -e " .. q(zip_path) .. " " .. q(destination),
         }
     end
 
@@ -364,13 +399,14 @@ local function merge_ini(target_text, shipped_text)
     local new_sections = {}   -- sections the person doesn't have yet
     local new_by_name = {}
 
-    local section, skip = nil, false
+    local section, skip, add_only = nil, false, false
 
     for _, line in ipairs(shipped) do
         local name = line:match("^%[(.-)%]%s*$")
         if name then
             section = name
             skip = KEEP_SECTIONS[name] or false
+            add_only = ADD_ONLY_SECTIONS[name] or false
             if not skip and not sections[name] and not new_by_name[name] then
                 local entry = { name = name, lines = {} }
                 new_sections[#new_sections + 1] = entry
@@ -384,7 +420,9 @@ local function merge_ini(target_text, shipped_text)
                 elseif sections[section] then
                     local at = sections[section].keys[key]
                     if at then
-                        if target[at] ~= line then
+                        if add_only then
+                            stats.kept = stats.kept + 1    -- they already have this line
+                        elseif target[at] ~= line then
                             replace[at] = line
                             stats.replaced = stats.replaced + 1
                         end
@@ -465,9 +503,15 @@ local function main()
     -- Which version is the latest?
     ----------------------------------------------------
 
-    local code = run("curl --version", 15000)
-    if code ~= 0 then
-        return abort("The tool 'curl' was not found, so the update could not be downloaded.")
+    local curl = tool("curl")
+    local curl_code, _, curl_raw = run(curl .. " --version", 15000)
+    if curl_code == nil then
+        curl_code, _, curl_raw = run(curl .. " --version", 0)   -- retry without a time limit
+    end
+    if curl_code ~= 0 then
+        return abort("The tool 'curl' could not be run, so the update could not be downloaded.\n\n" ..
+            "Command: " .. curl .. " --version\n" ..
+            "REAPER returned: " .. tostring(curl_raw))
     end
 
     local pointer_path = STAGE .. "/" .. POINTER_FILE
@@ -544,12 +588,16 @@ local function main()
     end
 
     if expected_hash ~= "" then
-        local actual = sha256_of(zip_path)
+        local actual, actual_hash = sha256_of(zip_path)
         if not actual then
             return abort("Could not check the download's checksum, so nothing was changed.")
         end
         if not actual:find(expected_hash, 1, true) then
-            return abort("The downloaded file does not match its checksum, so nothing was changed.")
+            return abort("The downloaded file does not match its checksum, so nothing was changed.\n\n" ..
+                "File name:  " .. archive_name .. "\n" ..
+                "Expected:   " .. expected_hash .. "\n" ..
+                "Downloaded: " .. (actual_hash or "(could not be read)") .. "\n\n" ..
+                "Expected is line 2 of latest.txt. It must be the checksum of the exact file uploaded to GitHub.")
         end
     end
 

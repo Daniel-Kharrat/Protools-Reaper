@@ -59,6 +59,12 @@
       </version>
     </reapack>
 
+    <reapack name="Daniel_Modified keyboard shortcuts only.ReaperKeyMap" type="data" desc="Daniel_Modified keyboard shortcuts only.ReaperKeyMap">
+     <version name="1.0" author="Daniel" time="2026-02">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Modified%20keyboard%20shortcuts%20only.ReaperKeyMap</source>
+      </version>
+    </reapack>
+
     <reapack name="Daniel_Mouse Modifiers.ReaperMouseMap" type="data" desc="Daniel_Mouse Modifiers.ReaperMouseMap">
      <version name="1.1" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Mouse%20Modifiers.ReaperMouseMap</source>
@@ -644,6 +650,24 @@
     <reapack name="Daniel_Replace toolbar_icons.bat" type="script" desc="Daniel_Replace toolbar_icons.bat">
       <version name="1.0" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Replace%20toolbar_icons.bat</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Merge keyboard shortcuts.lua" type="script" desc="Daniel_Merge keyboard shortcuts.lua">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Merge%20keyboard%20shortcuts.lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Merge_keyboard_shortcuts.sh" type="script" desc="Daniel_Merge_keyboard_shortcuts.sh">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Merge_keyboard_shortcuts.sh</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Merge_keyboard_shortcuts.bat" type="script" desc="Daniel_Merge_keyboard_shortcuts.bat">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Merge_keyboard_shortcuts.bat</source>
       </version>
     </reapack>
     

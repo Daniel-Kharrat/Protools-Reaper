@@ -624,20 +624,8 @@
     </reapack>
 
     <reapack name="Daniel_Merge keyboard shortcuts.lua" type="script" desc="Daniel_Merge keyboard shortcuts.lua">
-      <version name="1.2" author="Daniel" time="2026-09">
+      <version name="1.3" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Merge%20keyboard%20shortcuts.lua</source>
-      </version>
-    </reapack>
-
-    <reapack name="Daniel_Merge_keyboard_shortcuts.sh" type="script" desc="Daniel_Merge_keyboard_shortcuts.sh">
-      <version name="1.1" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Merge_keyboard_shortcuts.sh</source>
-      </version>
-    </reapack>
-
-    <reapack name="Daniel_Merge_keyboard_shortcuts.bat" type="script" desc="Daniel_Merge_keyboard_shortcuts.bat">
-      <version name="1.1" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Merge_keyboard_shortcuts.bat</source>
       </version>
     </reapack>
 

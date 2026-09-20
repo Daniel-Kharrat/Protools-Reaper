@@ -2,12 +2,18 @@
 setlocal EnableExtensions EnableDelayedExpansion
 
 REM ============================================================
-REM REAPER File Restore Helper
+REM REAPER Restore Helper
 REM
 REM Windows
 REM
-REM Argument:
+REM Arguments:
 REM   %1 = REAPER Resource Path
+REM   %2 = REAPER executable (used if it cannot be detected)
+REM
+REM Waits for REAPER to close, copies the files prepared by
+REM Daniel_Restore personal settings.lua
+REM (Data\Daniel Kharrat\Restore\files) into the resource
+REM folder, then relaunches REAPER.
 REM ============================================================
 
 REM ============================================================
@@ -25,19 +31,17 @@ REM ============================================================
 REM PATHS
 REM ============================================================
 
-set "PERSONAL_SETTINGS=%RESOURCE_PATH%\Personal Settings"
+set "DATA_FOLDER=%RESOURCE_PATH%\Data"
+set "DAN_FOLDER=%DATA_FOLDER%\Daniel Kharrat"
 
-set "SWS_SOURCE=%PERSONAL_SETTINGS%\sws-autocoloricon.ini"
-set "SWS_TARGET=%RESOURCE_PATH%\sws-autocoloricon.ini"
+set "STAGE=%DAN_FOLDER%\Restore"
+set "STAGED_FILES=%STAGE%\files"
 
-set "SCREENSETS_SOURCE=%PERSONAL_SETTINGS%\reaper-screensets.ini"
-set "SCREENSETS_TARGET=%RESOURCE_PATH%\reaper-screensets.ini"
+set "FAILED=0"
 
-set "REAPACK_SOURCE=%PERSONAL_SETTINGS%\reapack.ini"
-set "REAPACK_TARGET=%RESOURCE_PATH%\reapack.ini"
-
-set "HWOUTFX_SOURCE=%PERSONAL_SETTINGS%\reaper-hwoutfx.ini"
-set "HWOUTFX_TARGET=%RESOURCE_PATH%\reaper-hwoutfx.ini"
+REM The REAPER executable as passed by the Lua script (used if it cannot
+REM be detected)
+set "REAPER_EXE_ARG=%~2"
 
 REM ============================================================
 REM DETERMINE REAPER PROCESS
@@ -58,8 +62,13 @@ goto :FOUND_REAPER
 :FOUND_REAPER
 
 if "%REAPER_PID%"=="" (
+echo REAPER process not found - it has probably already closed.
+set "REAPER_EXECUTABLE=%REAPER_EXE_ARG%"
+if "!REAPER_EXECUTABLE!"=="" (
 echo ERROR: Could not find the running REAPER process.
 exit /b 1
+)
+goto :REAPER_CLOSED
 )
 
 echo REAPER process found.
@@ -72,6 +81,8 @@ REM ============================================================
 for /f "usebackq delims=" %%A in (`powershell -NoProfile -Command "(Get-Process -Id %REAPER_PID% -ErrorAction SilentlyContinue).Path"`) do (
 set "REAPER_EXECUTABLE=%%A"
 )
+
+if "%REAPER_EXECUTABLE%"=="" set "REAPER_EXECUTABLE=%REAPER_EXE_ARG%"
 
 if "%REAPER_EXECUTABLE%"=="" (
 echo ERROR: Could not determine the REAPER executable.
@@ -96,91 +107,40 @@ timeout /t 1 /nobreak >nul
 goto :WAIT_FOR_REAPER
 )
 
+:REAPER_CLOSED
+
 echo REAPER has completely closed.
 
 REM ============================================================
-REM RESTORE SWS AUTO COLOR / ICON
+REM RESTORE THE FILES
 REM ============================================================
 
-if exist "%SWS_SOURCE%" (
+if not exist "%STAGED_FILES%" (
 echo.
-echo Restoring sws-autocoloricon.ini...
-
-copy /Y "%SWS_SOURCE%" "%SWS_TARGET%" >nul
-
-if errorlevel 1 (
-echo ERROR: Failed to restore sws-autocoloricon.ini.
-exit /b 1
+echo Nothing to restore - the prepared files were not found.
+goto :AFTER_RESTORE
 )
 
-echo SWS auto color restored successfully.
+echo.
+echo Restoring files...
+
+robocopy "%STAGED_FILES%" "%RESOURCE_PATH%" /E /NFL /NDL /NJH /NJS /NP >nul
+
+if errorlevel 8 (
+echo ERROR: Failed to restore the files.
+set "FAILED=1"
+) else (
+echo Files restored successfully.
+)
+
+if "%FAILED%"=="0" (
+rmdir /s /q "%STAGE%"
 ) else (
 echo.
-echo sws-autocoloricon.ini not found - skipping.
+echo Some files could not be restored. The prepared files were kept in the Data\Daniel Kharrat\Restore folder.
 )
 
-REM ============================================================
-REM RESTORE REAPER SCREENSETS
-REM ============================================================
-
-if exist "%SCREENSETS_SOURCE%" (
-echo.
-echo Restoring reaper-screensets.ini...
-
-copy /Y "%SCREENSETS_SOURCE%" "%SCREENSETS_TARGET%" >nul
-
-if errorlevel 1 (
-echo ERROR: Failed to restore reaper-screensets.ini.
-exit /b 1
-)
-
-echo REAPER screensets restored successfully.
-) else (
-echo.
-echo reaper-screensets.ini not found - skipping.
-)
-
-REM ============================================================
-REM RESTORE REAPACK
-REM ============================================================
-
-if exist "%REAPACK_SOURCE%" (
-echo.
-echo Restoring reapack.ini...
-
-copy /Y "%REAPACK_SOURCE%" "%REAPACK_TARGET%" >nul
-
-if errorlevel 1 (
-echo ERROR: Failed to restore reapack.ini.
-exit /b 1
-)
-
-echo ReaPack configuration restored successfully.
-) else (
-echo.
-echo reapack.ini not found - skipping.
-)
-
-REM ============================================================
-REM RESTORE REAPER HARDWARE OUTPUT FX
-REM ============================================================
-
-if exist "%HWOUTFX_SOURCE%" (
-echo.
-echo Restoring reaper-hwoutfx.ini...
-
-copy /Y "%HWOUTFX_SOURCE%" "%HWOUTFX_TARGET%" >nul
-
-if errorlevel 1 (
-echo ERROR: Failed to restore reaper-hwoutfx.ini.
-exit /b 1
-)
-
-echo REAPER hardware output FX restored successfully.
-) else (
-echo.
-echo reaper-hwoutfx.ini not found - skipping.
-)
+:AFTER_RESTORE
 
 REM ============================================================
 REM RELAUNCH REAPER
@@ -197,7 +157,11 @@ REM ============================================================
 
 echo.
 echo ============================================
-echo REAPER file restore completed successfully.
+if "%FAILED%"=="0" (
+echo REAPER restore completed.
+) else (
+echo REAPER restore finished with errors.
+)
 echo ============================================
 
 exit /b 0

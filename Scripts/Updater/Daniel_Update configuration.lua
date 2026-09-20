@@ -601,7 +601,7 @@ end
 ------------------------------------------------------------
 
 local function show_dialog(info, on_ok, on_cancel)
-    local WIN_W, WIN_H = 580, 680
+    local WIN_W, WIN_H = 580, 700
     local mode = "merge"
     local SHORTCUT_OPTIONS = {
         { id = "merge",
@@ -654,10 +654,14 @@ local function show_dialog(info, on_ok, on_cancel)
         on_cancel()
         return
     end
-    scale = gfx.ext_retina or 1
-    if scale < 1 then
-        scale = 1
-    end
+
+    -- Sizes are worked out from the window that was actually created, not from
+    -- what was asked for: with screen scaling (Windows, macOS Retina) the window
+    -- can have a different number of pixels than WIN_W x WIN_H.
+    --   base_scale = actual pixels per requested pixel (set on the first frame)
+    --   zoom       = extra shrink factor, used only when the text would not fit
+    local base_scale, zoom = 1, 1
+    local design_w, design_h = nil, nil
 
     local function set_font(bold)
         gfx.setfont(bold and 2 or 1, "Arial", math.floor(15 * scale), bold and string.byte("b") or 0)
@@ -723,10 +727,11 @@ local function show_dialog(info, on_ok, on_cancel)
     end
 
     local function draw()
+        -- The layout is calculated for the window's original size (design_w x
+        -- design_h), not its current size, so resizing the window can never move
+        -- the text or the buttons.
+        scale = base_scale * zoom
         local margin = math.floor(24 * scale)
-        -- The layout is calculated for the window's original size, not its current
-        -- size, so resizing the window can never move the text or the buttons.
-        local design_w, design_h = WIN_W * scale, WIN_H * scale
         local text_w = design_w - margin * 2
         local cy = margin
 
@@ -815,6 +820,15 @@ local function show_dialog(info, on_ok, on_cancel)
         rects.cancel = { x = rects.ok.x - math.floor(12 * scale) - btn_w, y = btn_y, w = btn_w, h = btn_h }
         draw_button(rects.cancel, "Cancel", false)
         draw_button(rects.ok, "OK", true)
+
+        -- If the text and buttons need more height than the window has, shrink
+        -- everything a little and let the loop draw it again, so nothing is cropped.
+        local needed = cy + math.floor(18 * scale) + btn_h + margin
+        if needed > design_h + 1 and zoom > 0.55 then
+            zoom = math.max(0.55, zoom * design_h / needed)
+            return true
+        end
+        return false
     end
 
     local function which_target()
@@ -831,7 +845,26 @@ local function show_dialog(info, on_ok, on_cancel)
             return
         end
 
-        draw()
+        if not design_w then
+            -- wait until the window reports its real size
+            if gfx.w < 100 then
+                if gfx.getchar() < 0 then
+                    finish(false)
+                    return
+                end
+                gfx.update()
+                reaper.defer(loop)
+                return
+            end
+            design_w, design_h = gfx.w, gfx.h
+            base_scale = gfx.w / WIN_W
+        end
+
+        for _ = 1, 4 do
+            if not draw() then
+                break
+            end
+        end
 
         -- mouse: act when the button is released over the thing it was pressed on
         local down = (gfx.mouse_cap & 1) == 1

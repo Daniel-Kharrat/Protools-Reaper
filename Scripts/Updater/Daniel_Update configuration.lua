@@ -4,7 +4,8 @@
 --
 --   1. Downloads Configurations/latest.txt from GitHub. Line 1 names the newest
 --      .ReaperConfigZip; an optional line 2 holds its SHA-256.
---   2. Asks: Full install (replace everything) or Merge keyboard shortcuts.
+--   2. Asks (OK / Cancel) what to do with the keyboard shortcuts: replace all of
+--      them, merge mine into theirs (the default), or leave them alone entirely.
 --   3. Downloads and unpacks the archive into Data/Daniel_Update (staging).
 --   4. Prepares merged files, backs up everything that will change, and quits REAPER.
 --   5. Daniel_Update_configuration.bat / .sh waits for REAPER to close, copies the
@@ -56,6 +57,14 @@ local KEEP_IF_CONFIGURED = {
     "sws-autocoloricon.ini",
     "S&M.ini",
     "reapack.ini",
+}
+
+-- How each of those files is described in the dialog
+local KEEP_LABELS = {
+    ["reaper-screensets.ini"] = "screen sets",
+    ["sws-autocoloricon.ini"] = "SWS auto colors",
+    ["S&M.ini"]               = "S&M settings",
+    ["reapack.ini"]           = "ReaPack repositories",
 }
 
 -- reaper.ini: sections where their values are kept, but lines they don't have
@@ -581,6 +590,294 @@ end
 
 
 ------------------------------------------------------------
+-- Dialog
+--
+-- Uses REAPER's built-in gfx window, so nothing extra has to be installed.
+-- Three radio buttons for the keyboard shortcuts (reaper-kb.ini):
+--   merge = merge keyboard shortcuts (default), replace = full install,
+--   skip    = don't import reaper-kb.ini at all.
+-- OK proceeds, Cancel (or Esc, or closing the window) does nothing.
+-- Enter = OK, Up/Down arrows = change the choice.
+------------------------------------------------------------
+
+local function show_dialog(info, on_ok, on_cancel)
+    local WIN_W, WIN_H = 580, 680
+    local mode = "merge"
+    local SHORTCUT_OPTIONS = {
+        { id = "merge",
+          label = "Merge with my keyboard shortcuts",
+          text  = "Everything from this configuration is applied. If you changed any of my shortcuts, they go back to my settings. Shortcuts, scripts and actions that are not part of this configuration, such as ones you added yourself, stay untouched." },
+        { id = "replace",
+          label = "Replace all my keyboard shortcuts and actions",
+          text  = "Your current shortcuts and action list are swapped for the ones in this configuration. Any shortcuts you added yourself will be gone." },
+        { id = "skip",
+          label = "Don't touch my keyboard shortcuts",
+          text  = "Keyboard shortcuts and actions are not imported at all. Yours stay exactly as they are." },
+    }
+    local decided = false
+    local scale = 1
+    local mouse_was_down = false
+    local press_target = nil
+    local rects = {}
+
+    local function finish(accepted)
+        if decided then
+            return
+        end
+        decided = true
+        gfx.quit()
+        if accepted then
+            on_ok(mode)   -- "replace", "merge" or "skip"
+        else
+            on_cancel()
+        end
+    end
+
+    -- if REAPER is closed while the dialog is open, clean up the staging folder
+    reaper.atexit(function()
+        if not decided then
+            remove_dir(STAGE)
+        end
+    end)
+
+    -- centre the window on the screen the mouse is on
+    local mx, my = reaper.GetMousePosition()
+    local l, t, r, b = reaper.my_getViewport(mx, my, mx, my, mx, my, mx, my, true)
+    local left, right = math.min(l, r), math.max(l, r)
+    local top, bottom = math.min(t, b), math.max(t, b)
+    local x = left + math.floor((right - left - WIN_W) / 2)
+    local y = top + math.floor((bottom - top - WIN_H) / 2)
+
+    gfx.ext_retina = 1
+    if gfx.init(TITLE, WIN_W, WIN_H, 0, x, y) == 0 then
+        message("Could not open the dialog window.")
+        on_cancel()
+        return
+    end
+    scale = gfx.ext_retina or 1
+    if scale < 1 then
+        scale = 1
+    end
+
+    local function set_font(bold)
+        gfx.setfont(bold and 2 or 1, "Arial", math.floor(15 * scale), bold and string.byte("b") or 0)
+    end
+
+    local function color(red, green, blue)
+        gfx.set(red, green, blue, 1)
+    end
+
+    local function wrap(text, max_w)
+        local lines = {}
+        for paragraph in (text .. "\n"):gmatch("(.-)\n") do
+            if paragraph == "" then
+                lines[#lines + 1] = ""
+            else
+                local line = ""
+                for word in paragraph:gmatch("%S+") do
+                    local candidate = (line == "") and word or (line .. " " .. word)
+                    if line ~= "" and gfx.measurestr(candidate) > max_w then
+                        lines[#lines + 1] = line
+                        line = word
+                    else
+                        line = candidate
+                    end
+                end
+                lines[#lines + 1] = line
+            end
+        end
+        return lines
+    end
+
+    -- draws wrapped text, returns the y below it and the number of lines
+    local function draw_text(text, tx, ty, max_w, bold)
+        set_font(bold)
+        local line_h = math.floor(21 * scale)
+        local lines = wrap(text, max_w)
+        for _, line in ipairs(lines) do
+            gfx.x, gfx.y = tx, ty
+            gfx.drawstr(line)
+            ty = ty + line_h
+        end
+        return ty
+    end
+
+    local function inside(rect, px, py)
+        return rect and px >= rect.x and px <= rect.x + rect.w and py >= rect.y and py <= rect.y + rect.h
+    end
+
+    local function draw_button(rect, label, primary)
+        local hover = inside(rect, gfx.mouse_x, gfx.mouse_y)
+        if primary then
+            if hover then color(0.30, 0.60, 0.95) else color(0.22, 0.50, 0.85) end
+        else
+            if hover then color(0.40, 0.40, 0.42) else color(0.32, 0.32, 0.34) end
+        end
+        gfx.rect(rect.x, rect.y, rect.w, rect.h, 1)
+        color(1, 1, 1)
+        set_font(primary)
+        local tw, th = gfx.measurestr(label)
+        gfx.x = rect.x + math.floor((rect.w - tw) / 2)
+        gfx.y = rect.y + math.floor((rect.h - th) / 2)
+        gfx.drawstr(label)
+    end
+
+    local function draw()
+        local margin = math.floor(24 * scale)
+        -- The layout is calculated for the window's original size, not its current
+        -- size, so resizing the window can never move the text or the buttons.
+        local design_w, design_h = WIN_W * scale, WIN_H * scale
+        local text_w = design_w - margin * 2
+        local cy = margin
+
+        color(0.16, 0.16, 0.17)
+        gfx.rect(0, 0, gfx.w, gfx.h, 1)
+
+        -- versions
+        if info.same_version then
+            color(0.55, 0.80, 1.0)
+            cy = draw_text("You already have this version.", margin, cy, text_w, true)
+            cy = cy + math.floor(8 * scale)
+        end
+        color(0.90, 0.90, 0.90)
+        cy = draw_text("Latest configuration: v" .. info.latest, margin, cy, text_w)
+        cy = draw_text("Installed: " .. (info.installed and ("v" .. info.installed) or "not recorded"),
+            margin, cy, text_w)
+        cy = cy + math.floor(18 * scale)
+
+        -- keyboard shortcuts choice (radio buttons)
+        color(0.90, 0.90, 0.90)
+        cy = draw_text("Keyboard shortcuts and actions:", margin, cy, text_w, true)
+        cy = cy + math.floor(6 * scale)
+
+        local dot = math.floor(20 * scale)
+        local gap = math.floor(10 * scale)
+        local line_h = math.floor(21 * scale)
+        local label_x = margin + dot + gap
+        local label_w = design_w - label_x - margin
+
+        for _, option in ipairs(SHORTCUT_OPTIONS) do
+            local row_top = cy
+            local center_x = margin + dot / 2
+            local center_y = row_top + line_h / 2
+            local radius = dot / 2 - 1
+            if mode == option.id then
+                color(0.22, 0.50, 0.85)
+                gfx.circle(center_x, center_y, radius, 1, 1)
+                color(1, 1, 1)
+                gfx.circle(center_x, center_y, radius * 0.4, 1, 1)
+            else
+                color(0.10, 0.10, 0.11)
+                gfx.circle(center_x, center_y, radius, 1, 1)
+                color(0.55, 0.55, 0.57)
+                gfx.circle(center_x, center_y, radius, 0, 1)
+            end
+            color(0.95, 0.95, 0.95)
+            cy = draw_text(option.label, label_x, row_top, label_w, true)
+            color(0.70, 0.70, 0.72)
+            cy = draw_text(option.text, label_x, cy + math.floor(2 * scale), label_w)
+            rects[option.id] = { x = margin, y = row_top, w = design_w - margin * 2, h = cy - row_top }
+            cy = cy + math.floor(12 * scale)
+        end
+
+        -- where the backup is. reaper-kb.ini (keyboard shortcuts) is only touched when
+        -- the choice is not "skip"; the mouse modifiers are backed up in every case.
+        color(0.62, 0.80, 0.65)
+        cy = draw_text("Don't worry: before anything changes, your current " ..
+            ((mode == "skip") and "mouse modifiers are" or "keyboard shortcuts and mouse modifiers are") ..
+            " backed up in the Data folder of your REAPER resource folder: Data/Daniel_Update_Backup",
+            margin, cy, text_w)
+        cy = cy + math.floor(18 * scale)
+
+        -- notes
+        color(0.62, 0.62, 0.65)
+        cy = draw_text("Settings in your own reaper.ini that are not part of the configuration are kept, " ..
+            "such as machine-specific settings and some personal preferences.",
+            margin, cy, text_w)
+        if info.configured then
+            local names = {}
+            for _, name in ipairs(KEEP_IF_CONFIGURED) do
+                names[#names + 1] = KEEP_LABELS[name] or name
+            end
+            local list = "These will not be replaced: " .. table.concat(names, ", ") .. "."
+            cy = cy + math.floor(6 * scale)
+            cy = draw_text(list, margin, cy, text_w)
+        else
+            cy = draw_text("First installation: all files are copied.", margin, cy, text_w)
+        end
+        cy = cy + math.floor(6 * scale)
+        cy = draw_text("REAPER will close and restart to apply the update.", margin, cy, text_w)
+
+        -- buttons
+        local btn_w, btn_h = math.floor(110 * scale), math.floor(34 * scale)
+        local btn_y = math.floor(design_h - margin - btn_h)
+        rects.ok = { x = math.floor(design_w - margin - btn_w), y = btn_y, w = btn_w, h = btn_h }
+        rects.cancel = { x = rects.ok.x - math.floor(12 * scale) - btn_w, y = btn_y, w = btn_w, h = btn_h }
+        draw_button(rects.cancel, "Cancel", false)
+        draw_button(rects.ok, "OK", true)
+    end
+
+    local function which_target()
+        for _, name in ipairs({ "ok", "cancel", "replace", "merge", "skip" }) do
+            if inside(rects[name], gfx.mouse_x, gfx.mouse_y) then
+                return name
+            end
+        end
+        return nil
+    end
+
+    local function loop()
+        if decided then
+            return
+        end
+
+        draw()
+
+        -- mouse: act when the button is released over the thing it was pressed on
+        local down = (gfx.mouse_cap & 1) == 1
+        if down and not mouse_was_down then
+            press_target = which_target()
+        elseif not down and mouse_was_down then
+            local target = which_target()
+            if target and target == press_target then
+                if target == "replace" or target == "merge" or target == "skip" then
+                    mode = target
+                elseif target == "ok" then
+                    finish(true)
+                    return
+                elseif target == "cancel" then
+                    finish(false)
+                    return
+                end
+            end
+            press_target = nil
+        end
+        mouse_was_down = down
+
+        -- keyboard
+        local key = gfx.getchar()
+        if key < 0 or key == 27 then          -- window closed, or Esc
+            finish(false)
+            return
+        elseif key == 13 then                 -- Enter
+            finish(true)
+            return
+        elseif key == 30064 or key == 1685026670 then   -- Up / Down arrow
+            local order = { merge = 1, replace = 2, skip = 3 }
+            local names = { "merge", "replace", "skip" }
+            local step = (key == 30064) and -1 or 1
+            mode = names[math.max(1, math.min(3, order[mode] + step))]
+        end
+
+        gfx.update()
+        reaper.defer(loop)
+    end
+
+    loop()
+end
+
+
+------------------------------------------------------------
 -- Main
 ------------------------------------------------------------
 
@@ -655,179 +952,188 @@ local function main()
     local configured = (installed ~= nil) or repository_in_reapack()
 
     ----------------------------------------------------
-    -- Ask
+    -- Everything after the question. It runs when the person presses OK.
+    -- mode is "replace" (full install), "merge" (merge keyboard shortcuts)
+    -- or "skip" (reaper-kb.ini is not imported at all).
     ----------------------------------------------------
 
-    local text = ""
-    if installed and compare_versions(installed, latest) == 0 then
-        text = "You already have this version.\n\n"
-    end
+    local function apply(mode)
+        local merge_shortcuts = (mode == "merge")
+        local skip_shortcuts  = (mode == "skip")
 
-    text = text ..
-        "Latest configuration: v" .. latest .. "\n" ..
-        "Installed: " .. (installed and ("v" .. installed) or "not recorded") .. "\n\n" ..
+        ----------------------------------------------------
+        -- Download, verify, unpack
+        ----------------------------------------------------
 
-        "YES = Full install\n" ..
-        "Replaces everything, including your keyboard shortcuts and action list.\n\n" ..
-
-        "NO = Merge keyboard shortcuts\n" ..
-        "Replaces everything else. Your own shortcuts and scripts stay, and mine are merged in.\n\n" ..
-
-        "CANCEL = Do nothing\n\n" ..
-
-        "Settings in your own reaper.ini that are not part of the configuration are kept.\n" ..
-        (configured
-            and "Existing configuration found: your screen sets, SWS auto colors, S&M settings and ReaPack repositories are kept.\n"
-            or  "First installation: all files are copied.\n") ..
-        "REAPER will close and restart to apply the update."
-
-    local answer = reaper.ShowMessageBox(text, TITLE, 3)
-    if answer ~= 6 and answer ~= 7 then
-        remove_dir(STAGE)
-        return
-    end
-    local merge_shortcuts = (answer == 7)
-
-    ----------------------------------------------------
-    -- Download, verify, unpack
-    ----------------------------------------------------
-
-    local zip_path = STAGE .. "/config.zip"
-    local archive_url = BASE_URL .. archive_name:gsub(" ", "%%20")
-    ok, err = download(archive_url, zip_path, 180)
-    if not ok then
-        return abort("Could not download the configuration:\n\n" ..
-            archive_url .. "\n\n" .. (err or ""))
-    end
-
-    if expected_hash ~= "" then
-        local actual, actual_hash = sha256_of(zip_path)
-        if not actual then
-            return abort("Could not check the download's checksum, so nothing was changed.")
+        local zip_path = STAGE .. "/config.zip"
+        local archive_url = BASE_URL .. archive_name:gsub(" ", "%%20")
+        ok, err = download(archive_url, zip_path, 180)
+        if not ok then
+            return abort("Could not download the configuration:\n\n" ..
+                archive_url .. "\n\n" .. (err or ""))
         end
-        if not actual:find(expected_hash, 1, true) then
-            return abort("The downloaded file does not match its checksum, so nothing was changed.\n\n" ..
-                "File name:  " .. archive_name .. "\n" ..
-                "Expected:   " .. expected_hash .. "\n" ..
-                "Downloaded: " .. (actual_hash or "(could not be read)") .. "\n\n" ..
-                "Expected is line 2 of latest.txt. It must be the checksum of the exact file uploaded to GitHub.")
-        end
-    end
 
-    if not extract(zip_path, EXTRACTED) then
-        return abort("Could not unpack the downloaded configuration.")
-    end
-    os.remove(zip_path)
-
-    local files = list_files(EXTRACTED)
-    if #files == 0 then
-        return abort("The downloaded configuration is empty.")
-    end
-
-    ----------------------------------------------------
-    -- Existing configuration: leave their own copies of some files alone
-    ----------------------------------------------------
-
-    if configured then
-        local leave = {}
-        for _, name in ipairs(KEEP_IF_CONFIGURED) do
-            leave[name] = true
-            os.remove(EXTRACTED .. "/" .. name)
-        end
-        local remaining = {}
-        for _, rel in ipairs(files) do
-            if not leave[rel] then
-                remaining[#remaining + 1] = rel
+        if expected_hash ~= "" then
+            local actual, actual_hash = sha256_of(zip_path)
+            if not actual then
+                return abort("Could not check the download's checksum, so nothing was changed.")
+            end
+            if not actual:find(expected_hash, 1, true) then
+                return abort("The downloaded file does not match its checksum, so nothing was changed.\n\n" ..
+                    "File name:  " .. archive_name .. "\n" ..
+                    "Expected:   " .. expected_hash .. "\n" ..
+                    "Downloaded: " .. (actual_hash or "(could not be read)") .. "\n\n" ..
+                    "Expected is line 2 of latest.txt. It must be the checksum of the exact file uploaded to GitHub.")
             end
         end
-        files = remaining
-    end
 
-    ----------------------------------------------------
-    -- Back up everything that is about to change
-    ----------------------------------------------------
+        if not extract(zip_path, EXTRACTED) then
+            return abort("Could not unpack the downloaded configuration.")
+        end
+        os.remove(zip_path)
 
-    remove_dir(BACKUP)
-    for _, rel in ipairs(files) do
-        if rel ~= "reaper-configzip-info" then
-            local current = RESOURCE_PATH .. "/" .. rel
-            if file_exists(current) then
-                if not copy_file(current, BACKUP .. "/" .. rel) then
-                    return abort("Could not back up:\n\n" .. current)
+        local files = list_files(EXTRACTED)
+        if #files == 0 then
+            return abort("The downloaded configuration is empty.")
+        end
+
+        -- "Don't touch my keyboard shortcuts": reaper-kb.ini is dropped, so it is
+        -- neither backed up nor copied
+        if skip_shortcuts then
+            os.remove(EXTRACTED .. "/reaper-kb.ini")
+            local kept = {}
+            for _, rel in ipairs(files) do
+                if rel ~= "reaper-kb.ini" then
+                    kept[#kept + 1] = rel
+                end
+            end
+            files = kept
+        end
+
+        ----------------------------------------------------
+        -- Existing configuration: leave their own copies of some files alone
+        ----------------------------------------------------
+
+        if configured then
+            local leave = {}
+            for _, name in ipairs(KEEP_IF_CONFIGURED) do
+                leave[name] = true
+                os.remove(EXTRACTED .. "/" .. name)
+            end
+            local remaining = {}
+            for _, rel in ipairs(files) do
+                if not leave[rel] then
+                    remaining[#remaining + 1] = rel
+                end
+            end
+            files = remaining
+        end
+
+        ----------------------------------------------------
+        -- Back up everything that is about to change
+        ----------------------------------------------------
+
+        remove_dir(BACKUP)
+        for _, rel in ipairs(files) do
+            if rel ~= "reaper-configzip-info" then
+                local current = RESOURCE_PATH .. "/" .. rel
+                if file_exists(current) then
+                    if not copy_file(current, BACKUP .. "/" .. rel) then
+                        return abort("Could not back up:\n\n" .. current)
+                    end
                 end
             end
         end
-    end
 
-    ----------------------------------------------------
-    -- Prepare the files that are merged instead of replaced
-    ----------------------------------------------------
+        ----------------------------------------------------
+        -- Prepare the files that are merged instead of replaced
+        ----------------------------------------------------
 
-    os.remove(EXTRACTED .. "/reaper-configzip-info")
+        os.remove(EXTRACTED .. "/reaper-configzip-info")
 
-    local shipped_ini = read_file(EXTRACTED .. "/reaper.ini")
-    if shipped_ini then
-        local current_ini = read_file(RESOURCE_PATH .. "/reaper.ini") or ""
-        local merged_ini = merge_ini(current_ini, shipped_ini)
-        if not write_file(STAGE .. "/reaper.ini.merged", merged_ini) then
-            return abort("Could not write:\n\n" .. STAGE .. "/reaper.ini.merged")
+        local shipped_ini = read_file(EXTRACTED .. "/reaper.ini")
+        if shipped_ini then
+            local current_ini = read_file(RESOURCE_PATH .. "/reaper.ini") or ""
+            local merged_ini = merge_ini(current_ini, shipped_ini)
+            if not write_file(STAGE .. "/reaper.ini.merged", merged_ini) then
+                return abort("Could not write:\n\n" .. STAGE .. "/reaper.ini.merged")
+            end
+            os.remove(EXTRACTED .. "/reaper.ini")
         end
-        os.remove(EXTRACTED .. "/reaper.ini")
-    end
 
-    local shipped_theme = read_file(EXTRACTED .. "/" .. THEMECONFIG_FILE)
-    if shipped_theme then
-        local current_theme = read_file(RESOURCE_PATH .. "/" .. THEMECONFIG_FILE) or ""
-        local merged_theme = merge_sections(current_theme, shipped_theme)
-        -- written back into the extracted folder, so the helper copies it as a normal file
-        if not write_file(EXTRACTED .. "/" .. THEMECONFIG_FILE, merged_theme) then
-            return abort("Could not write:\n\n" .. EXTRACTED .. "/" .. THEMECONFIG_FILE)
+        local shipped_theme = read_file(EXTRACTED .. "/" .. THEMECONFIG_FILE)
+        if shipped_theme then
+            local current_theme = read_file(RESOURCE_PATH .. "/" .. THEMECONFIG_FILE) or ""
+            local merged_theme = merge_sections(current_theme, shipped_theme)
+            -- written back into the extracted folder, so the helper copies it as a normal file
+            if not write_file(EXTRACTED .. "/" .. THEMECONFIG_FILE, merged_theme) then
+                return abort("Could not write:\n\n" .. EXTRACTED .. "/" .. THEMECONFIG_FILE)
+            end
         end
-    end
     
-    if merge_shortcuts and file_exists(EXTRACTED .. "/reaper-kb.ini") then
-        if not file_exists(MERGE_SCRIPT) then
-            return abort("Could not find the keyboard shortcuts merge script:\n\n" .. MERGE_SCRIPT)
+        if merge_shortcuts and file_exists(EXTRACTED .. "/reaper-kb.ini") then
+            if not file_exists(MERGE_SCRIPT) then
+                return abort("Could not find the keyboard shortcuts merge script:\n\n" .. MERGE_SCRIPT)
+            end
+
+            _G.DANIEL_KB_MERGE = {
+                shipped_file = EXTRACTED .. "/reaper-kb.ini",
+                merged_file  = STAGE .. "/reaper-kb.merged.ini",
+            }
+            local called, result = pcall(dofile, MERGE_SCRIPT)
+            _G.DANIEL_KB_MERGE = nil
+
+            if not called or type(result) ~= "table" or not result.ok then
+                return abort("The keyboard shortcuts could not be merged:\n\n" ..
+                    tostring(called and result and result.error or result))
+            end
+            os.remove(EXTRACTED .. "/reaper-kb.ini")
         end
 
-        _G.DANIEL_KB_MERGE = {
-            shipped_file = EXTRACTED .. "/reaper-kb.ini",
-            merged_file  = STAGE .. "/reaper-kb.merged.ini",
-        }
-        local called, result = pcall(dofile, MERGE_SCRIPT)
-        _G.DANIEL_KB_MERGE = nil
+        write_file(STAGE .. "/applied_version.txt", latest .. "\n")
 
-        if not called or type(result) ~= "table" or not result.ok then
-            return abort("The keyboard shortcuts could not be merged:\n\n" ..
-                tostring(called and result and result.error or result))
+        ----------------------------------------------------
+        -- Launch the helper and quit REAPER
+        ----------------------------------------------------
+
+        local command
+        if IS_WIN then
+            command = 'start "" /min cmd /c ""' ..
+                native(HELPER) ..
+                '" "' ..
+                native(RESOURCE_PATH) ..
+                '""'
+        else
+            command = 'nohup /bin/bash "' ..
+                HELPER ..
+                '" "' ..
+                RESOURCE_PATH ..
+                '" >/dev/null 2>&1 &'
         end
-        os.remove(EXTRACTED .. "/reaper-kb.ini")
+
+        os.execute(command)
+
+        reaper.Main_OnCommand(40004, 0)
     end
 
-    write_file(STAGE .. "/applied_version.txt", latest .. "\n")
-
     ----------------------------------------------------
-    -- Launch the helper and quit REAPER
+    -- Ask
     ----------------------------------------------------
 
-    local command
-    if IS_WIN then
-        command = 'start "" /min cmd /c ""' ..
-            native(HELPER) ..
-            '" "' ..
-            native(RESOURCE_PATH) ..
-            '""'
-    else
-        command = 'nohup /bin/bash "' ..
-            HELPER ..
-            '" "' ..
-            RESOURCE_PATH ..
-            '" >/dev/null 2>&1 &'
+    local function run_update(mode)
+        local called, problem = pcall(apply, mode)
+        if not called then
+            remove_dir(STAGE)
+            message("The update stopped because of an error:\n\n" .. tostring(problem))
+        end
     end
 
-    os.execute(command)
-
-    reaper.Main_OnCommand(40004, 0)
+    show_dialog({
+        latest       = latest,
+        installed    = installed,
+        same_version = (installed ~= nil and compare_versions(installed, latest) == 0),
+        configured   = configured,
+    }, run_update, function() remove_dir(STAGE) end)
 end
 
 local ok, err = pcall(main)

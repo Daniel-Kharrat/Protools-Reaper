@@ -5,11 +5,12 @@
 #
 # macOS / Linux
 #
-# Argument:
+# Arguments:
 #   $1 = REAPER Resource Path
+#   $2 = REAPER executable (Linux only; used if it cannot be detected)
 #
 # Waits for REAPER to close, copies the files prepared by
-# Daniel_Update configuration.lua (Data/Daniel_Update) into
+# Daniel_Update configuration.lua (Data/Daniel Kharrat/Update) into
 # the resource folder, then relaunches REAPER.
 #
 # This helper is separate from Daniel_Restore_ini_files.sh
@@ -33,7 +34,9 @@ fi
 
 DATA_FOLDER="$RESOURCE_PATH/Data"
 
-STAGE="$DATA_FOLDER/Daniel_Update"
+DAN_FOLDER="$DATA_FOLDER/Daniel Kharrat"
+
+STAGE="$DAN_FOLDER/Update"
 EXTRACTED="$STAGE/extracted"
 
 INI_MERGED="$STAGE/reaper.ini.merged"
@@ -43,9 +46,19 @@ KB_MERGED="$STAGE/reaper-kb.merged.ini"
 KB_TARGET="$RESOURCE_PATH/reaper-kb.ini"
 
 VERSION_SOURCE="$STAGE/applied_version.txt"
-VERSION_TARGET="$DATA_FOLDER/Daniel_Config_Version.txt"
+VERSION_TARGET="$DAN_FOLDER/Config_Version.txt"
+
+# Log file (kept, so a failed update can be diagnosed)
+LOG="$DAN_FOLDER/Update_Log.txt"
+REAPER_EXE_ARG="$2"
+
+log() {
+echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG" 2>/dev/null
+}
 
 FAILED=0
+
+log "Helper started. Resource path: $RESOURCE_PATH"
 
 # ============================================================
 # DETERMINE OPERATING SYSTEM
@@ -89,11 +102,18 @@ if [ -n "$REAPER_PID" ]; then
 # or is not present in the system PATH.
 REAPER_EXECUTABLE="$(readlink -f "/proc/$REAPER_PID/exe" 2>/dev/null)"
 
-if [ -z "$REAPER_EXECUTABLE" ] || [ ! -x "$REAPER_EXECUTABLE" ]; then
-    echo "ERROR: Could not determine the REAPER executable."
-    exit 1
 fi
 
+# If the executable could not be detected (or REAPER has already closed),
+# use the one passed by the Lua script.
+if [ -z "$REAPER_EXECUTABLE" ] || [ ! -x "$REAPER_EXECUTABLE" ]; then
+    REAPER_EXECUTABLE="$REAPER_EXE_ARG"
+fi
+
+if [ -z "$REAPER_EXECUTABLE" ] || [ ! -x "$REAPER_EXECUTABLE" ]; then
+    echo "ERROR: Could not determine the REAPER executable."
+    log "ERROR: could not determine the REAPER executable."
+    exit 1
 fi
 
 else
@@ -108,15 +128,16 @@ fi
 # ============================================================
 
 if [ -z "$REAPER_PID" ]; then
-echo "ERROR: Could not find the running REAPER process."
-exit 1
-fi
-
+# REAPER may already have closed before this helper started: carry on.
+echo "REAPER process not found - it has probably already closed."
+log "REAPER process not found - it has probably already closed."
+else
 echo "REAPER process found."
 echo "PID: $REAPER_PID"
 
 if [ "$OS" = "Linux" ]; then
 echo "Executable: $REAPER_EXECUTABLE"
+fi
 fi
 
 # ============================================================
@@ -126,11 +147,14 @@ fi
 echo ""
 echo "Waiting for REAPER to close..."
 
+if [ -n "$REAPER_PID" ]; then
 while kill -0 "$REAPER_PID" 2>/dev/null; do
 sleep 0.5
 done
+fi
 
 echo "REAPER has completely closed."
+log "REAPER has closed."
 
 # ============================================================
 # APPLY THE UPDATE
@@ -152,6 +176,8 @@ if [ -d "$EXTRACTED" ]; then
 echo ""
 echo "Copying configuration files..."
 
+# cp -R copies file by file into the existing folders: it replaces files with the
+# same name and leaves any other file (for example other icons) alone.
 if cp -R "$EXTRACTED/." "$RESOURCE_PATH/"; then
 echo "Configuration files copied successfully."
 else
@@ -222,6 +248,7 @@ fi
 
 echo ""
 echo "Launching REAPER..."
+log "Launching REAPER (failed=$FAILED)"
 
 if [ "$OS" = "Darwin" ]; then
 

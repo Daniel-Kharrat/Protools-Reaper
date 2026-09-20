@@ -94,6 +94,7 @@ local VERSION_FILE = DATA_FOLDER .. "/Daniel_Config_Version.txt"
 
 local UPDATER_DIR  = RESOURCE_PATH .. "/Scripts/Daniel Kharrat/Updater"
 local MERGE_SCRIPT = UPDATER_DIR .. "/Daniel_Merge keyboard shortcuts.lua"
+local REAPER_EXE  = (reaper.GetExePath():gsub("\\", "/")) .. "/reaper.exe"   -- Windows only; passed to the helper
 local HELPER = UPDATER_DIR .. (IS_WIN and "/Daniel_Update_configuration.bat"
                                        or "/Daniel_Update_configuration.sh")
 
@@ -633,13 +634,6 @@ local function show_dialog(info, on_ok, on_cancel)
         end
     end
 
-    -- if REAPER is closed while the dialog is open, clean up the staging folder
-    reaper.atexit(function()
-        if not decided then
-            remove_dir(STAGE)
-        end
-    end)
-
     -- centre the window on the screen the mouse is on
     local mx, my = reaper.GetMousePosition()
     local l, t, r, b = reaper.my_getViewport(mx, my, mx, my, mx, my, mx, my, true)
@@ -1135,6 +1129,8 @@ local function main()
                 native(HELPER) ..
                 '" "' ..
                 native(RESOURCE_PATH) ..
+                '" "' ..
+                native(REAPER_EXE) ..
                 '""'
         else
             command = 'nohup /bin/bash "' ..

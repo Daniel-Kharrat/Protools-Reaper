@@ -1,339 +1,152 @@
+-- Daniel_Save personal settings.lua
+--
+-- Saves the person's own settings, so they can be restored after the configuration
+-- has been imported:
+--
+--   * reaper-screensets.ini (screen sets) and reaper-hwoutfx.ini (monitoring FX) are
+--     copied into Data/Daniel Kharrat/Backup, replacing the copies already there.
+--   * The record and save settings from reaper.ini are written to
+--     Data/Daniel Kharrat/Personal_Settings.ini. That file is not in the Backup
+--     folder, so an update (which replaces the Backup folder) does not remove it.
+--     A setting that reaper.ini does not have is left out of the file.
+
 local RESOURCE_PATH = reaper.GetResourcePath()
-local SETTINGS_FOLDER = RESOURCE_PATH .. "/Personal Settings"
-local REAPER_INI = RESOURCE_PATH .. "/reaper.ini"
-local SAVE_FILE = SETTINGS_FOLDER .. "/Personal_Settings.ini"
+local DAN_FOLDER    = RESOURCE_PATH .. "/Data/Daniel Kharrat"
+local BACKUP_FOLDER = DAN_FOLDER .. "/Backup"
+local REAPER_INI    = RESOURCE_PATH .. "/reaper.ini"
+local SAVE_FILE     = DAN_FOLDER .. "/Personal_Settings.ini"
+
+local TITLE = "Personal Settings Saved"
+
+-- Files copied into the Backup folder (if they exist)
+local FILES = {
+    "reaper-screensets.ini",
+    "reaper-hwoutfx.ini",
+}
+
+-- reaper.ini values saved to Personal_Settings.ini, and how they are shown
+local SETTINGS = {
+    { key = "deftrackrecflags", label = "Default record configuration" },
+    { key = "deftrackrecinput", label = "Default record input" },
+    { key = "saveFlags",        label = "Save project options" },
+}
 
 
 ------------------------------------------------------------
--- Create Personal Settings folder if it doesn't exist
+-- Helpers
 ------------------------------------------------------------
 
-reaper.RecursiveCreateDirectory(SETTINGS_FOLDER, 0)
-
-
-------------------------------------------------------------
--- Read exact REAPER ini key
-------------------------------------------------------------
-
-local function GetIniValue(key)
-
-    local file = io.open(REAPER_INI, "rb")
-
+local function read_file(path)
+    local file = io.open(path, "rb")
     if not file then
         return nil
     end
-
     local contents = file:read("*all")
     file:close()
-
-    local pattern = "\n" .. key .. "=([^\r\n]*)"
-    local value = contents:match(pattern)
-
-    if value == nil then
-        value = contents:match("^" .. key .. "=([^\r\n]*)")
-    end
-
-    return value
+    return contents
 end
 
-
-------------------------------------------------------------
--- Copy a file
-------------------------------------------------------------
-
-local function CopyFile(source, destination)
-
-    local source_file = io.open(source, "rb")
-
-    if not source_file then
+local function write_file(path, contents)
+    local file = io.open(path, "wb")
+    if not file then
         return false
     end
-
-    local data = source_file:read("*all")
-    source_file:close()
-
-    local destination_file = io.open(destination, "wb")
-
-    if not destination_file then
-        return false
-    end
-
-    destination_file:write(data)
-    destination_file:close()
-
+    file:write(contents)
+    file:close()
     return true
 end
 
+-- Copies a file. Returns false if the source does not exist or the copy fails.
+local function copy_file(source, destination)
+    local data = read_file(source)
+    if not data then
+        return false
+    end
+    return write_file(destination, data)
+end
+
+-- Value of a key in the [REAPER] section of reaper.ini (nil if it is not there)
+local function get_ini_value(ini_text, key)
+    local in_reaper = false
+    for line in (ini_text .. "\n"):gmatch("(.-)\r?\n") do
+        local section = line:match("^%[(.-)%]%s*$")
+        if section then
+            in_reaper = (section:lower() == "reaper")
+        elseif in_reaper then
+            local name, value = line:match("^([^=]+)=(.*)$")
+            if name == key then
+                return value
+            end
+        end
+    end
+    return nil
+end
+
 
 ------------------------------------------------------------
--- Read settings from reaper.ini
+-- Folders
 ------------------------------------------------------------
 
-local splashimage = GetIniValue("splashimage")
-local newprojtmpl = GetIniValue("newprojtmpl")
-local vstpath = GetIniValue("vstpath")
-local vstpath64 = GetIniValue("vstpath64")
-local vstpath_arm64 = GetIniValue("vstpath_arm64")
-local deftrackrecflags = GetIniValue("deftrackrecflags")
-local deftrackrecinput = GetIniValue("deftrackrecinput")
-local saveFlags = GetIniValue("saveFlags")
-local defsavepath = GetIniValue("defsavepath")
-local defrenderpath = GetIniValue("defrenderpath")
-local defrecpath = GetIniValue("defrecpath")
+reaper.RecursiveCreateDirectory(BACKUP_FOLDER, 0)
+
 
 ------------------------------------------------------------
--- Convert missing values to empty strings
+-- Save the settings from reaper.ini
 ------------------------------------------------------------
 
-if splashimage == nil then
-    splashimage = ""
+local ini_text = read_file(REAPER_INI)
+if not ini_text then
+    reaper.ShowMessageBox("Could not read:\n\n" .. REAPER_INI, TITLE, 0)
+    return
 end
 
-if newprojtmpl == nil then
-    newprojtmpl = ""
+local values = {}
+local lines = { "[PERSONAL]" }
+for _, setting in ipairs(SETTINGS) do
+    local value = get_ini_value(ini_text, setting.key)
+    values[setting.key] = value
+    if value ~= nil then
+        lines[#lines + 1] = setting.key .. "=" .. value
+    end
 end
 
-if vstpath == nil then
-    vstpath = ""
-end
-
-if vstpath64 == nil then
-    vstpath64 = ""
-end
-
-if vstpath_arm64 == nil then
-    vstpath_arm64 = ""
-end
-
-if deftrackrecflags == nil then
-    deftrackrecflags = ""
-end
-
-if deftrackrecinput == nil then
-    deftrackrecinput = ""
-end
-
-if saveFlags == nil then
-    saveFlags = "3"
-end
-
-if defsavepath == nil then
-    defsavepath = ""
-end
-
-if defrenderpath == nil then
-    defrenderpath = ""
-end
-
-if defrecpath == nil then
-    defrecpath = ""
-end
-
-------------------------------------------------------------
--- Save settings to Personal_Settings.ini
-------------------------------------------------------------
-
-local file = io.open(SAVE_FILE, "w")
-
-if not file then
-
-    reaper.ShowMessageBox(
-        "Could not create:\n\n" ..
-        SAVE_FILE,
-        "Personal Config",
-        0
-    )
-
+if not write_file(SAVE_FILE, table.concat(lines, "\n") .. "\n") then
+    reaper.ShowMessageBox("Could not create:\n\n" .. SAVE_FILE, TITLE, 0)
     return
 end
 
 
-file:write("[PERSONAL]\n")
-file:write("splashimage=" .. splashimage .. "\n")
-file:write("newprojtmpl=" .. newprojtmpl .. "\n")
-file:write("vstpath=" .. vstpath .. "\n")
-file:write("vstpath64=" .. vstpath64 .. "\n")
-file:write("vstpath_arm64=" .. vstpath_arm64 .. "\n")
-file:write("deftrackrecflags=" .. deftrackrecflags .. "\n")
-file:write("deftrackrecinput=" .. deftrackrecinput .. "\n")
-file:write("saveFlags=" .. saveFlags .. "\n")
-file:write("defsavepath=" .. defsavepath .. "\n")
-file:write("defrenderpath=" .. defrenderpath .. "\n")
-file:write("defrecpath=" .. defrecpath .. "\n")
+------------------------------------------------------------
+-- Copy the files into the Backup folder
+------------------------------------------------------------
 
-file:close()
+local saved = {}
+for _, name in ipairs(FILES) do
+    saved[name] = copy_file(RESOURCE_PATH .. "/" .. name, BACKUP_FOLDER .. "/" .. name)
+end
 
 
 ------------------------------------------------------------
--- File paths
+-- Result
 ------------------------------------------------------------
 
-local screensets_source =
-    RESOURCE_PATH .. "/reaper-screensets.ini"
+local message = "Preferences:\n"
 
-local screensets_destination =
-    SETTINGS_FOLDER .. "/reaper-screensets.ini"
+for _, setting in ipairs(SETTINGS) do
+    local value = values[setting.key]
+    message = message .. setting.label .. ": " ..
+        (value ~= nil and value or "(not set)") .. "\n"
+end
 
+message = message .. "\nSaved to: Data/Daniel Kharrat/Personal_Settings.ini"
+message = message .. "\n=======================\n"
+message = message .. "\nFiles:\n"
 
-local sws_autocolor_source =
-    RESOURCE_PATH .. "/sws-autocoloricon.ini"
+for _, name in ipairs(FILES) do
+    message = message .. name .. ": " ..
+        (saved[name] and "Saved" or "Not found") .. "\n"
+end
 
-local sws_autocolor_destination =
-    SETTINGS_FOLDER .. "/sws-autocoloricon.ini"
+message = message .. "\nSaved to: Data/Daniel Kharrat/Backup"
 
-
-local keyboard_source =
-    RESOURCE_PATH .. "/reaper-kb.ini"
-
-local keyboard_destination =
-    SETTINGS_FOLDER .. "/reaper-kb.ini"
-
-
-local mouse_source =
-    RESOURCE_PATH .. "/reaper-mouse.ini"
-
-local mouse_destination =
-    SETTINGS_FOLDER .. "/reaper-mouse.ini"
-
-local reapack_source =
-    RESOURCE_PATH .. "/reapack.ini"
-
-local reapack_destination =
-    SETTINGS_FOLDER .. "/reapack.ini"
-
-local hwoutfx_source =
-    RESOURCE_PATH .. "/reaper-hwoutfx.ini"
-
-local hwoutfx_destination =
-    SETTINGS_FOLDER .. "/reaper-hwoutfx.ini"
-
-------------------------------------------------------------
--- Copy files
-------------------------------------------------------------
-
-local screensets_saved =
-    CopyFile(
-        screensets_source,
-        screensets_destination
-    )
-
-
-local sws_autocolor_saved =
-    CopyFile(
-        sws_autocolor_source,
-        sws_autocolor_destination
-    )
-
-
-local keyboard_saved =
-    CopyFile(
-        keyboard_source,
-        keyboard_destination
-    )
-
-
-local mouse_saved =
-    CopyFile(
-        mouse_source,
-        mouse_destination
-    )
-
-local reapack_saved =
-    CopyFile(
-        reapack_source,
-        reapack_destination
-    )
-
-local hwoutfx_saved =
-    CopyFile(
-        hwoutfx_source,
-        hwoutfx_destination
-    )
-
-------------------------------------------------------------
--- Display result
-------------------------------------------------------------
-
-local message =
-
-    "Splash screen: " ..
-    (splashimage ~= "" and splashimage or "(none)") ..
-    "\n" ..
-
-    "Default project: " ..
-    (newprojtmpl ~= "" and newprojtmpl or "(none)") ..
-    "\n\n" ..
-
-    "VST paths: " ..
-    (vstpath ~= "" and vstpath or "(none)") ..
-    "\n" ..
-    
-    "VST64 paths: " ..
-    (vstpath64 ~= "" and vstpath64 or "(none)") ..
-    "\n" ..
-    
-    "VST ARM64 paths: " ..
-    (vstpath_arm64 ~= "" and vstpath_arm64 or "(none)") ..
-    "\n\n" ..
-    
-    "Default record configuration: " ..
-    (deftrackrecflags ~= "" and deftrackrecflags or "(none)") ..
-    "\n" ..
-    
-    "Default record input: " ..
-    (deftrackrecinput ~= "" and deftrackrecinput or "(default)") ..
-    "\n" ..
-    
-    "Save Project options: " ..
-    (saveFlags ~= "" and saveFlags or "(default)") ..
-    "\n\n" ..
-
-    "Default save path: " ..
-    (defsavepath ~= "" and defsavepath or "(default)") ..
-    "\n" ..
-
-    "Default render path: " ..
-    (defrenderpath ~= "" and defrenderpath or "(default)") ..
-    "\n" ..
-
-    "Default recording path: " ..
-    (defrecpath ~= "" and defrecpath or "(default)") ..
-    "\n\n" ..
-
-    "Files:\n" ..
-
-    "reaper-screensets.ini: " ..
-    (screensets_saved and "Saved" or "Not found") ..
-    "\n" ..
-
-    "sws-autocoloricon.ini: " ..
-    (sws_autocolor_saved and "Saved" or "Not found") ..
-    "\n" ..
-
-    "reapack.ini: " ..
-    (reapack_saved and "Saved" or "Not found") ..
-    "\n" ..
-
-    "reaper-hwoutfx.ini: " ..
-    (hwoutfx_saved and "Saved" or "Not found") ..
-    "\n\n" ..
-
-    "Backup-only files:\n" ..
-
-    "reaper-kb.ini: " ..
-    (keyboard_saved and "Saved" or "Not found") ..
-    "\n" ..
-
-    "reaper-mouse.ini: " ..
-    (mouse_saved and "Saved" or "Not found") ..
-    "\n\n" ..
-
-    "Saved to: " ..
-    SETTINGS_FOLDER
-
-
-reaper.ShowMessageBox(
-    message,
-    "Personal Settings Saved",
-    0
-)
+reaper.ShowMessageBox(message, TITLE, 0)

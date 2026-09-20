@@ -594,7 +594,7 @@
     </reapack>
     
     <reapack name="Daniel_Save personal settings.lua" type="script" desc="Daniel_Save personal settings.lua">
-      <version name="2.3" author="Daniel" time="2026-09">
+      <version name="2.4" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Save%20personal%20settings.lua</source>
       </version>
     </reapack>
@@ -654,7 +654,7 @@
     </reapack>
 
     <reapack name="Daniel_Update configuration.lua" type="script" desc="Daniel_Update configuration.lua">
-      <version name="1.9" author="Daniel" time="2026-09">
+      <version name="2.0" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Update%20configuration.lua</source>
       </version>
     </reapack>

@@ -11,7 +11,7 @@ local font = reaper.ImGui_CreateFont("Arial", reaper.ImGui_FontFlags_Bold())
 reaper.ImGui_Attach(imgui, font)
 
 local INITIAL_WIDTH  = 500
-local INITIAL_HEIGHT = 100
+local INITIAL_HEIGHT = 150
 
 ------------------------------------------------------------
 -- GET CURRENT MARKER / REGION NAME
@@ -236,7 +236,17 @@ local function loop()
     --------------------------------------------------------
     -- INITIAL WINDOW SIZE
     --------------------------------------------------------
-
+    
+    local viewport = reaper.ImGui_GetMainViewport(imgui)
+    local cx, cy = reaper.ImGui_Viewport_GetCenter(viewport)
+    
+    reaper.ImGui_SetNextWindowPos(
+        imgui,
+        cx, cy,
+        reaper.ImGui_Cond_FirstUseEver(),
+        0.5, 0.5   -- pivot: center the window on that point
+    )
+    
     reaper.ImGui_SetNextWindowSize(
         imgui,
         INITIAL_WIDTH,

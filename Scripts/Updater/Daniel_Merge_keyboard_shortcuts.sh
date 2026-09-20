@@ -9,7 +9,7 @@
 #   $1 = REAPER Resource Path
 #
 # Waits for REAPER to close, copies the merged keymap
-# (Data/reaper-kb.merged.ini, prepared by
+# (Data/Daniel Kharrat/reaper-kb.merged.ini, prepared by
 # Daniel_Merge keyboard shortcuts.lua) over reaper-kb.ini,
 # then relaunches REAPER.
 #
@@ -34,7 +34,7 @@ fi
 
 DATA_FOLDER="$RESOURCE_PATH/Data"
 
-KB_MERGED="$DATA_FOLDER/reaper-kb.merged.ini"
+KB_MERGED="$DATA_FOLDER/Daniel Kharrat/reaper-kb.merged.ini"
 KB_TARGET="$RESOURCE_PATH/reaper-kb.ini"
 
 # ============================================================

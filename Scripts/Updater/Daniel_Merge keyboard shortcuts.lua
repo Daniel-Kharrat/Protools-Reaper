@@ -1,9 +1,16 @@
 -- Daniel_Merge keyboard shortcuts.lua
 --
--- Merges the shipped keymap (Data/Daniel Kharrat/Daniel_Modified keyboard shortcuts only.ReaperKeyMap)
--- into the person's reaper-kb.ini WITHOUT replacing the rest of the file.
--- This is separate from the Personal Settings save/restore scripts and does
--- not use their helper.
+-- Merges a shipped keymap into the person's reaper-kb.ini WITHOUT replacing the rest
+-- of the file. This script is not run by itself: Daniel_Update configuration.lua
+-- runs it with dofile() after setting the global
+--
+--   DANIEL_KB_MERGE = { shipped_file = <keymap to merge in>,
+--                       merged_file  = <where to write the result> }
+--
+-- It only writes the merged file (nothing else is read, changed or deleted, and
+-- REAPER is not quit) and returns { ok = true/false, changed = ..., stats = ... }
+-- (or { ok = false, error = "..." }). The update script copies the merged file over
+-- reaper-kb.ini after REAPER has closed.
 --
 --   SCR lines (script registration): added only if that script ID is not
 --     already registered. The person's other SCR lines are never touched, so
@@ -13,35 +20,20 @@
 --     replaced with yours; otherwise yours is added. Every other KEY line of
 --     theirs is left alone.
 --   Any other line type in the shipped file is appended if not already there.
---
--- PREPARE-ONLY MODE: another script (Daniel_Update configuration.lua) can run this
--- file with dofile() after setting the global DANIEL_KB_MERGE = {
---   shipped_file = <keymap to merge in>, merged_file = <where to write the result> }.
--- In that mode there is no dialog, no helper and no REAPER quit: it only writes
--- the merged file and returns { ok = true/false, changed = ..., stats = ... }.
---
--- REAPER rewrites reaper-kb.ini from memory when it quits, so this script does
--- NOT edit reaper-kb.ini directly. It writes the merged result to
--- Data/Daniel Kharrat/reaper-kb.merged.ini, then quits REAPER. Its own helper
--- (Daniel_Merge_keyboard_shortcuts.bat / .sh) waits for REAPER to close,
--- copies the merged file over reaper-kb.ini, and relaunches REAPER.
 
-local RESOURCE_PATH  = reaper.GetResourcePath()
-local DATA_FOLDER   = RESOURCE_PATH .. "/Data"
-local DAN_FOLDER    = DATA_FOLDER .. "/Daniel Kharrat"   -- everything of these scripts lives here
-local PREPARE = rawget(_G, "DANIEL_KB_MERGE") -- nil when run as a normal action
+local PREPARE = rawget(_G, "DANIEL_KB_MERGE")
 
-local SHIPPED_FILE = (PREPARE and PREPARE.shipped_file) or
-    (DAN_FOLDER .. "/Daniel_Modified keyboard shortcuts only.ReaperKeyMap")
--- earlier versions kept these directly in Data
-local OLD_SHIPPED_FILE = DATA_FOLDER .. "/Daniel_Modified keyboard shortcuts only.ReaperKeyMap"
-local OLD_BACKUP_FILE  = DATA_FOLDER .. "/reaper-kb.original-backup.ini"
-local KB_FILE      = RESOURCE_PATH .. "/reaper-kb.ini"
-local MERGED_FILE  = (PREPARE and PREPARE.merged_file) or
-    (DAN_FOLDER .. "/reaper-kb.merged.ini")
-local BACKUP_FILE  = DAN_FOLDER .. "/reaper-kb.original-backup.ini"
+if not PREPARE then
+    reaper.ShowMessageBox(
+        "This script is used by the update script (Daniel_Update configuration.lua) " ..
+        "and is not run on its own.",
+        "Keyboard Shortcuts", 0)
+    return
+end
 
-local TITLE = "Keyboard Shortcuts"
+local SHIPPED_FILE = PREPARE.shipped_file
+local MERGED_FILE  = PREPARE.merged_file
+local KB_FILE      = reaper.GetResourcePath() .. "/reaper-kb.ini"   -- the person's own file
 
 
 ------------------------------------------------------------
@@ -66,19 +58,6 @@ local function write_file(path, contents)
     file:write(contents)
     file:close()
     return true
-end
-
-local function file_exists(path)
-    local file = io.open(path, "rb")
-    if file then
-        file:close()
-        return true
-    end
-    return false
-end
-
-local function message(text)
-    reaper.ShowMessageBox(text, TITLE, 0)
 end
 
 
@@ -273,22 +252,17 @@ end
 
 
 ------------------------------------------------------------
--- Read both files and merge
+-- Read both files, merge and write the result
 ------------------------------------------------------------
 
--- keymap not delivered to the new folder yet: use the one in the old place
-if not PREPARE and not file_exists(SHIPPED_FILE) and file_exists(OLD_SHIPPED_FILE) then
-    SHIPPED_FILE = OLD_SHIPPED_FILE
+if not SHIPPED_FILE or not MERGED_FILE then
+    return { ok = false, error = "The shipped file and the merged file were not given." }
 end
 
 local shipped_text = read_file(SHIPPED_FILE)
 
 if not shipped_text then
-    if PREPARE then
-        return { ok = false, error = "Could not find " .. SHIPPED_FILE }
-    end
-    message("Could not find:\n\n" .. SHIPPED_FILE)
-    return
+    return { ok = false, error = "Could not find " .. SHIPPED_FILE }
 end
 
 -- a missing reaper-kb.ini is treated as empty (fresh install)
@@ -296,116 +270,8 @@ local kb_text = read_file(KB_FILE) or ""
 
 local merged_text, stats = merge(kb_text, shipped_text)
 
-if PREPARE then
-    if stats.changed and not write_file(MERGED_FILE, merged_text) then
-        return { ok = false, error = "Could not write " .. MERGED_FILE }
-    end
-    return { ok = true, changed = stats.changed, stats = stats }
+if stats.changed and not write_file(MERGED_FILE, merged_text) then
+    return { ok = false, error = "Could not write " .. MERGED_FILE }
 end
 
-if not stats.changed then
-    message("Your keyboard shortcuts are already up to date.\n\nNothing was changed.")
-    return
-end
-
-
-------------------------------------------------------------
--- Confirm
-------------------------------------------------------------
-
-local summary =
-    "This will merge your keyboard shortcuts into REAPER.\n\n" ..
-
-    "Scripts added to the action list: " .. stats.scr_added .. "\n" ..
-    "Shortcuts added: " .. stats.key_added .. "\n" ..
-    "Shortcuts replaced: " .. stats.key_replaced .. "\n" ..
-    "Shortcuts already identical: " .. stats.key_unchanged .. "\n\n" ..
-
-    "All other shortcuts and scripts stay as they are.\n" ..
-    "REAPER will close and restart to apply the changes.\n\n" ..
-    "Continue?"
-
-if reaper.ShowMessageBox(summary, TITLE, 4) ~= 6 then
-    return
-end
-
-
-------------------------------------------------------------
--- Save backup (first run only) and the merged file
-------------------------------------------------------------
-
-reaper.RecursiveCreateDirectory(DAN_FOLDER, 0)
-
--- The original backup used to be saved directly in Data: move it into the new folder
-if not file_exists(BACKUP_FILE) and file_exists(OLD_BACKUP_FILE) then
-    local old_backup = read_file(OLD_BACKUP_FILE)
-    if old_backup and write_file(BACKUP_FILE, old_backup) then
-        os.remove(OLD_BACKUP_FILE)
-    end
-end
-
--- Only the very first backup is kept, so it always holds the person's
--- original file from before any merge.
-if kb_text ~= "" and not file_exists(BACKUP_FILE) then
-    if not write_file(BACKUP_FILE, kb_text) then
-        message("Could not write the backup:\n\n" .. BACKUP_FILE)
-        return
-    end
-end
-
-if not write_file(MERGED_FILE, merged_text) then
-    message("Could not write:\n\n" .. MERGED_FILE)
-    return
-end
-
-
-------------------------------------------------------------
--- Restore helper path
-------------------------------------------------------------
-
-local OS = reaper.GetOS()
-local restore_script
-
-if OS:find("Win") then
-    restore_script = RESOURCE_PATH ..
-    "/Scripts/Daniel Kharrat/Updater/Daniel_Merge_keyboard_shortcuts.bat"
-else
-    restore_script = RESOURCE_PATH ..
-    "/Scripts/Daniel Kharrat/Updater/Daniel_Merge_keyboard_shortcuts.sh"
-end
-
-if not file_exists(restore_script) then
-    os.remove(MERGED_FILE)
-    message("Could not find the restore helper:\n\n" .. restore_script)
-    return
-end
-
-
-------------------------------------------------------------
--- Launch restore helper in background
-------------------------------------------------------------
-
-local command
-
-if OS:find("Win") then
-    command = 'start "" /min cmd /c ""' ..
-    restore_script ..
-    '" "' ..
-    RESOURCE_PATH ..
-    '""'
-else
-    command = 'nohup /bin/bash "' ..
-    restore_script ..
-    '" "' ..
-    RESOURCE_PATH ..
-    '" >/dev/null 2>&1 &'
-end
-
-os.execute(command)
-
-
-------------------------------------------------------------
--- Quit REAPER
-------------------------------------------------------------
-
-reaper.Main_OnCommand(40004, 0)
+return { ok = true, changed = stats.changed, stats = stats }

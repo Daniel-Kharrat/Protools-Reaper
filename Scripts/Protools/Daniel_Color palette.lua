@@ -116,11 +116,17 @@ end
 
 -- Main loop to draw the window and handle user interaction
 function loop()
+
+    local viewport = reaper.ImGui_GetMainViewport(imgui)
+    local cx, cy = reaper.ImGui_Viewport_GetCenter(viewport)
+    reaper.ImGui_SetNextWindowPos(imgui, cx, cy, reaper.ImGui_Cond_FirstUseEver(), 0.5, 0.5)
+    
     -- Set the window size to 520x102 pixels
-    reaper.ImGui_SetNextWindowSize(imgui, 520, 102, reaper.ImGui_Cond_FirstUseEver())
+    reaper.ImGui_SetNextWindowSize(imgui, 600, 200, reaper.ImGui_Cond_FirstUseEver())
     
     -- Begin the window, store the open state in a variable
-    local visible, open = reaper.ImGui_Begin(imgui, "Color Palette", true)
+    local visible, open = reaper.ImGui_Begin(imgui, "Color Palette", true,
+    reaper.ImGui_WindowFlags_NoCollapse())
     
     -- Check if the user closes the window
     if not open then
@@ -135,7 +141,12 @@ function loop()
     local padding = reaper.ImGui_GetStyleVar(imgui, reaper.ImGui_StyleVar_ItemSpacing())
     local availableWidth = windowWidth - padding * 1.8  -- Padding between buttons
     local buttonSize = (availableWidth / 23) - 2
-    reaper.ImGui_SetWindowSize(imgui, windowWidth, (buttonSize * 3) + padding * 4 + 11, reaper.ImGui_Cond_Always())
+    local _, spacingY = reaper.ImGui_GetStyleVar(imgui, reaper.ImGui_StyleVar_ItemSpacing())
+    local _, winPadY  = reaper.ImGui_GetStyleVar(imgui, reaper.ImGui_StyleVar_WindowPadding())
+    local titleH = reaper.ImGui_GetFrameHeight(imgui)
+    local rows = 3
+    local height = titleH + winPadY * 2 + buttonSize * rows + spacingY * (rows - 1)
+    reaper.ImGui_SetWindowSize(imgui, windowWidth, height, reaper.ImGui_Cond_Always())
     
     if visible then
         for i, color in ipairs(colors) do

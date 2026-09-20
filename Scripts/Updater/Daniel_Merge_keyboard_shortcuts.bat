@@ -10,7 +10,7 @@ REM Argument:
 REM   %1 = REAPER Resource Path
 REM
 REM Waits for REAPER to close, copies the merged keymap
-REM (Data\reaper-kb.merged.ini, prepared by
+REM (Data\Daniel Kharrat\reaper-kb.merged.ini, prepared by
 REM Daniel_Merge keyboard shortcuts.lua) over reaper-kb.ini,
 REM then relaunches REAPER.
 REM
@@ -35,7 +35,7 @@ REM ============================================================
 
 set "DATA_FOLDER=%RESOURCE_PATH%\Data"
 
-set "KB_MERGED=%DATA_FOLDER%\reaper-kb.merged.ini"
+set "KB_MERGED=%DATA_FOLDER%\Daniel Kharrat\reaper-kb.merged.ini"
 set "KB_TARGET=%RESOURCE_PATH%\reaper-kb.ini"
 
 REM ============================================================

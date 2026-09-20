@@ -1,6 +1,6 @@
 # Daniel Kharrat's Reaper-Protools Configuration
 
-## How to Install
+## How to Install (1st time ever)
 🔻Watch the video🔻
 
 [<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="165" alt="Watch the video">](https://youtu.be/CJbhZe4WvC8)
@@ -45,7 +45,7 @@ change the shortcut for ***Show Spotlight search*** to "opt + space"
 change the shortcut for ***Show Finder search window*** to "opt + cmd + space"
 
 
-## For future Updates
+## How to update
 1) update the scripts: **Extensions → ReaPack → Synchronize packages** 
 
 2) run the script called: **Daniel_Update configuration.lua**

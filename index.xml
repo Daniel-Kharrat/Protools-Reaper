@@ -55,13 +55,13 @@
 
     <reapack name="Daniel_Modified keyboard shortcuts only.ReaperKeyMap" type="data" desc="Daniel_Modified keyboard shortcuts only.ReaperKeyMap">
       <version name="1.1" author="Daniel" time="2026-02-01T00:00:00Z">
-        <source file="Daniel/Shortcuts/Daniel_Modified keyboard shortcuts only.ReaperKeyMap">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Modified%20keyboard%20shortcuts%20only.ReaperKeyMap</source>
+        <source file="Daniel Kharrat/Shortcuts/Daniel_Modified keyboard shortcuts only.ReaperKeyMap">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Modified%20keyboard%20shortcuts%20only.ReaperKeyMap</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Mouse Modifiers.ReaperMouseMap" type="data" desc="Daniel_Mouse Modifiers.ReaperMouseMap">
       <version name="1.1" author="Daniel" time="2026-09-01T00:00:00Z">
-        <source file="Daniel/Shortcuts/Daniel_Mouse Modifiers.ReaperMouseMap">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Mouse%20Modifiers.ReaperMouseMap</source>
+        <source file="Daniel Kharrat/Shortcuts/Daniel_Mouse Modifiers.ReaperMouseMap">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/MISC%20Data/Daniel_Mouse%20Modifiers.ReaperMouseMap</source>
       </version>
     </reapack>
 

@@ -48,17 +48,12 @@ KB_TARGET="$RESOURCE_PATH/reaper-kb.ini"
 VERSION_SOURCE="$STAGE/applied_version.txt"
 VERSION_TARGET="$DAN_FOLDER/Config_Version.txt"
 
-# Log file (kept, so a failed update can be diagnosed)
-LOG="$DAN_FOLDER/Update_Log.txt"
+# The REAPER executable as passed by the Lua script (Linux; used if it cannot
+# be detected)
 REAPER_EXE_ARG="$2"
-
-log() {
-echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG" 2>/dev/null
-}
 
 FAILED=0
 
-log "Helper started. Resource path: $RESOURCE_PATH"
 
 # ============================================================
 # DETERMINE OPERATING SYSTEM
@@ -112,7 +107,6 @@ fi
 
 if [ -z "$REAPER_EXECUTABLE" ] || [ ! -x "$REAPER_EXECUTABLE" ]; then
     echo "ERROR: Could not determine the REAPER executable."
-    log "ERROR: could not determine the REAPER executable."
     exit 1
 fi
 
@@ -130,7 +124,6 @@ fi
 if [ -z "$REAPER_PID" ]; then
 # REAPER may already have closed before this helper started: carry on.
 echo "REAPER process not found - it has probably already closed."
-log "REAPER process not found - it has probably already closed."
 else
 echo "REAPER process found."
 echo "PID: $REAPER_PID"
@@ -154,7 +147,6 @@ done
 fi
 
 echo "REAPER has completely closed."
-log "REAPER has closed."
 
 # ============================================================
 # APPLY THE UPDATE
@@ -248,7 +240,6 @@ fi
 
 echo ""
 echo "Launching REAPER..."
-log "Launching REAPER (failed=$FAILED)"
 
 if [ "$OS" = "Darwin" ]; then
 

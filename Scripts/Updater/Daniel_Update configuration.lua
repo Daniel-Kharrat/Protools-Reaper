@@ -93,7 +93,6 @@ local STAGE        = DAN_FOLDER .. "/Update"
 local EXTRACTED    = STAGE .. "/extracted"
 local BACKUP       = DAN_FOLDER .. "/Backup"
 local VERSION_FILE = DAN_FOLDER .. "/Config_Version.txt"
--- (the helper also writes Update_Log.txt in DAN_FOLDER)
 
 -- Where earlier versions of this updater kept things. They are moved or
 -- removed the first time the new version runs, so Data stays uncluttered.
@@ -1093,6 +1092,8 @@ local function main()
         remove_dir(BACKUP)
         remove_dir(OLD_BACKUP)     -- backups of earlier versions of this updater
         os.remove(OLD_LOG)
+        os.remove(DAN_FOLDER .. "/Update_Log.txt")            -- logs of an earlier test version
+        os.remove(DAN_FOLDER .. "/Update_Log_previous.txt")
         for _, rel in ipairs(files) do
             if BACKUP_FILES[rel] then
                 local current = RESOURCE_PATH .. "/" .. rel

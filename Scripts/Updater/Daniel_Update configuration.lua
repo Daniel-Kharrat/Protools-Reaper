@@ -6,8 +6,9 @@
 --      .ReaperConfigZip; an optional line 2 holds its SHA-256.
 --   2. Asks (OK / Cancel) what to do with the keyboard shortcuts: replace all of
 --      them, merge mine into theirs (the default), or leave them alone entirely.
---   3. Downloads and unpacks the archive into Data/Daniel_Update (staging).
---   4. Prepares merged files, backs up everything that will change, and quits REAPER.
+--   3. Downloads and unpacks the archive into Data/Daniel Kharrat/Update (staging).
+--   4. Prepares merged files, backs up the important settings files (see
+--      BACKUP_FILES) and quits REAPER.
 --   5. Daniel_Update_configuration.bat / .sh waits for REAPER to close, copies the
 --      staged files into the resource folder, and relaunches REAPER.
 --
@@ -87,14 +88,32 @@ local IS_WIN = OS:find("Win") ~= nil
 local IS_MAC = OS:find("OSX") ~= nil or OS:find("macOS") ~= nil
 
 local DATA_FOLDER  = RESOURCE_PATH .. "/Data"
-local STAGE        = DATA_FOLDER .. "/Daniel_Update"
+local DAN_FOLDER   = DATA_FOLDER .. "/Daniel Kharrat"   -- everything of this updater lives here
+local STAGE        = DAN_FOLDER .. "/Update"
 local EXTRACTED    = STAGE .. "/extracted"
-local BACKUP       = DATA_FOLDER .. "/Daniel_Update_Backup"
-local VERSION_FILE = DATA_FOLDER .. "/Daniel_Config_Version.txt"
+local BACKUP       = DAN_FOLDER .. "/Backup"
+local VERSION_FILE = DAN_FOLDER .. "/Config_Version.txt"
+-- (the helper also writes Update_Log.txt in DAN_FOLDER)
+
+-- Where earlier versions of this updater kept things. They are moved or
+-- removed the first time the new version runs, so Data stays uncluttered.
+local OLD_STAGE        = DATA_FOLDER .. "/Daniel_Update"
+local OLD_BACKUP       = DATA_FOLDER .. "/Daniel_Update_Backup"
+local OLD_VERSION_FILE = DATA_FOLDER .. "/Daniel_Config_Version.txt"
+local OLD_LOG          = DATA_FOLDER .. "/Daniel_Update_log.txt"
+
+-- The only files that are backed up before an update (when they are about to change)
+local BACKUP_FILES = {
+    ["reaper-kb.ini"]          = true,   -- keyboard shortcuts
+    ["reaper-menu.ini"]        = true,   -- menus
+    ["reaper-mouse.ini"]       = true,   -- mouse modifiers
+    ["reaper-themeconfig.ini"] = true,   -- theme config
+    ["reaper.ini"]             = true,
+}
 
 local UPDATER_DIR  = RESOURCE_PATH .. "/Scripts/Daniel Kharrat/Updater"
 local MERGE_SCRIPT = UPDATER_DIR .. "/Daniel_Merge keyboard shortcuts.lua"
-local REAPER_EXE  = (reaper.GetExePath():gsub("\\", "/")) .. "/reaper.exe"   -- Windows only; passed to the helper
+local REAPER_EXE  = (reaper.GetExePath():gsub("\\", "/")) .. (IS_WIN and "/reaper.exe" or "/reaper")   -- passed to the helper (not used on macOS)
 local HELPER = UPDATER_DIR .. (IS_WIN and "/Daniel_Update_configuration.bat"
                                        or "/Daniel_Update_configuration.sh")
 
@@ -194,9 +213,11 @@ local function run(command, timeout_ms)
     return tonumber(code), output or "", result
 end
 
--- Deletes a staging or backup folder. Refuses any other path.
+-- Deletes a staging or backup folder. Only folders inside Data/Daniel Kharrat
+-- (never that folder itself) and the two old folders of earlier versions.
 local function remove_dir(path)
-    if not path:find("Daniel_Update", 1, true) then
+    local inside = path:sub(1, #DAN_FOLDER + 1) == DAN_FOLDER .. "/"
+    if not inside and path ~= OLD_STAGE and path ~= OLD_BACKUP then
         return
     end
     if IS_WIN then
@@ -784,7 +805,7 @@ local function show_dialog(info, on_ok, on_cancel)
         color(0.62, 0.80, 0.65)
         cy = draw_text("Don't worry: before anything changes, your current " ..
             ((mode == "skip") and "mouse modifiers are" or "keyboard shortcuts and mouse modifiers are") ..
-            " backed up in the Data folder of your REAPER resource folder: Data/Daniel_Update_Backup",
+            " backed up in your REAPER resource folder: Data/Daniel Kharrat/Backup",
             margin, cy, text_w)
         cy = cy + math.floor(18 * scale)
 
@@ -925,8 +946,9 @@ local function main()
         return
     end
 
-    reaper.RecursiveCreateDirectory(DATA_FOLDER, 0)
+    reaper.RecursiveCreateDirectory(DAN_FOLDER, 0)
     remove_dir(STAGE)
+    remove_dir(OLD_STAGE)
     reaper.RecursiveCreateDirectory(STAGE, 0)
 
     ----------------------------------------------------
@@ -969,7 +991,15 @@ local function main()
         return abort("Could not read a version number from:\n\n" .. archive_name)
     end
 
-    local installed = trim((read_file(VERSION_FILE) or ""):match("[^\r\n]*") or "")
+    -- The recorded version used to live directly in Data: move it to the new folder
+    local installed_text = read_file(VERSION_FILE)
+    if not installed_text then
+        installed_text = read_file(OLD_VERSION_FILE)
+        if installed_text and write_file(VERSION_FILE, installed_text) then
+            os.remove(OLD_VERSION_FILE)
+        end
+    end
+    local installed = trim((installed_text or ""):match("[^\r\n]*") or "")
     if installed == "" then
         installed = nil
     end
@@ -1057,12 +1087,14 @@ local function main()
         end
 
         ----------------------------------------------------
-        -- Back up everything that is about to change
+        -- Back up the important settings files that are about to change
         ----------------------------------------------------
 
         remove_dir(BACKUP)
+        remove_dir(OLD_BACKUP)     -- backups of earlier versions of this updater
+        os.remove(OLD_LOG)
         for _, rel in ipairs(files) do
-            if rel ~= "reaper-configzip-info" then
+            if BACKUP_FILES[rel] then
                 local current = RESOURCE_PATH .. "/" .. rel
                 if file_exists(current) then
                     if not copy_file(current, BACKUP .. "/" .. rel) then
@@ -1137,6 +1169,8 @@ local function main()
                 HELPER ..
                 '" "' ..
                 RESOURCE_PATH ..
+                '" "' ..
+                REAPER_EXE ..
                 '" >/dev/null 2>&1 &'
         end
 

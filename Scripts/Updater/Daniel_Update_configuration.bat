@@ -50,12 +50,9 @@ set "VERSION_TARGET=%DAN_FOLDER%\Config_Version.txt"
 
 set "FAILED=0"
 
-REM Log file (kept, so a failed update can be diagnosed) and the REAPER
-REM executable as passed by the Lua script (used if it cannot be detected)
-set "LOG=%DAN_FOLDER%\Update_Log.txt"
+REM The REAPER executable as passed by the Lua script (used if it cannot
+REM be detected)
 set "REAPER_EXE_ARG=%~2"
-
-call :LOG "Helper started. Resource path: %RESOURCE_PATH%"
 
 REM ============================================================
 REM DETERMINE REAPER PROCESS
@@ -76,12 +73,10 @@ goto :FOUND_REAPER
 :FOUND_REAPER
 
 if "%REAPER_PID%"=="" (
-call :LOG "REAPER process not found - it has probably already closed."
 echo REAPER process not found - it has probably already closed.
 set "REAPER_EXECUTABLE=%REAPER_EXE_ARG%"
 if "!REAPER_EXECUTABLE!"=="" (
 echo ERROR: Could not find the running REAPER process.
-call :LOG "ERROR: no REAPER process and no executable path was given."
 exit /b 1
 )
 goto :REAPER_CLOSED
@@ -102,7 +97,6 @@ if "%REAPER_EXECUTABLE%"=="" set "REAPER_EXECUTABLE=%REAPER_EXE_ARG%"
 
 if "%REAPER_EXECUTABLE%"=="" (
 echo ERROR: Could not determine the REAPER executable.
-call :LOG "ERROR: could not determine the REAPER executable."
 exit /b 1
 )
 
@@ -127,7 +121,6 @@ goto :WAIT_FOR_REAPER
 :REAPER_CLOSED
 
 echo REAPER has completely closed.
-call :LOG "REAPER has closed."
 
 REM ============================================================
 REM APPLY THE UPDATE
@@ -148,7 +141,6 @@ echo.
 echo Copying configuration files...
 
 robocopy "%EXTRACTED%" "%RESOURCE_PATH%" /E /NFL /NDL /NJH /NJS /NP >nul
-call :LOG "robocopy finished with exit code !errorlevel!"
 
 if errorlevel 8 (
 echo ERROR: Failed to copy the configuration files.
@@ -215,7 +207,6 @@ REM ============================================================
 echo.
 echo Launching REAPER...
 
-call :LOG "Launching REAPER: %REAPER_EXECUTABLE% (failed=%FAILED%)"
 start "" "%REAPER_EXECUTABLE%"
 
 REM ============================================================
@@ -231,12 +222,4 @@ echo REAPER configuration update finished with errors.
 )
 echo ============================================
 
-exit /b 0
-
-REM ============================================================
-REM LOG - appends a line with the time to the log file
-REM ============================================================
-
-:LOG
-echo %date% %time% %* >>"%LOG%"
 exit /b 0

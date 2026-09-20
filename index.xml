@@ -666,7 +666,7 @@
     </reapack>
 
     <reapack name="Daniel_Update configuration.lua" type="script" desc="Daniel_Update configuration.lua">
-      <version name="1.6" author="Daniel" time="2026-09">
+      <version name="1.7" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Update%20configuration.lua</source>
       </version>
     </reapack>
@@ -678,7 +678,7 @@
     </reapack>
 
     <reapack name="Daniel_Update_configuration.bat" type="script" desc="Daniel_Update_configuration.bat">
-      <version name="1.0" author="Daniel" time="2026-09">
+      <version name="1.1" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Update_configuration.bat</source>
       </version>
     </reapack>

@@ -10,7 +10,7 @@ REM Argument:
 REM   %1 = REAPER Resource Path
 REM
 REM Waits for REAPER to close, copies the files prepared by
-REM Daniel_Update configuration.lua (Data\Daniel_Update) into
+REM Daniel_Update configuration.lua (Data\Daniel Kharrat\Update) into
 REM the resource folder, then relaunches REAPER.
 REM
 REM This helper is separate from Daniel_Restore_ini_files.bat
@@ -34,7 +34,9 @@ REM ============================================================
 
 set "DATA_FOLDER=%RESOURCE_PATH%\Data"
 
-set "STAGE=%DATA_FOLDER%\Daniel_Update"
+set "DAN_FOLDER=%DATA_FOLDER%\Daniel Kharrat"
+
+set "STAGE=%DAN_FOLDER%\Update"
 set "EXTRACTED=%STAGE%\extracted"
 
 set "INI_MERGED=%STAGE%\reaper.ini.merged"
@@ -44,13 +46,13 @@ set "KB_MERGED=%STAGE%\reaper-kb.merged.ini"
 set "KB_TARGET=%RESOURCE_PATH%\reaper-kb.ini"
 
 set "VERSION_SOURCE=%STAGE%\applied_version.txt"
-set "VERSION_TARGET=%DATA_FOLDER%\Daniel_Config_Version.txt"
+set "VERSION_TARGET=%DAN_FOLDER%\Config_Version.txt"
 
 set "FAILED=0"
 
 REM Log file (kept, so a failed update can be diagnosed) and the REAPER
 REM executable as passed by the Lua script (used if it cannot be detected)
-set "LOG=%DATA_FOLDER%\Daniel_Update_log.txt"
+set "LOG=%DAN_FOLDER%\Update_Log.txt"
 set "REAPER_EXE_ARG=%~2"
 
 call :LOG "Helper started. Resource path: %RESOURCE_PATH%"
@@ -201,7 +203,7 @@ copy /Y "%VERSION_SOURCE%" "%VERSION_TARGET%" >nul 2>&1
 rmdir /s /q "%STAGE%"
 ) else (
 echo.
-echo Some files could not be applied. The prepared files were kept in the Data\Daniel_Update folder.
+echo Some files could not be applied. The prepared files were kept in the Data\Daniel Kharrat\Update folder.
 )
 
 :AFTER_APPLY

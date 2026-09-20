@@ -599,6 +599,12 @@
       </version>
     </reapack>
 
+    <reapack name="Daniel_Restore config before Daniel Kharrat.lua" type="script" desc="Daniel_Restore config before Daniel Kharrat.lua">
+      <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore%20config%20before%20Daniel%20Kharrat.lua</source>
+      </version>
+    </reapack>
+
     <reapack name="Daniel_Restore personal settings.lua" type="script" desc="Daniel_Restore personal settings.lua">
       <version name="2.1" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore%20personal%20settings.lua</source>

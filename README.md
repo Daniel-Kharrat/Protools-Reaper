@@ -46,9 +46,9 @@ change the shortcut for ***Show Finder search window*** to "opt + cmd + space"
 
 
 ## How to update
-1) update the scripts: **Extensions → ReaPack → Synchronize packages** 
+1) scripts only: **Extensions → ReaPack → Synchronize packages** 
 
-2) run the script called: **Daniel_Update configuration.lua**
+2) new config: run the action **Daniel_Update configuration.lua**
  
 3) If you reinstall the REAPER program itself it will overwrite the toolbar icons to the default green
 

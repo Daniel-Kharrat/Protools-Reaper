@@ -22,6 +22,9 @@
 --                    inside the archive. One exception: the toolbar toggle
 --                    states ([toolbar button states]) keep the values they
 --                    already have, and only the lines they are missing are added.
+--   reaper-themeconfig.ini  merged by section: only the sections that are in your
+--                    file (your theme) are replaced in theirs. Any other section
+--                    in their file is kept. Sections they don't have are added.
 --   reaper-kb.ini    replaced in a Full install; in "Merge keyboard shortcuts" it
 --                    is merged by Daniel_Merge keyboard shortcuts.lua instead.
 --   reaper-configzip-info is never copied.
@@ -61,6 +64,9 @@ local ADD_ONLY_SECTIONS = {
     ["toolbar button states"] = true,
 }
 
+-- Theme config: only the sections that appear in the shipped file are replaced
+-- (your theme's section). Every other section in the person's file is kept.
+local THEMECONFIG_FILE = "reaper-themeconfig.ini"
 
 ------------------------------------------------------------
 -- Paths
@@ -459,6 +465,110 @@ local function merge_ini(target_text, shipped_text)
     return text, stats
 end
 
+------------------------------------------------------------
+-- Theme config merge (section level)
+------------------------------------------------------------
+
+-- Replaces, section by section, the sections that exist in the shipped file.
+-- Sections that are only in the person's file are left untouched; sections that
+-- are only in the shipped file are appended.
+local function merge_sections(target_text, shipped_text)
+
+    local eol = "\n"
+    if target_text:find("\r\n", 1, true) then
+        eol = "\r\n"
+    end
+
+    local function parse(text)
+        local result = { preamble = {}, order = {}, map = {} }
+        local current = nil
+        for _, line in ipairs(split_lines(text)) do
+            local name = line:match("^%[(.-)%]%s*$")
+            if name then
+                current = { name = name, header = line, body = {} }
+                result.order[#result.order + 1] = current
+                if not result.map[name:lower()] then
+                    result.map[name:lower()] = current
+                end
+            elseif current then
+                current.body[#current.body + 1] = line
+            else
+                result.preamble[#result.preamble + 1] = line
+            end
+        end
+        return result
+    end
+
+    local function trailing_blanks(body)
+        local n = 0
+        for i = #body, 1, -1 do
+            if body[i]:match("%S") then break end
+            n = n + 1
+        end
+        return n
+    end
+
+    local target  = parse(target_text)
+    local shipped = parse(shipped_text)
+
+    local stats = { replaced = 0, added = 0, kept = 0 }
+    local out = {}
+    local used = {}   -- shipped sections already written
+
+    for _, line in ipairs(target.preamble) do
+        out[#out + 1] = line
+    end
+
+    for _, section in ipairs(target.order) do
+        local key = section.name:lower()
+        local new = shipped.map[key]
+        if new then
+            if not used[key] then
+                used[key] = true
+                out[#out + 1] = new.header
+                local blanks = trailing_blanks(new.body)
+                for i = 1, #new.body - blanks do
+                    out[#out + 1] = new.body[i]
+                end
+                -- keep the spacing the person's file had after this section
+                for _ = 1, trailing_blanks(section.body) do
+                    out[#out + 1] = ""
+                end
+                stats.replaced = stats.replaced + 1
+            end
+            -- a duplicate of the same section in their file is dropped
+        else
+            out[#out + 1] = section.header
+            for _, line in ipairs(section.body) do
+                out[#out + 1] = line
+            end
+            stats.kept = stats.kept + 1
+        end
+    end
+
+    -- shipped sections they don't have yet
+    for _, section in ipairs(shipped.order) do
+        local key = section.name:lower()
+        if not used[key] and target.map[key] == nil then
+            used[key] = true
+            if #out > 0 and out[#out] ~= "" then
+                out[#out + 1] = ""
+            end
+            out[#out + 1] = section.header
+            local blanks = trailing_blanks(section.body)
+            for i = 1, #section.body - blanks do
+                out[#out + 1] = section.body[i]
+            end
+            stats.added = stats.added + 1
+        end
+    end
+
+    local text = ""
+    if #out > 0 then
+        text = table.concat(out, eol) .. eol
+    end
+    return text, stats
+end
 
 ------------------------------------------------------------
 -- Does the person already have your configuration?
@@ -665,6 +775,16 @@ local function main()
         os.remove(EXTRACTED .. "/reaper.ini")
     end
 
+    local shipped_theme = read_file(EXTRACTED .. "/" .. THEMECONFIG_FILE)
+    if shipped_theme then
+        local current_theme = read_file(RESOURCE_PATH .. "/" .. THEMECONFIG_FILE) or ""
+        local merged_theme = merge_sections(current_theme, shipped_theme)
+        -- written back into the extracted folder, so the helper copies it as a normal file
+        if not write_file(EXTRACTED .. "/" .. THEMECONFIG_FILE, merged_theme) then
+            return abort("Could not write:\n\n" .. EXTRACTED .. "/" .. THEMECONFIG_FILE)
+        end
+    end
+    
     if merge_shortcuts and file_exists(EXTRACTED .. "/reaper-kb.ini") then
         if not file_exists(MERGE_SCRIPT) then
             return abort("Could not find the keyboard shortcuts merge script:\n\n" .. MERGE_SCRIPT)

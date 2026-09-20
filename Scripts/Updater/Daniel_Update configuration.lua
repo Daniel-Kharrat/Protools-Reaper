@@ -31,11 +31,16 @@
 --                    is merged by Daniel_Merge keyboard shortcuts.lua instead.
 --   reaper-configzip-info is never copied.
 --
--- Existing configuration: if the person already has your configuration (there is a
--- recorded version, or your repository is in their reapack.ini), the files in
--- KEEP_IF_CONFIGURED are NOT copied, so their own screen sets, SWS auto colors,
--- S&M settings and ReaPack repositories stay. On a first installation
--- everything is copied.
+-- Which of the person's own files are left alone:
+--   reapack.ini            never copied (importing your repository is not the same
+--                          as having your configuration).
+--   reaper-screensets.ini  copied only if the person has no screen sets yet.
+--   sws-autocoloricon.ini  copied only if the person does not have your configuration
+--   S&M.ini                yet (see has_my_configuration()); once they do, theirs stay.
+--
+-- Backups: files that are about to be replaced are backed up first. A person who does
+-- not have your configuration yet gets their own settings saved once in
+-- "Config Before Daniel Kharrat"; from then on the latest backup goes in "Backup".
 
 
 ------------------------------------------------------------
@@ -47,17 +52,20 @@ local POINTER_FILE = "latest.txt"
 
 local TITLE = "Update Configuration"
 
--- Your ReaPack repository (as it appears in the URL in reapack.ini). If it is there,
--- the person already has your configuration.
-local MY_REPOSITORY = "Daniel-Kharrat/Protools-Reaper"
+-- Files that are never copied
+local NEVER_COPY = {
+    "reapack.ini",
+}
 
--- Files that are copied on a first installation only. Once the person has your
--- configuration they are left alone.
-local KEEP_IF_CONFIGURED = {
+-- Files that are copied only if the person does not have that file yet
+local COPY_IF_MISSING = {
     "reaper-screensets.ini",
+}
+
+-- Files that are copied only if the person does not have your configuration yet
+local COPY_IF_NOT_CONFIGURED = {
     "sws-autocoloricon.ini",
     "S&M.ini",
-    "reapack.ini",
 }
 
 -- How each of those files is described in the dialog
@@ -66,6 +74,15 @@ local KEEP_LABELS = {
     ["sws-autocoloricon.ini"] = "SWS auto colors",
     ["S&M.ini"]               = "S&M settings",
     ["reapack.ini"]           = "ReaPack repositories",
+}
+
+-- Toolbar icons (file names inside REAPER's Data/toolbar_icons folder) that exist only
+-- with your configuration. They have been in it since version 1, so finding one of
+-- them means the person already has your configuration. One is enough. Use a name
+-- REAPER does not install itself.
+local MY_TOOLBAR_ICONS = {
+    "Rec_Tally_Light.png",
+    "Insertion_Follows_Playback.png",
 }
 
 -- reaper.ini: sections where their values are kept, but lines they don't have
@@ -92,6 +109,9 @@ local DAN_FOLDER   = DATA_FOLDER .. "/Daniel Kharrat"   -- everything of this up
 local STAGE        = DAN_FOLDER .. "/Update"
 local EXTRACTED    = STAGE .. "/extracted"
 local BACKUP       = DAN_FOLDER .. "/Backup"
+-- Backup of a person's own settings from before they had your configuration. Made
+-- once, on their first update, and never overwritten by later updates.
+local PRE_CONFIG_BACKUP = DAN_FOLDER .. "/Config Before Daniel Kharrat"
 local VERSION_FILE = DAN_FOLDER .. "/Config_Version.txt"
 
 -- Where earlier versions of this updater kept things. They are moved or
@@ -101,13 +121,22 @@ local OLD_BACKUP       = DATA_FOLDER .. "/Daniel_Update_Backup"
 local OLD_VERSION_FILE = DATA_FOLDER .. "/Daniel_Config_Version.txt"
 local OLD_LOG          = DATA_FOLDER .. "/Daniel_Update_log.txt"
 
--- The only files that are backed up before an update (when they are about to change)
+-- Files that are backed up before an update if the person has them, whether or not
+-- the update changes them
+local ALWAYS_BACKUP_FILES = {
+    "reaper-screensets.ini",   -- screen sets
+    "reaper-hwoutfx.ini",      -- monitoring FX
+}
+
+-- The other files that are backed up before an update (when they are about to change)
 local BACKUP_FILES = {
     ["reaper-kb.ini"]          = true,   -- keyboard shortcuts
     ["reaper-menu.ini"]        = true,   -- menus
     ["reaper-mouse.ini"]       = true,   -- mouse modifiers
     ["reaper-themeconfig.ini"] = true,   -- theme config
     ["reaper.ini"]             = true,
+    ["sws-autocoloricon.ini"]  = true,   -- SWS auto colors
+    ["S&M.ini"]                = true,   -- S&M settings
 }
 
 local UPDATER_DIR  = RESOURCE_PATH .. "/Scripts/Daniel Kharrat/Updater"
@@ -604,9 +633,45 @@ end
 -- Does the person already have your configuration?
 ------------------------------------------------------------
 
-local function repository_in_reapack()
-    local reapack = read_file(RESOURCE_PATH .. "/reapack.ini")
-    return reapack ~= nil and reapack:lower():find(MY_REPOSITORY:lower(), 1, true) ~= nil
+-- True if the person already has your configuration: an earlier update recorded a
+-- version, or one of your toolbar icons is in their toolbar_icons folder (older
+-- installs made by importing the configuration). Having imported your ReaPack
+-- repository does NOT count.
+local function has_my_configuration(installed_version)
+    if installed_version ~= nil then
+        return true
+    end
+    for _, name in ipairs(MY_TOOLBAR_ICONS) do
+        if file_exists(RESOURCE_PATH .. "/Data/toolbar_icons/" .. name) then
+            return true
+        end
+    end
+    return false
+end
+
+-- True if this update saves the person's own settings in "Config Before Daniel Kharrat":
+-- they do not have your configuration yet, and that folder has not been filled before
+local function uses_pre_config_backup(configured)
+    return not configured and not reaper.EnumerateFiles(PRE_CONFIG_BACKUP, 0)
+end
+
+-- The files of the configuration that must not be replaced on this machine
+local function files_to_leave(configured)
+    local leave = {}
+    for _, name in ipairs(NEVER_COPY) do
+        leave[#leave + 1] = name
+    end
+    for _, name in ipairs(COPY_IF_MISSING) do
+        if file_exists(RESOURCE_PATH .. "/" .. name) then
+            leave[#leave + 1] = name
+        end
+    end
+    if configured then
+        for _, name in ipairs(COPY_IF_NOT_CONFIGURED) do
+            leave[#leave + 1] = name
+        end
+    end
+    return leave
 end
 
 
@@ -802,10 +867,16 @@ local function show_dialog(info, on_ok, on_cancel)
         -- where the backup is. reaper-kb.ini (keyboard shortcuts) is only touched when
         -- the choice is not "skip"; the mouse modifiers are backed up in every case.
         color(0.62, 0.80, 0.65)
-        cy = draw_text("Don't worry: before anything changes, your current " ..
-            ((mode == "skip") and "mouse modifiers are" or "keyboard shortcuts and mouse modifiers are") ..
-            " backed up in your REAPER resource folder: Data/Daniel Kharrat/Backup",
-            margin, cy, text_w)
+        if info.first_backup then
+            cy = draw_text("Don't worry: before anything changes, all your current configuration files are " ..
+                "backed up in your REAPER resource folder: Data/Daniel Kharrat/Config Before Daniel Kharrat",
+                margin, cy, text_w)
+        else
+            cy = draw_text("Don't worry: before anything changes, your current " ..
+                ((mode == "skip") and "mouse modifiers are" or "keyboard shortcuts and mouse modifiers are") ..
+                " backed up in your REAPER resource folder: Data/Daniel Kharrat/Backup",
+                margin, cy, text_w)
+        end
         cy = cy + math.floor(18 * scale)
 
         -- notes
@@ -813,16 +884,14 @@ local function show_dialog(info, on_ok, on_cancel)
         cy = draw_text("Settings in your own reaper.ini that are not part of the configuration are kept, " ..
             "such as machine-specific settings and some personal preferences.",
             margin, cy, text_w)
-        if info.configured then
+        do
             local names = {}
-            for _, name in ipairs(KEEP_IF_CONFIGURED) do
+            for _, name in ipairs(info.leave) do
                 names[#names + 1] = KEEP_LABELS[name] or name
             end
             local list = "These will not be replaced: " .. table.concat(names, ", ") .. "."
             cy = cy + math.floor(6 * scale)
             cy = draw_text(list, margin, cy, text_w)
-        else
-            cy = draw_text("First installation: all files are copied.", margin, cy, text_w)
         end
         cy = cy + math.floor(6 * scale)
         cy = draw_text("REAPER will close and restart to apply the update.", margin, cy, text_w)
@@ -1003,9 +1072,7 @@ local function main()
         installed = nil
     end
 
-    -- an installed version was recorded by an earlier update, or your repository
-    -- is in their ReaPack list (older installs made by importing the configuration)
-    local configured = (installed ~= nil) or repository_in_reapack()
+    local configured = has_my_configuration(installed)
 
     ----------------------------------------------------
     -- Everything after the question. It runs when the person presses OK.
@@ -1067,12 +1134,12 @@ local function main()
         end
 
         ----------------------------------------------------
-        -- Existing configuration: leave their own copies of some files alone
+        -- Leave their own copies of some files alone
         ----------------------------------------------------
 
-        if configured then
+        do
             local leave = {}
-            for _, name in ipairs(KEEP_IF_CONFIGURED) do
+            for _, name in ipairs(files_to_leave(configured)) do
                 leave[name] = true
                 os.remove(EXTRACTED .. "/" .. name)
             end
@@ -1090,6 +1157,12 @@ local function main()
         ----------------------------------------------------
 
         remove_dir(BACKUP)
+        -- first update of a person who does not have your configuration: keep their own
+        -- settings apart, and never overwrite that copy later
+        local backup_dir = BACKUP
+        if uses_pre_config_backup(configured) then
+            backup_dir = PRE_CONFIG_BACKUP
+        end
         remove_dir(OLD_BACKUP)     -- backups of earlier versions of this updater
         os.remove(OLD_LOG)
         os.remove(DAN_FOLDER .. "/Update_Log.txt")            -- logs of an earlier test version
@@ -1098,9 +1171,19 @@ local function main()
             if BACKUP_FILES[rel] then
                 local current = RESOURCE_PATH .. "/" .. rel
                 if file_exists(current) then
-                    if not copy_file(current, BACKUP .. "/" .. rel) then
+                    if not copy_file(current, backup_dir .. "/" .. rel) then
                         return abort("Could not back up:\n\n" .. current)
                     end
+                end
+            end
+        end
+
+        -- screen sets and monitoring FX are always saved if the person has them
+        for _, name in ipairs(ALWAYS_BACKUP_FILES) do
+            local current = RESOURCE_PATH .. "/" .. name
+            if file_exists(current) then
+                if not copy_file(current, backup_dir .. "/" .. name) then
+                    return abort("Could not back up:\n\n" .. current)
                 end
             end
         end
@@ -1196,7 +1279,9 @@ local function main()
         latest       = latest,
         installed    = installed,
         same_version = (installed ~= nil and compare_versions(installed, latest) == 0),
+        leave        = files_to_leave(configured),
         configured   = configured,
+        first_backup = uses_pre_config_backup(configured),
     }, run_update, function() remove_dir(STAGE) end)
 end
 

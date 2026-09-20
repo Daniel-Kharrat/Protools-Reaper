@@ -1,6 +1,6 @@
 -- Daniel_Merge keyboard shortcuts.lua
 --
--- Merges the shipped keymap (Data/Daniel_Modified keyboard shortcuts only.ReaperKeyMap)
+-- Merges the shipped keymap (Data/Daniel Kharrat/Daniel_Modified keyboard shortcuts only.ReaperKeyMap)
 -- into the person's reaper-kb.ini WITHOUT replacing the rest of the file.
 -- This is separate from the Personal Settings save/restore scripts and does
 -- not use their helper.
@@ -22,20 +22,24 @@
 --
 -- REAPER rewrites reaper-kb.ini from memory when it quits, so this script does
 -- NOT edit reaper-kb.ini directly. It writes the merged result to
--- Data/reaper-kb.merged.ini, then quits REAPER. Its own helper
+-- Data/Daniel Kharrat/reaper-kb.merged.ini, then quits REAPER. Its own helper
 -- (Daniel_Merge_keyboard_shortcuts.bat / .sh) waits for REAPER to close,
 -- copies the merged file over reaper-kb.ini, and relaunches REAPER.
 
 local RESOURCE_PATH  = reaper.GetResourcePath()
 local DATA_FOLDER   = RESOURCE_PATH .. "/Data"
+local DAN_FOLDER    = DATA_FOLDER .. "/Daniel Kharrat"   -- everything of these scripts lives here
 local PREPARE = rawget(_G, "DANIEL_KB_MERGE") -- nil when run as a normal action
 
 local SHIPPED_FILE = (PREPARE and PREPARE.shipped_file) or
-    (DATA_FOLDER .. "/Daniel_Modified keyboard shortcuts only.ReaperKeyMap")
+    (DAN_FOLDER .. "/Daniel_Modified keyboard shortcuts only.ReaperKeyMap")
+-- earlier versions kept these directly in Data
+local OLD_SHIPPED_FILE = DATA_FOLDER .. "/Daniel_Modified keyboard shortcuts only.ReaperKeyMap"
+local OLD_BACKUP_FILE  = DATA_FOLDER .. "/reaper-kb.original-backup.ini"
 local KB_FILE      = RESOURCE_PATH .. "/reaper-kb.ini"
 local MERGED_FILE  = (PREPARE and PREPARE.merged_file) or
-    (DATA_FOLDER .. "/reaper-kb.merged.ini")
-local BACKUP_FILE  = DATA_FOLDER .. "/reaper-kb.original-backup.ini"
+    (DAN_FOLDER .. "/reaper-kb.merged.ini")
+local BACKUP_FILE  = DAN_FOLDER .. "/reaper-kb.original-backup.ini"
 
 local TITLE = "Keyboard Shortcuts"
 
@@ -272,6 +276,11 @@ end
 -- Read both files and merge
 ------------------------------------------------------------
 
+-- keymap not delivered to the new folder yet: use the one in the old place
+if not PREPARE and not file_exists(SHIPPED_FILE) and file_exists(OLD_SHIPPED_FILE) then
+    SHIPPED_FILE = OLD_SHIPPED_FILE
+end
+
 local shipped_text = read_file(SHIPPED_FILE)
 
 if not shipped_text then
@@ -325,7 +334,15 @@ end
 -- Save backup (first run only) and the merged file
 ------------------------------------------------------------
 
-reaper.RecursiveCreateDirectory(DATA_FOLDER, 0)
+reaper.RecursiveCreateDirectory(DAN_FOLDER, 0)
+
+-- The original backup used to be saved directly in Data: move it into the new folder
+if not file_exists(BACKUP_FILE) and file_exists(OLD_BACKUP_FILE) then
+    local old_backup = read_file(OLD_BACKUP_FILE)
+    if old_backup and write_file(BACKUP_FILE, old_backup) then
+        os.remove(OLD_BACKUP_FILE)
+    end
+end
 
 -- Only the very first backup is kept, so it always holds the person's
 -- original file from before any merge.

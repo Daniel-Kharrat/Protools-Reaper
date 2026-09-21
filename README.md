@@ -1,7 +1,7 @@
 # Daniel Kharrat's Reaper-Protools Configuration
 
 ### **Pro Tools refugee? Jump right in**
-## 🟢[Open the guided installer](https://daniel-kharrat.github.io/Protools-Reaper/) 
+# 🟢 [Open the guided installer](https://daniel-kharrat.github.io/Protools-Reaper/) 🟢
 
 Use the shortcuts and muscle memory you already have
 

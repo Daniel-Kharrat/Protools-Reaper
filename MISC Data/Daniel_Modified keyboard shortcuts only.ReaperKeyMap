@@ -5,6 +5,10 @@ SCR 4 0 RSfd22bbcb79022c5661e6684e0ac51a9aa5d4e71e "Custom: Daniel_Track left cl
 SCR 4 0 RSb6cc7725bdd9ccbaa7d8258af9d957467ae9e697 "Custom: Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua" "Daniel Kharrat/Protools/Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua"
 SCR 4 0 RS64e92b5321521923538f70aead33157b880573b1 "Custom: Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua" "Daniel Kharrat/Protools/Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua"
 SCR 4 0 RSbd71958e8c2846a790f21cc6ee5064fe98e763b9 "Custom: Daniel_Toggle track selection.lua" "Daniel Kharrat/Protools/Daniel_Toggle track selection.lua"
+SCR 4 0 RS1ee9bb229dabffe151848d7efa3c10f748e1a1cf "Custom: lyrics.lua" Cockos/lyrics.lua
+SCR 4 0 RS1cbf05b0c4f875518496f34a5ce45adefe05cb67 "Custom: Default_6.0_theme_adjuster.lua" Cockos/Default_6.0_theme_adjuster.lua
+SCR 4 0 RS6c2efb3f983d062c88752f161da4cbbd6ab222e9 "Custom: Default_7.0_theme_adjuster.lua" Cockos/Default_7.0_theme_adjuster.lua
+SCR 4 0 RSde67af45e69b3dbfa7bb838659ff38bcebb5db37 "Custom: Daniel_Merge keyboard shortcuts.lua" "Daniel Kharrat/Updater/Daniel_Merge keyboard shortcuts.lua"
 SCR 4 0 RSb52f439c3fdfa36bc5dc9f2b7acfe62d8e67f9bf "Custom: Daniel_Change track routing from main to processing bus.lua" "Daniel Kharrat/Utility/Daniel_Change track routing from main to processing bus.lua"
 SCR 4 0 RSd2e825ef5e1c0848a2a346dc027f8a3a452bb1b2 "Custom: Daniel_Clear mute.lua" "Daniel Kharrat/Protools/Daniel_Clear mute.lua"
 SCR 4 0 RSffe1527d99e5f80610a082b66923bca59d6b9e8e "Custom: Daniel_Extend razor edit area to the left.lua" "Daniel Kharrat/Protools/Daniel_Extend razor edit area to the left.lua"
@@ -87,10 +91,10 @@ SCR 4 0 RS4a1885b58b1bc249e3136917310b6b1c33cba5f3 "Custom: Daniel_Auto markers 
 SCR 4 0 RS22184bfd14ba6fe71f7c982d8354aec893c6d2ba "Custom: Daniel_Always Recording.lua" "Daniel Kharrat/Utility/Daniel_Always Recording.lua"
 SCR 4 0 RS1d334413686175f313d60578bea01a827ae4e954 "Custom: Daniel_Always Recording (toolbar toggle).lua" "Daniel Kharrat/Utility/Daniel_Always Recording (toolbar toggle).lua"
 SCR 4 0 RSb019784d274d4c4efd2649de77c3ce2bc86d5d2e "Custom: Daniel_Insertion follows playback (toolbar toggle).lua" "Daniel Kharrat/Protools/Daniel_Insertion follows playback (toolbar toggle).lua"
-SCR 4 0 RS1ee9bb229dabffe151848d7efa3c10f748e1a1cf "Custom: lyrics.lua" Cockos/lyrics.lua
-SCR 4 0 RS1cbf05b0c4f875518496f34a5ce45adefe05cb67 "Custom: Default_6.0_theme_adjuster.lua" Cockos/Default_6.0_theme_adjuster.lua
-SCR 4 0 RS6c2efb3f983d062c88752f161da4cbbd6ab222e9 "Custom: Default_7.0_theme_adjuster.lua" Cockos/Default_7.0_theme_adjuster.lua
+SCR 4 0 RS6b4644d86854e10895485f184942fb69ecc26177 "Custom: ReaImGui_Demo.lua" "ReaTeam Extensions/API/ReaImGui_Demo.lua"
+SCR 4 0 RS1d8d78dcfe96a9e1c8e14b647d63bb80dfab3354 "Custom: ReaBlink_Monitor.lua" "ReaTeam Extensions/API/ReaBlink_Monitor.lua"
 SCR 4 0 RSd6a6383bbbbdd69d0d1824c51409c80ef242ed19 "Custom: Daniel_Update configuration.lua" "Daniel Kharrat/Updater/Daniel_Update configuration.lua"
+SCR 4 0 RSadde43197b24bfa4ec2774e454539a8a1e8b437a "Custom: Daniel_Restore config before Daniel Kharrat.lua" "Daniel Kharrat/Updater/Daniel_Restore config before Daniel Kharrat.lua"
 KEY 255 250 0 0		 # Main : Alt+Mousewheel : DISABLED DEFAULT
 KEY 255 218 0 0		 # Main : Alt+HorizWheel : DISABLED DEFAULT
 KEY 13 83 0 0		 # Main : Ctrl+Shift+S : DISABLED DEFAULT
@@ -191,6 +195,8 @@ KEY 0 47 40839 0		 # Main : / : Move edit cursor forward one measure (no seek)
 KEY 1 77 40840 0		 # Main : M : OVERRIDE DEFAULT : Move edit cursor back one measure (no seek)
 KEY 0 46 40841 0		 # Main : . : OVERRIDE DEFAULT : Move edit cursor forward one beat (no seek)
 KEY 0 44 40842 0		 # Main : , : OVERRIDE DEFAULT : Move edit cursor back one beat (no seek)
+KEY 9 87 40860 0		 # Main : Ctrl+W : Close current project tab
+KEY 9 115 40860 0		 # Main : Ctrl+F4 : OVERRIDE DEFAULT : Close current project tab
 KEY 13 77 40906 0		 # Main : Ctrl+Shift+M : OVERRIDE DEFAULT : View: Show track manager window
 KEY 9 82 41051 0		 # Main : Ctrl+R : OVERRIDE DEFAULT : Item properties: Toggle take reverse
 KEY 13 78 41067 0		 # Main : Ctrl+Shift+N : OVERRIDE DEFAULT : Track: Insert multiple new tracks...

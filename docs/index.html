@@ -1,1 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daniel Kharrat's REAPER-Protools Configuration: Installer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #eef1f3;
+    --panel: #ffffff;
+    --ink: #16232b;
+    --muted: #55656f;
+    --line: #cfd8dd;
+    --rec: #1f6fd1;
+    --btn: #1f6fd1;
+    --warn-bg: #fff4d6;
+    --warn-line: #e0b93c;
+    --focus: #e08a00;
+    --link: #0a5bc4;
+    --tint: #e7f0fc;
+    --chip-soft: rgba(255, 255, 255, 0.7);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #11181d;
+      --panel: #1a242b;
+      --ink: #e8eef1;
+      --muted: #9aabb5;
+      --line: #2e3d46;
+      --rec: #4493f8;
+      --btn: #1f6feb;
+      --warn-bg: #3a3116;
+      --warn-line: #a88a25;
+      --focus: #ffb454;
+      --link: #8cc4ff;
+      --tint: #1d2f45;
+      --chip-soft: rgba(255, 255, 255, 0.09);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 17px/1.6 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; }
 
+  header h1 {
+    font-family: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(30px, 6vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin: 0 0 10px;
+  }
+  header p { margin: 0; color: var(--muted); max-width: 52ch; }
+
+  .track {
+    display: flex; align-items: center; gap: 8px;
+    margin: 32px 0 20px; min-height: 36px; flex-wrap: wrap;
+  }
+  .where { display: flex; align-items: center; gap: 8px; }
+  .rec-dot {
+    width: 12px; height: 12px; border-radius: 50%; background: var(--rec);
+    flex: none;
+  }
+  .crumbs { color: var(--muted); font-size: 15px; }
+  .crumbs b { color: var(--ink); font-weight: 600; }
+  .back {
+    margin-left: auto; font: inherit; font-size: 15px; color: var(--ink);
+    background: none; border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 12px; cursor: pointer;
+  }
+  .back:hover { border-color: var(--ink); }
+  .back[hidden] { display: none; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  h2 {
+    font-family: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 700; font-size: clamp(24px, 4.5vw, 32px);
+    letter-spacing: -0.015em; line-height: 1.15; margin: 0 0 18px;
+  }
+  a:not(.btn) { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+  a:not(.btn):hover { text-decoration-thickness: 2px; }
+  h2:focus { outline: none; }
+  h3 {
+    font-family: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 20px; margin: 28px 0 8px; letter-spacing: -0.01em;
+  }
+
+  .choices { display: grid; gap: 14px; }
+  .choice {
+    display: block; width: 100%; text-align: left; font: inherit; color: inherit;
+    background: var(--panel); border: 2px solid var(--line); border-radius: 14px;
+    padding: 20px 22px; cursor: pointer; text-decoration: none;
+    transition: border-color .15s, background-color .15s;
+  }
+  .choice:hover { border-color: var(--rec); }
+  .choice strong {
+    display: block; font-family: "Bricolage Grotesque", "IBM Plex Sans", sans-serif;
+    font-size: 21px; line-height: 1.25; margin-bottom: 4px;
+  }
+  .choice span { color: var(--muted); font-size: 16px; }
+
+  button:focus-visible, a:focus-visible, summary:focus-visible {
+    outline: 3px solid var(--focus); outline-offset: 2px;
+  }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 8px 24px 24px;
+  }
+  ol.steps { padding-left: 1.4em; margin: 16px 0 0; }
+  ol.steps > li { padding-left: 6px; margin-bottom: 22px; overflow-wrap: anywhere; min-width: 0; }
+  ol.steps > li::marker { font-weight: 600; color: var(--rec); }
+  ol.steps .title { font-weight: 600; display: block; margin-bottom: 2px; }
+
+  .path {
+    font-weight: 600;
+    background: var(--paper); border-radius: 6px; padding: 1px 7px;
+    overflow-wrap: anywhere;
+    -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
+  code, .mono {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: .92em; background: var(--paper); border-radius: 6px; padding: 1px 6px;
+    overflow-wrap: anywhere;
+  }
+  .warn {
+    background: var(--warn-bg); border-left: 4px solid var(--warn-line);
+    border-radius: 6px; padding: 10px 14px; margin: 10px 0 0; font-size: 16px;
+  }
+  .btn {
+    display: inline-block; margin-top: 8px; padding: 10px 18px; border-radius: 10px;
+    border: 0; font-family: inherit; font-size: 16px; cursor: pointer;
+    background: var(--btn); color: #fff; font-weight: 600; text-decoration: none;
+  }
+  .btn:hover { filter: brightness(1.08); }
+
+  .options { display: grid; gap: 14px; margin-top: 16px; }
+  .option {
+    border-left: 4px solid var(--rec); padding: 2px 0 2px 16px;
+  }
+  .option h3 { margin: 0 0 4px; }
+  .option p { margin: 0; }
+
+  .copybox {
+    display: flex; align-items: stretch; gap: 8px; margin: 8px 0 10px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+    padding: 6px 6px 6px 12px;
+  }
+  .copybox code { flex: 1; align-self: center; background: none; padding: 0; font-size: 14px; word-break: break-all; }
+  .copy {
+    flex: none; align-self: center; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+    background: var(--btn); color: #fff; border: 0; border-radius: 8px; padding: 6px 14px;
+  }
+  .copy:hover { filter: brightness(1.08); }
+  .copy.done { background: #2e8b57; }
+  .panel details { background: var(--paper); margin: 14px 0 0; }
+  .panel details ol.steps { margin-top: 0; }
+  .note { color: var(--muted); font-size: 15px; margin: 4px 0 0; }
+  .config-name { color: var(--muted); font-size: 15px; margin-left: 6px; overflow-wrap: anywhere; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: middle; margin: 2px 0; }
+  .copy.mini { font-size: 13px; padding: 2px 9px; border-radius: 6px; align-self: center; }
+  /* A script name on its own line gets a small box with its Copy button inside, its edge lined up with the text above */
+  li > div > .chip:only-child {
+    display: inline-flex; gap: 10px; margin: 4px 0;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+    padding: 5px 6px 5px 12px;
+  }
+  li > div > .chip:only-child code { background: none; padding: 0; overflow-wrap: anywhere; }
+  li > .after { margin-top: 10px; }
+  .platforms { margin-top: 56px; text-align: center; color: var(--muted); font-size: 14px; }
+  .platforms .os { margin-top: 8px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .platforms span { border: 1px solid var(--line); border-radius: 999px; padding: 1px 12px; font-size: 13px; color: var(--muted); }
+
+  /* macOS tweak: a callout at the end of the install panel, visibly not one of the numbered steps */
+  .macos {
+    margin: 26px 0 0; padding: 14px 18px 4px;
+    background: var(--tint); border-left: 4px solid var(--rec); border-radius: 8px;
+  }
+  .macos h3 { margin: 0 0 8px; }
+  .macos .path, .macos code { background: var(--chip-soft); }
+  details {
+    margin-top: 26px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--panel); padding: 0 18px;
+  }
+  summary { cursor: pointer; padding: 14px 0; font-weight: 600; }
+  details[open] summary { border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+  details > *:last-child { margin-bottom: 16px; }
+
+
+  footer { margin-top: 48px; color: var(--muted); font-size: 15px; }
+  footer a { color: inherit; }
+  noscript { display: block; background: var(--warn-bg); padding: 12px 16px; border-radius: 8px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 480px) { .panel { padding: 4px 16px 18px; } .choice { padding: 16px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Daniel Kharrat's REAPER-Protools Configuration</h1>
+    <p>Answer a couple of quick questions and you'll get only the instructions that apply to you.</p>
+  </header>
+
+  <noscript>This guided installer needs JavaScript. The full instructions are in the <a href="https://github.com/Daniel-Kharrat/Protools-Reaper#readme">README on GitHub</a>.</noscript>
+
+  <div class="track" id="track">
+    <div class="where" aria-live="polite">
+      <span class="rec-dot" aria-hidden="true"></span>
+      <span class="crumbs" id="crumbs"></span>
+    </div>
+    <button class="back" id="back" type="button" hidden>Back</button>
+  </div>
+
+  <!-- Question 1 -->
+  <section class="view" id="view-home" aria-labelledby="h-home">
+    <h2 id="h-home">What are you here for?</h2>
+    <div class="choices">
+      <button class="choice" type="button" data-go="update">
+        <strong>I already have your configuration</strong>
+        <span>I want to update it.</span>
+      </button>
+      <button class="choice" type="button" data-go="first">
+        <strong>I don't have your configuration yet</strong>
+        <span>I'm installing it for the first time.</span>
+      </button>
+      <button class="choice" type="button" data-go="scripts">
+        <strong>I don't want the full configuration</strong>
+        <span>I just want some individual scripts or FX.</span>
+      </button>
+      <button class="choice" type="button" data-go="restore">
+        <strong>I want to restore my previous configuration</strong>
+        <span>Go back to how REAPER was before.</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Restore: did you save your own file? -->
+  <section class="view" id="view-restore" aria-labelledby="h-restore">
+    <h2 id="h-restore">Did you save your own configuration file?</h2>
+    <div class="choices">
+      <button class="choice" type="button" data-go="restore-file">
+        <strong>Yes, I saved my own file</strong>
+        <span>I exported my configuration before installing yours.</span>
+      </button>
+      <button class="choice" type="button" data-go="restore-script">
+        <strong>No, I didn't save one</strong>
+        <span>I'll use your restore scripts instead.</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Restore: from own file -->
+  <section class="view" id="view-restore-file" aria-labelledby="h-rfile">
+    <h2 id="h-rfile">Import your saved configuration</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>
+          <span class="title">Open the import dialog</span>
+          In REAPER go to <span class="path">Options → Preferences</span>, and under <b>General settings</b> click <b>Import configuration...</b>
+        </li>
+        <li>
+          <span class="title">Choose your file</span>
+          Find the configuration file you saved earlier, then click <b>Open</b> and <b>Import</b>.
+        </li>
+      </ol>
+      <p class="note">This replaces your current configuration with the one in your file.</p>
+    </div>
+  </section>
+
+  <!-- Restore: no saved file, what are you restoring from? -->
+  <section class="view" id="view-restore-script" aria-labelledby="h-rscript">
+    <h2 id="h-rscript">What are you restoring from?</h2>
+    <div class="choices">
+      <button class="choice" type="button" data-go="restore-before">
+        <strong>I went from my own configuration to yours</strong>
+        <span>I installed your configuration for the first time and want my old one back.</span>
+      </button>
+      <button class="choice" type="button" data-go="restore-previous">
+        <strong>I already had your configuration and want to go back one version</strong>
+        <span>I didn't mean to update it. I want to go back.</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Restore: back to own configuration from before Daniel -->
+  <section class="view" id="view-restore-before" aria-labelledby="h-rbefore">
+    <h2 id="h-rbefore">Get your own configuration back</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>
+          <span class="title">Run the restore script</span>
+          Open the actions list and run
+          <div><code class="script">Daniel_Restore config before Daniel Kharrat.lua</code></div>
+          This restores the configuration you had before installing mine.
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Restore: back to an earlier version of Daniel's configuration -->
+  <section class="view" id="view-restore-previous" aria-labelledby="h-rprev">
+    <h2 id="h-rprev">Go back to the version before the update</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>
+          <span class="title">Run the restore script</span>
+          Open the actions list and run
+          <div><code class="script">Daniel_Restore personal settings.lua</code></div>
+          This brings back the version of my configuration you had before the update.
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Question 2: fresh REAPER or existing setup -->
+  <section class="view" id="view-first" aria-labelledby="h-first">
+    <h2 id="h-first">Is this a brand-new REAPER installation?</h2>
+    <div class="choices">
+      <button class="choice" type="button" data-go="fresh">
+        <strong>Yes, I'm starting from scratch</strong>
+        <span>A fresh REAPER with nothing set up yet.</span>
+      </button>
+      <button class="choice" type="button" data-go="reapack">
+        <strong>No, I already have a working setup</strong>
+        <span>I'm using REAPER right now and want to add your configuration.</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- First install: fresh REAPER -->
+  <section class="view" id="view-fresh" aria-labelledby="h-fresh">
+    <h2 id="h-fresh">Install the configuration</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>
+          <span class="title">Install ReaPack</span>
+          Download it from <a href="https://reapack.com/" target="_blank" rel="noopener">reapack.com</a><br>
+          In REAPER go to <span class="path">Options → Show REAPER resource path in Explorer/finder...</span><br>
+          Look for a folder called <code>UserPlugins</code> and put the ReaPack file in it<br>
+          Restart REAPER
+        </li>
+        <li>
+          <span class="title">Import the configuration</span>
+          Download the latest <a class="config-link" href="#fresh">configuration</a> <span class="config-name"></span><br>
+          In REAPER go to <span class="path">Options → Preferences</span><br>
+          Under <b>General settings</b> click <b>Import configuration...</b><br>
+          Find the file you just downloaded, click <b>Open</b> then <b>Import</b>
+        </li>
+        <li>
+          <span class="title">Synchronize packages</span>
+          Go to <span class="path">Extensions → ReaPack → Synchronize packages</span><br>
+          It will install <b>Daniel Kharrat</b> and <b>ReaTeam Extensions</b><br>
+          After both repositories finish installing, <b>restart REAPER</b>
+        </li>
+        <li>
+          <span class="title">Open the actions list and run these two scripts</span>
+          <div><code class="script">Daniel_Set splash screen.lua</code></div>
+          <div><code class="script">Daniel_Replace toolbar_icons.lua</code></div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Question 3: ReaPack -->
+  <section class="view" id="view-reapack" aria-labelledby="h-reapack">
+    <h2 id="h-reapack">Do you have ReaPack installed?</h2>
+    <div class="choices">
+      <button class="choice" type="button" data-go="install-reapack">
+        <strong>Yes, I have ReaPack</strong>
+        <span>It shows up under Extensions → ReaPack in REAPER.</span>
+      </button>
+      <button class="choice" type="button" data-go="install-no-reapack">
+        <strong>No, I don't have ReaPack</strong>
+        <span>Or I'm not sure. There's no ReaPack menu under Extensions.</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Update -->
+  <section class="view" id="view-update" aria-labelledby="h-update">
+    <h2 id="h-update">Update your configuration</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>
+          <span class="title">Update the scripts only</span>
+          In REAPER go to <span class="path">Extensions → ReaPack → Synchronize packages</span>
+        </li>
+        <li>
+          <span class="title">Get the newest configuration</span>
+          Open the actions list and run
+          <div><code class="script">Daniel_Update configuration.lua</code></div>
+        </li>
+        <li>
+          <span class="title">If you reinstalled REAPER and the toolbar icons turned green</span>
+          Open the actions list and run
+          <div><code class="script">Daniel_Replace toolbar_icons.lua</code></div>
+          to bring back my blue icons.
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- First install: has ReaPack -->
+  <section class="view" id="view-has-reapack" aria-labelledby="h-has">
+    <h2 id="h-has">Install the configuration</h2>
+    <div class="panel">
+      <div class="warn">⚠️ <b>Heads up:</b> installing my configuration will overwrite your current REAPER configuration. Don't worry, I back up all your configuration files, and you'll be able to restore them later.</div>
+      <details>
+        <summary>I'd rather save my own configuration first</summary>
+        <ol class="steps">
+          <li>
+            <span class="title">Export your configuration</span>
+            In REAPER go to <span class="path">Options → Preferences</span>, and under <b>General settings</b> click <b>Export configuration...</b>
+          </li>
+          <li>
+            <span class="title">Save it somewhere safe</span>
+            Choose what to include, then pick a location outside REAPER's own folder and save the file.
+          </li>
+          <li>
+            <span class="title">To go back to it later</span>
+            Go to the same place and click <b>Import configuration...</b>, then choose the file you saved.
+          </li>
+        </ol>
+      </details>
+      <ol class="steps">
+        <li>
+          <span class="title">Import my repository</span>
+          Copy this link:
+          <div class="copybox">
+            <code id="repo-link">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/index.xml</code>
+            <button class="copy" type="button" data-copy="repo-link" aria-label="Copy repository link">Copy</button>
+          </div>
+          In REAPER go to <span class="path">Extensions → ReaPack → Import repositories…</span><br>
+          Paste it and click <b>OK</b>
+        </li>
+        <li>
+          <span class="title">Make sure ReaTeam Extensions is installed</span>
+          Go to <span class="path">Extensions → ReaPack → Manage repositories…</span><br>
+          and double click on <b>ReaTeam Extensions</b><br>
+          then click <span class="path">Install/update ReaTeam Extensions → Install all packages in this repository</span>
+        </li>
+        <li>
+          <span class="title">Run the update script</span>
+          Open the actions list and run
+          <div><code class="script">Daniel_Update configuration.lua</code></div>
+        </li>
+        <li>
+          <span class="title">Set my splash screen</span>
+          Open the actions list and run
+          <div><code class="script">Daniel_Set splash screen.lua</code></div>
+          to get my custom startup image.
+        </li>
+        <li>
+          <span class="title">Replace the toolbar icons</span>
+          Open the actions list and run
+          <div><code class="script">Daniel_Replace toolbar_icons.lua</code></div>
+          to get the toolbar icons that match my theme.
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- First install: no ReaPack -->
+  <section class="view" id="view-no-reapack" aria-labelledby="h-no">
+    <h2 id="h-no">Install the configuration</h2>
+    <div class="panel">
+      <ol class="steps">
+        <li>
+          <span class="title">Install ReaPack</span>
+          Download it from <a href="https://reapack.com/" target="_blank" rel="noopener">reapack.com</a><br>
+          In REAPER go to <span class="path">Options → Show REAPER resource path in Explorer/finder...</span><br>
+          Look for a folder called <code>UserPlugins</code> and put the ReaPack file in it<br>
+          Restart REAPER
+        </li>
+        <li>
+          <span class="title">Continue</span>
+          Now that ReaPack is installed, the rest of the installation is the same as for people who already have it.
+          <div><button class="btn" type="button" data-go="install-reapack">Continue</button></div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Individual scripts / FX only -->
+  <section class="view" id="view-scripts" aria-labelledby="h-scripts">
+    <h2 id="h-scripts">Install only some scripts or FX</h2>
+    <div class="panel">
+      <div class="warn">⚠️ <b>This requires ReaPack.</b> If you don't have it yet, install it first.</div>
+      <details>
+        <summary>I don't have ReaPack yet</summary>
+        <ol class="steps">
+          <li>
+            <span class="title">Download ReaPack</span>
+            Get it from <a href="https://reapack.com/" target="_blank" rel="noopener">reapack.com</a>.
+          </li>
+          <li>
+            <span class="title">Open REAPER's resource folder</span>
+            In REAPER go to <span class="path">Options → Show REAPER resource path in Explorer/finder...</span>
+          </li>
+          <li>
+            <span class="title">Put the file in UserPlugins</span>
+            Look for a folder called <code>UserPlugins</code> and put the ReaPack file in it. Then restart REAPER.
+          </li>
+        </ol>
+      </details>
+      <ol class="steps">
+        <li>
+          <span class="title">Import my repository</span>
+          Copy this link:
+          <div class="copybox">
+            <code id="repo-link-2">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/index.xml</code>
+            <button class="copy" type="button" data-copy="repo-link-2" aria-label="Copy repository link">Copy</button>
+          </div>
+          In REAPER go to <span class="path">Extensions → ReaPack → Import repositories…</span>, paste it and click <b>OK</b>.
+        </li>
+        <li>
+          <span class="title">Choose what to install</span>
+          Go to <span class="path">Extensions → ReaPack → Manage repositories…</span><br>
+          and double click on <b>Daniel Kharrat</b><br>
+          then click <span class="path">Install/update Daniel Kharrat → Install individual packages in this repository</span>
+          <div class="after">Search for the package you want, right click on it and choose <b>Install</b>, <b>Uninstall</b> or <b>Reinstall</b>, then click <b>Apply</b>.</div>
+        </li>
+      </ol>
+      <p class="note">Note: a few of my scripts require the <b>ReaTeam Extensions</b> repository to be installed as well.</p>
+    </div>
+  </section>
+
+  <!-- Shown under both first-install paths -->
+  <section id="macos" class="macos" aria-labelledby="h-macos" hidden>
+    <h3 id="h-macos">🍎 Small tweak for macOS 🍎</h3>
+    <p>The configuration uses <b>cmd + space</b> to record, which clashes with Spotlight Search on macOS.<br>
+    Go to <span class="path">System Settings... → Keyboard → Keyboard Shortcuts... → Spotlight</span> and change:</p>
+    <ul>
+      <li><b>Show Spotlight search</b> to <code>opt + space</code></li>
+      <li><b>Show Finder search window</b> to <code>opt + cmd + space</code></li>
+    </ul>
+  </section>
+
+  
+  <footer class="platforms">
+    <div>Works on</div>
+    <div class="os"><span>macOS</span> <span>Windows</span> <span>Linux</span></div>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var views = {
+    "home":               { id: "view-home",         crumbs: [] },
+    "update":             { id: "view-update",       crumbs: ["Update"], parent: "home" },
+    "scripts":            { id: "view-scripts",      crumbs: ["Scripts or FX only"], parent: "home" },
+    "restore":            { id: "view-restore",        crumbs: ["Restore"], parent: "home" },
+    "restore-file":       { id: "view-restore-file",   crumbs: ["Restore", "Saved file"], parent: "restore" },
+    "restore-script":     { id: "view-restore-script", crumbs: ["Restore", "No saved file"], parent: "restore" },
+    "restore-before":     { id: "view-restore-before", crumbs: ["Restore", "No saved file", "Before my configuration"], parent: "restore-script" },
+    "restore-previous":   { id: "view-restore-previous", crumbs: ["Restore", "No saved file", "Previous version"], parent: "restore-script" },
+    "first":              { id: "view-first",        crumbs: ["First install"], parent: "home" },
+    "fresh":              { id: "view-fresh",        crumbs: ["First install", "Fresh REAPER"], parent: "first", macos: true },
+    "reapack":            { id: "view-reapack",      crumbs: ["First install", "Existing REAPER"], parent: "first" },
+    "install-reapack":    { id: "view-has-reapack",  crumbs: ["First install", "Existing REAPER", "Have ReaPack"], parent: "reapack", macos: true },
+    "install-no-reapack": { id: "view-no-reapack",   crumbs: ["First install", "Existing REAPER", "No ReaPack"],   parent: "reapack", macos: false }
+  };
+  var crumbs = document.getElementById("crumbs");
+  var back = document.getElementById("back");
+  var macos = document.getElementById("macos");
+
+  function show(name) {
+    if (!views[name]) name = "home";
+    var v = views[name];
+    document.querySelectorAll(".view").forEach(function (el) { el.classList.remove("active"); });
+    var target = document.getElementById(v.id);
+    target.classList.add("active");
+    if (v.macos) { target.querySelector(".panel").appendChild(macos); }
+    macos.hidden = !v.macos;
+
+    if (v.crumbs.length) {
+      crumbs.innerHTML = v.crumbs.map(function (c, i) {
+        return i === v.crumbs.length - 1 ? "<b>" + c + "</b>" : c;
+      }).join(" / ");
+    } else {
+      crumbs.textContent = "Start here";
+    }
+    back.hidden = !v.parent;
+    back.dataset.parent = v.parent || "";
+
+    var heading = target.querySelector("h2");
+    if (heading) { heading.setAttribute("tabindex", "-1"); heading.focus({ preventScroll: true }); }
+    window.scrollTo(0, 0);
+  }
+
+  function go(name) {
+    if (location.hash.slice(1) !== name) { location.hash = name === "home" ? "" : name; }
+    else { show(name); }
+  }
+
+  document.querySelectorAll("[data-go]").forEach(function (b) {
+    b.addEventListener("click", function () { go(b.dataset.go); });
+  });
+  back.addEventListener("click", function () { go(back.dataset.parent || "home"); });
+  // ---- Latest configuration: read Configurations/latest.txt, fall back to the highest version in the folder ----
+  var REPO = "Daniel-Kharrat/Protools-Reaper";
+  var RAW_BASE = "https://raw.githubusercontent.com/" + REPO + "/master/Configurations/";
+  var CDN_BASE = "https://cdn.jsdelivr.net/gh/" + REPO + "@master/Configurations/";
+  var DOWNLOAD_BASE = "https://github.com/" + REPO + "/raw/refs/heads/master/Configurations/";
+  var GH_LIST_URL = "https://api.github.com/repos/" + REPO + "/contents/Configurations?ref=master";
+  var CDN_LIST_URL = "https://data.jsdelivr.com/v1/packages/gh/" + REPO + "@master?structure=flat";
+  var FILE_PREFIX = "Daniel_Reaper_Protools v";
+
+  function stripHashes(t) { return t.replace(/\b[a-f0-9]{32,64}\b/gi, ""); }
+
+  // A full filename inside latest.txt (any checksum or "label:" around it is ignored)
+  function parseName(text) {
+    var lines = text.split(/\r?\n/);
+    for (var i = 0; i < lines.length; i++) {
+      var m = lines[i].match(/\.ReaperConfigZip/i);
+      if (!m) continue;
+      var name = stripHashes(lines[i].slice(0, m.index + m[0].length));
+      name = name.replace(/^[^:=]*[:=]\s*/, "").replace(/^[\s*,-]+/, "").trim();
+      if (name) return name;
+    }
+    return null;
+  }
+
+  // A bare version number in latest.txt, e.g. "5.0", "v5.0" or "4_2"
+  function parseVersion(text) {
+    var lines = stripHashes(text).split(/\r?\n/);
+    for (var i = 0; i < lines.length; i++) {
+      var m = lines[i].match(/(\d+(?:[._]\d+)*)/);
+      if (m) return m[1].replace(/_/g, ".");
+    }
+    return null;
+  }
+
+  // The version number sitting right before ".ReaperConfigZip" in a file name
+  function versionOfFile(name) {
+    var m = name.match(/(\d+(?:[._]\d+)*)\.ReaperConfigZip$/i);
+    return m ? m[1].replace(/_/g, ".") : null;
+  }
+
+  function compareVersions(a, b) {
+    var x = a.split(".").map(Number), y = b.split(".").map(Number);
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var d = (x[i] || 0) - (y[i] || 0);
+      if (d) return d;
+    }
+    return 0;
+  }
+
+  // Try each task in turn; resolve with the first that works, remembering why the others failed
+  function firstOk(tasks, errs) {
+    var p = Promise.reject(new Error("start"));
+    tasks.forEach(function (t) {
+      p = p.catch(function () {
+        return t.run().catch(function (e) {
+          errs.push(t.label + ": " + ((e && e.message) || e));
+          throw e;
+        });
+      });
+    });
+    return p;
+  }
+
+  function getText(url) {
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    });
+  }
+  function getJson(url) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+  function getBlob(url) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.blob();
+    });
+  }
+
+  function pickFromList(files, version) {
+    var withVer = files.map(function (f) { return { name: f, v: versionOfFile(f) }; })
+                       .filter(function (f) { return f.v; });
+    if (version) {
+      for (var i = 0; i < withVer.length; i++) if (compareVersions(withVer[i].v, version) === 0) return withVer[i].name;
+    }
+    withVer.sort(function (a, b) { return compareVersions(b.v, a.v); });
+    return withVer.length ? withVer[0].name : null;
+  }
+
+  var latestPromise = null;
+  function resolveLatest() {
+    if (latestPromise) return latestPromise;
+    var errs = [];
+    var stamp = "?t=" + Date.now();
+    latestPromise = firstOk([
+        { label: "latest.txt (GitHub)",  run: function () { return getText(RAW_BASE + "latest.txt" + stamp); } },
+        { label: "latest.txt (CDN)",     run: function () { return getText(CDN_BASE + "latest.txt" + stamp); } }
+      ], errs)
+      .then(function (text) { return { name: parseName(text), version: parseVersion(text) }; },
+            function () { return { name: null, version: null }; })
+      .then(function (info) {
+        if (info.name) return info.name;
+        return firstOk([
+          { label: "folder listing (GitHub)", run: function () {
+              return getJson(GH_LIST_URL).then(function (items) {
+                return items.filter(function (i) { return i.type === "file" && /\.ReaperConfigZip$/i.test(i.name); })
+                            .map(function (i) { return i.name; });
+              }); } },
+          { label: "folder listing (CDN)", run: function () {
+              return getJson(CDN_LIST_URL).then(function (data) {
+                return (data.files || []).map(function (f) { return f.name; })
+                  .filter(function (n) { return /^\/Configurations\/[^\/]+\.ReaperConfigZip$/i.test(n); })
+                  .map(function (n) { return n.replace(/^\/Configurations\//, ""); });
+              }); } }
+        ], errs).then(function (files) {
+          var name = pickFromList(files, info.version);
+          if (!name) throw new Error("no .ReaperConfigZip files with a version number found in the folder");
+          return name;
+        }).catch(function () {
+          if (info.version) return FILE_PREFIX + info.version + ".ReaperConfigZip";
+          throw new Error(errs.join("; ") || "nothing found");
+        });
+      });
+    return latestPromise;
+  }
+
+  function saveBlob(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name; a.style.display = "none";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  }
+
+  function setupConfigDownload() {
+    var links = document.querySelectorAll(".config-link");
+    var statuses = document.querySelectorAll(".config-name");
+    function say(t) { statuses.forEach(function (n) { n.textContent = t; }); }
+
+    // Work out the file name ahead of time so the link already points at the right file
+    resolveLatest().then(function (name) {
+      var v = versionOfFile(name);
+      links.forEach(function (a) {
+        a.href = DOWNLOAD_BASE + encodeURIComponent(name);
+        a.textContent = "configuration" + (v ? " v" + v : "");
+      });
+      say("");
+    }, function () { /* the click handler reports the reason */ });
+
+    links.forEach(function (a) {
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        say("Looking for the latest version…");
+        resolveLatest().then(function (name) {
+          say("Downloading " + name + "…");
+          var enc = encodeURIComponent(name), errs = [];
+          return firstOk([
+            { label: "GitHub", run: function () { return getBlob(RAW_BASE + enc + "?t=" + Date.now()); } },
+            { label: "CDN",    run: function () { return getBlob(CDN_BASE + enc); } }
+          ], errs).then(function (blob) {
+            saveBlob(blob, name); say("");
+          }, function () {
+            window.location.href = DOWNLOAD_BASE + enc;   // let the browser download it directly
+            say("");
+          });
+        }, function (err) {
+          say("Couldn't find the latest version automatically (" + err.message + ").");
+        });
+      });
+    });
+  }
+
+  function copyText(text, btn) {
+    var label = btn.textContent;
+    function done() {
+      btn.textContent = "Copied";
+      btn.classList.add("done");
+      setTimeout(function () { btn.textContent = label; btn.classList.remove("done"); }, 2000);
+    }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+  }
+
+  // Big copy buttons (repository link)
+  document.querySelectorAll("[data-copy]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      copyText(document.getElementById(btn.dataset.copy).textContent.trim(), btn);
+    });
+  });
+
+  // Every script name gets its own small Copy button
+  document.querySelectorAll("code.script").forEach(function (code) {
+    var chip = document.createElement("span");
+    chip.className = "chip";
+    code.parentNode.insertBefore(chip, code);
+    chip.appendChild(code);
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "copy mini";
+    btn.textContent = "Copy";
+    btn.setAttribute("aria-label", "Copy script name: " + code.textContent.trim());
+    btn.addEventListener("click", function () { copyText(code.textContent.trim(), btn); });
+    chip.appendChild(btn);
+  });
+
+  window.addEventListener("hashchange", function () { show(location.hash.slice(1) || "home"); });
+
+  setupConfigDownload();
+  show(location.hash.slice(1) || "home");
+})();
+</script>
+</body>
+</html>

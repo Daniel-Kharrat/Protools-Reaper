@@ -1,75 +1,11 @@
 # Daniel Kharrat's Reaper-Protools Configuration
 
-## How to Install (1st time ever)
-🔻Watch the video🔻
+**Pro Tools refugee? Jump right in.**
 
-[<img src="MISC%20Data/Daniel_Splash%20Screen.jpg" width="165" alt="Watch the video">](https://youtu.be/CJbhZe4WvC8)
+Use the shortcuts and muscle memory you already have. No steep learning curve, no slowing down.
 
-### Step 0:
-Install [Reapack](https://reapack.com/) if you haven't already:
+Additional scripts and shortcuts are built in to speed up your workflow and make your life easier.
 
-In Reaper go to: **Options → Show REAPER resource path in Explorer/finder...**
+Works on **macOS**, **Windows** and **Linux**.
 
-Look for a folder called **UserPlugins** and put the reapack file in it
-
-### Step 1:
-Download the latest [Configuration v5.0](https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Configurations/Daniel_Reaper_Protools%20v5.0.ReaperConfigZip)
-
-In Reaper go to: **Options → Preferences**
-
-Under **General settings** click on **"Import configuration..."**
-
-Find the file you just downloaded and click **"Open"** then **"Import"** (⚠️this will overwrite your existing config⚠️)
-
-### Step 2:
-Go to: **Extensions → ReaPack → Synchronize packages** 
-
-(it will install **Daniel Kharrat** and **ReaTeam Extensions**)
-
-After both repositories finish installing, **RESTART** reaper and you'll be ready to go
-
-### Step 3:
-Open the actions list and run the script called: **Daniel_Set splash screen.lua**
-
-After that run the script called: **Daniel_Replace toolbar_icons.lua**
-
-
-## Optional tweak for macOS
-
-Change the shortcut for spotlight search because we're using cmd + space to record
-
-go to System Settings... → Keyboard → Keyboard Shortcuts... → Spotlight
-
-change the shortcut for ***Show Spotlight search*** to "opt + space"
-
-change the shortcut for ***Show Finder search window*** to "opt + cmd + space"
-
-
-## How to update
-1) scripts only: **Extensions → ReaPack → Synchronize packages** 
-
-2) new config: run the action **Daniel_Update configuration.lua**
- 
-3) If you reinstall the REAPER program itself it will overwrite the toolbar icons to the default green
-
-so you'll have to replace them with my icons again by going to the actions list and run the script called:
-
-**Daniel_Replace toolbar_icons.lua**
-
-
-## If you wish to install some of the Scripts or FX without my config
-You can copy the repository link from here:
-
-```
-https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/index.xml
-```
-
-In Reaper go to: **Extensions → ReaPack → Import repositories…**
-
-Paste it there and click OK, then go to:
-
-**Extensions → ReaPack → Manage repositories…**
-
-Double click on **Daniel Kharrat** then click on:
-
-**Install/update Daniel Kharrat → Install individual packages in this repository**
+## 👉 [Open the guided installer](https://daniel-kharrat.github.io/Protools-Reaper/)

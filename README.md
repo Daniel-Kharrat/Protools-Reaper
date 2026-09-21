@@ -3,8 +3,10 @@
 ### **Pro Tools refugee? Jump right in**
 ## 👉 [Open the guided installer](https://daniel-kharrat.github.io/Protools-Reaper/)
 
-Use the shortcuts and muscle memory you already have. No steep learning curve, no slowing down.
+Use the shortcuts and muscle memory you already have
 
-Additional scripts and shortcuts are built in to speed up your workflow and make your life easier.
+No steep learning curve, no slowing down
 
-Works on **macOS**, **Windows** and **Linux**
+Additional scripts and shortcuts are built in to speed up your workflow and make your life easier
+
+### Works on **macOS**, **Windows** and **Linux**

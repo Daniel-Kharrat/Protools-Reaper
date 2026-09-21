@@ -1,6 +1,6 @@
 # Daniel Kharrat's Reaper-Protools Configuration
 
-## **Pro Tools refugee? Jump right in.**
+## **Pro Tools refugee? Jump right in:**
 
 Use the shortcuts and muscle memory you already have. No steep learning curve, no slowing down.
 

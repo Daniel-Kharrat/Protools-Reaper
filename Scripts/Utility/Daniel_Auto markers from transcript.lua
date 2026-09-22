@@ -8,14 +8,22 @@
 
   PARSING: works on the whole document as one continuous block of text
   (no reliance on line breaks or separators). It scans for every
-  "(timestamp)" occurrence, e.g. "(0:19)", then walks backward from
-  each one, word by word, to find the speaker name. A word counts as
-  part of the name if it's Title-Case (not ALL CAPS -- that's reserved
-  for section headings), a known title abbreviation ending in a period
-  (Dr., Pr., ... see TITLE_ABBREVIATIONS), or a bare number immediately
-  before the timestamp (Man 1, Man 2). Anything else stops the walk,
-  which is what lets it split something like "...SHOW TITLE 2024
-  Dr. Smith (0:19)" into the heading and the real name "Dr. Smith".
+  "(timestamp)" occurrence, e.g. "(0:19)" or "(00.19)", then walks
+  backward from each one, word by word, to find the speaker name. A
+  word counts as part of the name if it's Title-Case (not ALL CAPS --
+  that's reserved for section headings), a known title abbreviation
+  ending in a period (Dr., Pr., ... see TITLE_ABBREVIATIONS), or a bare
+  number immediately before the timestamp (Man 1, Man 2). Anything else
+  stops the walk, which is what lets it split something like
+  "...SHOW TITLE 2024 Dr. Smith (0:19)" into the heading and the real
+  name "Dr. Smith".
+
+  TIMESTAMPS: minutes and seconds can be separated by ":" or "."
+  (0:19, 00.19, 1:02:33, 1.02.33 all work).
+
+  ROLE LABELS: lines like "Voice-over actor for boy (11.34)" are
+  recognised via ROLE_LABEL_PREFIXES below; the words after the prefix
+  become the marker name ("Boy"), even if they're lowercase.
 
   SPEAKER-LINE FORMAT: Name (timestamp) [optional : or dash] dialogue
 
@@ -48,6 +56,16 @@ local TITLE_ABBREVIATIONS = {
 -- etc). Skipped entirely -- no marker, doesn't break the dedup.
 local EXCLUDED_SPEAKER_NAMES = {
   "Vozerio",
+}
+
+-- Role-label prefixes (Lua patterns, matched case-insensitively). When
+-- the text right before a timestamp is "<prefix> <role>", the role
+-- (up to 3 words, any case) becomes the speaker name.
+-- e.g. "Voice-over actor for boy (11.34)" -> "Boy"
+local ROLE_LABEL_PREFIXES = {
+  "voice%-?over actor for",
+  "voice%-?over actress for",
+  "voice%-?over for",
 }
 
 -- Set to true to only mark turns inside segments matching the keywords
@@ -394,9 +412,10 @@ end
 -- Helpers
 -- ---------------------------------------------------------------------
 
+-- Accepts ":" or "." between fields: 0:19, 00.19, 1:02:33, 1.02.33
 local function timestamp_to_seconds(ts)
   local parts = {}
-  for chunk in ts:gmatch("[^:]+") do
+  for chunk in ts:gmatch("[^:%.]+") do
     table.insert(parts, chunk)
   end
   local h, m, s
@@ -408,6 +427,7 @@ local function timestamp_to_seconds(ts)
     return nil
   end
   if not (h and m and s) then return nil end
+  if s >= 60 or (#parts == 3 and m >= 60) then return nil end  -- not a real time
   return h * 3600 + m * 60 + s
 end
 
@@ -449,6 +469,12 @@ local function is_excluded_speaker(name)
     end
   end
   return false
+end
+
+-- Comparison key for dedup: ignores case and periods, so "Dr Smith",
+-- "Dr. Smith" and "DR. SMITH" count as the same speaker.
+local function speaker_key(name)
+  return (name:gsub("%.", ""):lower())
 end
 
 local function shell_quote(path)
@@ -542,9 +568,30 @@ local function is_title_abbreviation(tok)
   return word ~= nil and TITLE_ABBREVIATIONS[word:upper()] == true
 end
 
+-- "Voice-over actor for boy" -> "Boy". Returns nil if no prefix matches.
+local function extract_role_label(window)
+  local lower = window:lower()
+  for _, prefix in ipairs(ROLE_LABEL_PREFIXES) do
+    local s, e = lower:find(prefix .. "%s+[%a%s'%-\195\128-\191]+%s*$")
+    if s then
+      -- take the role words from the original-case text, after the prefix
+      local _, pe = lower:find(prefix, s)
+      local role = trim(window:sub(pe + 1, e))
+      local n_words = select(2, role:gsub("%S+", ""))
+      if n_words >= 1 and n_words <= 3 then
+        return (role:gsub("^%l", string.upper))
+      end
+    end
+  end
+  return nil
+end
+
 -- Walks backward from just before a "(timestamp)" to find the speaker
 -- name. Returns the name, or nil if nothing name-like was found.
 local function extract_name_before(window)
+  local role = extract_role_label(window)
+  if role then return role end
+
   local tokens = {}
   for tok in window:gmatch("%S+") do
     table.insert(tokens, tok)
@@ -588,12 +635,14 @@ end
 
 -- Finds every "(timestamp)" in the text and its speaker name. Returns
 -- a list of {pos, seconds, speaker, has_name}, in document order.
+-- Also returns a list of suspicious "(digits)" tags that look like
+-- mistyped timestamps, e.g. "(21194)".
 local function find_matches(text)
   local out = {}
   local prev_end = 1
   local search_from = 1
   while true do
-    local s, e, ts = text:find("%((%d+:%d+:?%d*)%)", search_from)
+    local s, e, ts = text:find("%((%d+[:%.]%d+[:%.]?%d*)%)", search_from)
     if not s then break end
     local window = text:sub(prev_end, s - 1)
     local name = extract_name_before(window)
@@ -608,7 +657,12 @@ local function find_matches(text)
     prev_end = e + 1
     search_from = e + 1
   end
-  return out
+
+  local suspicious = {}
+  for tag in text:gmatch("%(%d%d%d%d%d?%d?%)") do
+    table.insert(suspicious, tag)
+  end
+  return out, suspicious
 end
 
 -- Segment dividers: runs of 10+ underscores, flagged by whether the
@@ -659,13 +713,13 @@ local function main()
   local text = raw:gsub("%s+", " ")
   text = trim(text)
 
-  local matches = find_matches(text)
+  local matches, suspicious = find_matches(text)
   local dividers = find_dividers(text)  -- already in position order
 
   reaper.Undo_BeginBlock()
 
   local added = 0
-  local last_speaker = nil
+  local last_key = nil
   local divider_idx = 1
   local in_wanted_section = false
 
@@ -678,13 +732,14 @@ local function main()
     local should_consider = (not ONLY_WANTED_SECTIONS) or in_wanted_section
 
     if should_consider and not is_excluded_speaker(m.speaker) then
-      local is_repeat = DEDUPE_CONSECUTIVE_SPEAKERS and (m.speaker == last_speaker)
+      local key = speaker_key(m.speaker)
+      local is_repeat = DEDUPE_CONSECUTIVE_SPEAKERS and (key == last_key)
       if not is_repeat then
         local pos = m.seconds + OFFSET_SECONDS
         reaper.AddProjectMarker2(0, false, pos, 0, m.speaker, -1, get_marker_color())
         added = added + 1
       end
-      last_speaker = m.speaker
+      last_key = key
     end
   end
 
@@ -694,6 +749,10 @@ local function main()
   local msg = string.format(
     "Found %d speaker tag(s) total, added %d marker(s) (consecutive repeats collapsed into one).",
     #matches, added)
+  if #suspicious > 0 then
+    msg = msg .. "\n\nThese look like mistyped timestamps and were skipped (check the script):\n" ..
+      table.concat(suspicious, "  ")
+  end
   if txt_path ~= file_path then
     msg = msg .. "\n\nConverted text saved to:\n" .. txt_path
   end

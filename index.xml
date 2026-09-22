@@ -537,7 +537,7 @@
     </reapack>
 
     <reapack name="Daniel_Auto markers from transcript.lua" type="script" desc="Daniel_Auto markers from transcript.lua">
-      <version name="1.4" author="Daniel" time="2026-09">
+      <version name="1.5" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Auto%20markers%20from%20transcript.lua</source>
       </version>
     </reapack>

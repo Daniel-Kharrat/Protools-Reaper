@@ -68,6 +68,15 @@ local ROLE_LABEL_PREFIXES = {
   "voice%-?over for",
 }
 
+-- Words that belong to section headings, never to names. Used when a
+-- speaker name is written in ALL CAPS, to separate it from a heading
+-- right before it ("DR. SMITH ANSWERS WOMAN 1" -> "WOMAN 1").
+local HEADING_STOP_WORDS = {
+  ANSWERS = true, ANSWER = true, QUESTIONS = true, QUESTION = true,
+  DRAMA = true, TESTIMONY = true, TESTIMONIES = true, SHOW = true,
+  HEART = true, SEGMENT = true, PART = true, BLOCK = true,
+}
+
 -- Set to true to only mark turns inside segments matching the keywords
 -- below (segments are detected via a run of 10+ underscores followed
 -- by the segment name). Leave false if your scripts don't use that.
@@ -563,6 +572,15 @@ local function is_plain_name_word(tok)
   return true
 end
 
+-- An ALL-CAPS name word: uppercase letters (accented ones included),
+-- optionally with an apostrophe (' or ’) or hyphen: NARRATOR, MÁRIO,
+-- DAS, MARIO’S.
+local function is_caps_name_word(tok)
+  local stripped = tok:gsub("\226\128\153", ""):gsub("['%-]", "")
+  stripped = stripped:gsub("\195[\128-\158]", "A")  -- accented capitals
+  return stripped:match("^%u+$") ~= nil
+end
+
 local function is_title_abbreviation(tok)
   local word = tok:match("^(%u[%a]*)%.$")
   return word ~= nil and TITLE_ABBREVIATIONS[word:upper()] == true
@@ -609,6 +627,8 @@ local function extract_name_before(window)
     i = i - 1
   end
 
+  local walk_start = i
+
   while i >= 1 do
     local tok = tokens[i]
     if is_plain_name_word(tok) or is_title_abbreviation(tok) then
@@ -619,7 +639,33 @@ local function extract_name_before(window)
     end
   end
 
+  -- Nothing Title-Case found (only maybe a number)? Try an ALL-CAPS
+  -- name instead, e.g. "NARRATOR" or "WOMAN 1".
+  if i == walk_start then
+    local caps_tokens = {}
+    local j = walk_start
+    while j >= 1 do
+      local tok = tokens[j]
+      local bare = tok:gsub("%.$", "")
+      if HEADING_STOP_WORDS[bare:upper()] then break end
+      if is_caps_name_word(tok) or is_title_abbreviation(tok) then
+        table.insert(caps_tokens, 1, tok)
+        j = j - 1
+      else
+        break
+      end
+    end
+    -- More than 4 caps words in a row is shouting or a heading, not a name.
+    if #caps_tokens > 0 and #caps_tokens <= 4 then
+      for k = #caps_tokens, 1, -1 do
+        table.insert(name_tokens, 1, caps_tokens[k])
+      end
+    end
+  end
+
   if #name_tokens == 0 then return nil end
+  -- A bare number on its own ("1") isn't a name.
+  if #name_tokens == 1 and name_tokens[1]:match("^%d+$") then return nil end
 
   -- Safety net: a real name is at most a few words.
   if #name_tokens > 4 then

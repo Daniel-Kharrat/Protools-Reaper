@@ -13,19 +13,61 @@ reaper.ImGui_Attach(imgui, font)
 local INITIAL_WIDTH  = 500
 local INITIAL_HEIGHT = 150
 
+local MAIN_HWND = reaper.GetMainHwnd()
+local HAS_JS    = reaper.APIExists("JS_Window_SetFocus")
+
+if not HAS_JS then
+    reaper.ShowConsoleMsg(
+        "Current Marker: js_ReaScriptAPI not found.\n" ..
+        "Install it via ReaPack so focus can return to REAPER after clicking.\n"
+    )
+end
+
+local function returnFocusToReaper()
+    if not HAS_JS then return end
+
+    -- Prefer the arrange view so shortcuts behave as if you clicked the timeline
+    local arrange = reaper.JS_Window_FindChildByID(MAIN_HWND, 1000)
+    reaper.JS_Window_SetFocus(arrange or MAIN_HWND)
+end
+
 ------------------------------------------------------------
 -- GET CURRENT MARKER / REGION NAME
 ------------------------------------------------------------
 
 local function getCurrentMarkerName()
 
-    local position = reaper.GetCursorPosition()
+    --------------------------------------------------------
+    -- POSITION TO FOLLOW
+    --
+    -- While playing or recording, follow the playhead,
+    -- so the name changes as soon as it passes a marker.
+    -- When stopped, follow the edit cursor as before.
+    --
+    -- Play state bits: 1 = playing, 2 = paused, 4 = recording
+    --------------------------------------------------------
+
+    local playState = reaper.GetPlayState()
+    local position
+    local followingPlayhead =
+        playState & 1 == 1 or playState & 4 == 4
+
+    if followingPlayhead then
+        position = reaper.GetPlayPosition()
+    else
+        position = reaper.GetCursorPosition()
+    end
 
     local markers = {}
     local regions = {}
 
     --------------------------------------------------------
     -- COLLECT MARKERS AND REGIONS
+    --
+    -- Unnamed markers and regions (e.g. red editing
+    -- markers) are INVISIBLE: they are never collected,
+    -- so the display keeps showing whatever came before
+    -- them. Names that are only spaces count as unnamed.
     --------------------------------------------------------
 
     for i = 0, reaper.CountProjectMarkers(0) - 1 do
@@ -34,20 +76,27 @@ local function getCurrentMarkerName()
               markerNameAtPos, markerIndex =
             reaper.EnumProjectMarkers3(0, i)
 
-        if isrgn then
+        local hasName =
+            markerNameAtPos and markerNameAtPos:match("%S")
 
-            regions[#regions + 1] = {
-                startPos = markerPos,
-                endPos   = regionEnd,
-                name     = markerNameAtPos or ""
-            }
+        if hasName then
 
-        else
+            if isrgn then
 
-            markers[#markers + 1] = {
-                pos  = markerPos,
-                name = markerNameAtPos or ""
-            }
+                regions[#regions + 1] = {
+                    startPos = markerPos,
+                    endPos   = regionEnd,
+                    name     = markerNameAtPos
+                }
+
+            else
+
+                markers[#markers + 1] = {
+                    pos  = markerPos,
+                    name = markerNameAtPos
+                }
+
+            end
 
         end
     end
@@ -95,9 +144,41 @@ local function getCurrentMarkerName()
 
     --------------------------------------------------------
     -- If inside a region, region wins.
+    --
+    -- Exception while playing/recording: once the playhead
+    -- has passed a marker inside this region, that marker
+    -- takes over (the playhead is never EXACTLY on a
+    -- marker, so rule 1 can't catch it).
     --------------------------------------------------------
 
     if currentRegion then
+
+        if followingPlayhead then
+
+            local passedMarker = nil
+
+            for i = 1, #markers do
+
+                local marker = markers[i]
+
+                if marker.pos >= currentRegion.startPos
+                   and marker.pos <= position then
+
+                    if not passedMarker
+                       or marker.pos > passedMarker.pos then
+
+                        passedMarker = marker
+
+                    end
+                end
+            end
+
+            if passedMarker then
+                return passedMarker.name
+            end
+
+        end
+
         return currentRegion.name
     end
 
@@ -403,6 +484,23 @@ local function loop()
             TEXT
         )
 
+        ----------------------------------------------------
+        -- RETURN FOCUS TO REAPER AFTER A CLICK
+        ----------------------------------------------------
+
+        if reaper.ImGui_IsWindowFocused(
+               imgui,
+               reaper.ImGui_FocusedFlags_RootAndChildWindows()
+           ) then
+
+            if reaper.ImGui_IsMouseReleased(imgui, 0)    -- left
+            or reaper.ImGui_IsMouseReleased(imgui, 1)    -- right
+            or reaper.ImGui_IsMouseReleased(imgui, 2) then -- middle
+                returnFocusToReaper()
+            end
+
+        end
+        
         ----------------------------------------------------
         -- END WINDOW
         ----------------------------------------------------

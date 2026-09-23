@@ -284,10 +284,44 @@ local function try_drop()
   -- if not over a valid track/position, the drop is simply cancelled
 end
 
+------------------------------------------------------------
+-- RETURN KEYBOARD FOCUS TO REAPER (needs js_ReaScriptAPI)
+------------------------------------------------------------
+
+local MAIN_HWND = reaper.GetMainHwnd()
+local HAS_JS    = reaper.APIExists("JS_Window_SetFocus")
+
+if not HAS_JS then
+  reaper.ShowConsoleMsg(
+    "Daniel_Always Recording: js_ReaScriptAPI not found.\n" ..
+    "Install it via ReaPack so focus can return to REAPER after clicking.\n"
+  )
+end
+
+local function returnFocusToReaper()
+  if not HAS_JS then return end
+  -- Prefer the arrange view so shortcuts behave as if you clicked the timeline
+  local arrange = reaper.JS_Window_FindChildByID(MAIN_HWND, 1000)
+  reaper.JS_Window_SetFocus(arrange or MAIN_HWND)
+end
+
+-- gfx.getchar(65536) flags: 2 = this window has keyboard focus.
+-- Hand focus back whenever this window has it and no mouse button
+-- (left 1, right 2, middle 64) is held -- i.e. on open, after a click,
+-- after a drag-and-drop, and after the right-click dock menu closes.
+local function keepFocusOnReaper()
+  local flags = gfx.getchar(65536)
+  if flags > 0 and (flags & 2) == 2 and (gfx.mouse_cap & 67) == 0 then
+    returnFocusToReaper()
+  end
+end
+
 local frame_count = 0
 local found_active = false
 
 local function main()
+  keepFocusOnReaper()
+
   -- Throttled to every 10 frames (~a few times a second, not 60x/sec) --
   -- scanning every open project's tracks doesn't need to happen every
   -- single frame, especially with a couple dozen projects open at once.

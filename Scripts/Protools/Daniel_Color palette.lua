@@ -4,6 +4,28 @@ reaper.set_action_options(1)
 local reaper = reaper
 local imgui = reaper.ImGui_CreateContext("Color Palette")
 
+------------------------------------------------------------
+-- RETURN KEYBOARD FOCUS TO REAPER (needs js_ReaScriptAPI)
+------------------------------------------------------------
+
+local MAIN_HWND = reaper.GetMainHwnd()
+local HAS_JS    = reaper.APIExists("JS_Window_SetFocus")
+
+if not HAS_JS then
+    reaper.ShowConsoleMsg(
+        "Color Palette: js_ReaScriptAPI not found.\n" ..
+        "Install it via ReaPack so focus can return to REAPER after clicking.\n"
+    )
+end
+
+local function returnFocusToReaper()
+    if not HAS_JS then return end
+
+    -- Prefer the arrange view so shortcuts behave as if you clicked the timeline
+    local arrange = reaper.JS_Window_FindChildByID(MAIN_HWND, 1000)
+    reaper.JS_Window_SetFocus(arrange or MAIN_HWND)
+end
+
 -- List of predefined colors in RGB format (from hex codes)
 local colors = {
     {0x2c, 0x00, 0xfc},   -- #2c00fc
@@ -114,6 +136,10 @@ local function applyColor(r, g, b)
     reaper.UpdateArrange()
 end
 
+-- The OS window can grab focus when it's first created, so hand
+-- focus back to REAPER for the first few frames after opening
+local startupFrames = 3
+
 -- Main loop to draw the window and handle user interaction
 function loop()
 
@@ -126,7 +152,8 @@ function loop()
     
     -- Begin the window, store the open state in a variable
     local visible, open = reaper.ImGui_Begin(imgui, "Color Palette", true,
-    reaper.ImGui_WindowFlags_NoCollapse())
+    reaper.ImGui_WindowFlags_NoCollapse() |
+    reaper.ImGui_WindowFlags_NoFocusOnAppearing())
     
     -- Check if the user closes the window
     if not open then
@@ -176,6 +203,27 @@ function loop()
                 reaper.ImGui_SameLine(imgui, 0, 2) -- Same line, add small spacing between buttons
             end
         end
+
+        -- Keep focus on REAPER when the window first opens
+        if startupFrames > 0 then
+            startupFrames = startupFrames - 1
+            returnFocusToReaper()
+        end
+
+        -- Return focus to REAPER after a click inside this window
+        if reaper.ImGui_IsWindowFocused(
+               imgui,
+               reaper.ImGui_FocusedFlags_RootAndChildWindows()
+           ) then
+
+            if reaper.ImGui_IsMouseReleased(imgui, 0)    -- left
+            or reaper.ImGui_IsMouseReleased(imgui, 1)    -- right
+            or reaper.ImGui_IsMouseReleased(imgui, 2) then -- middle
+                returnFocusToReaper()
+            end
+
+        end
+
         reaper.ImGui_End(imgui)
     end
     reaper.defer(loop)

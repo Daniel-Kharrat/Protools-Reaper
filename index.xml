@@ -549,7 +549,7 @@
     </reapack>
 
     <reapack name="Daniel_Always Recording.lua" type="script" desc="Daniel_Always Recording.lua">
-      <version name="1.4" author="Daniel" time="2026-09">
+      <version name="1.5" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording.lua</source>
       </version>
     </reapack>

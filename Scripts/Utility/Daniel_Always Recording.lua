@@ -273,6 +273,12 @@ local function try_drop()
         reaper.Undo_EndBlock("Clear space for Always Recording drop", -1)
       end
 
+      -- Deselect every item first (e.g. the one left selected after you
+      -- stop recording), so the freshly dropped item ends up being the
+      -- ONLY selected item and you can move it without dragging others.
+      reaper.SelectAllMediaItems(0, false)
+      reaper.UpdateArrange()
+
       reaper.SetEditCurPos(pos, false, false)
       reaper.gmem_write(8, track_idx)
       reaper.gmem_write(1, a)

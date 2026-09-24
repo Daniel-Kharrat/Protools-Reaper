@@ -370,10 +370,28 @@ local function main()
   if wf_h < 10 then wf_h = 10 end
   local center_y = wf_y + wf_h / 2
 
+  local raw = {}
+  for i = 0, disp_n - 1 do
+    raw[i] = reaper.gmem_read(DISP_BASE + i)
+  end
+
+  -- SMOOTHING: each point is blended with its neighbours (weighted so the
+  -- closest ones count most), which rounds off sharp spiky peaks.
+  -- 0 = original sharp look. 2-4 = gently smoothed. 6+ = very soft/blobby.
+  local SMOOTH = 1
   local peaks = {}
   local maxpeak = 0
   for i = 0, disp_n - 1 do
-    local v = reaper.gmem_read(DISP_BASE + i)
+    local sum, wsum = 0, 0
+    for k = -SMOOTH, SMOOTH do
+      local j = i + k
+      if j >= 0 and j < disp_n then
+        local w = SMOOTH + 1 - math.abs(k)
+        sum = sum + raw[j] * w
+        wsum = wsum + w
+      end
+    end
+    local v = sum / wsum
     peaks[i] = v
     if v > maxpeak then maxpeak = v end
   end

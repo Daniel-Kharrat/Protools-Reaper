@@ -39,6 +39,25 @@
     </reapack>
     
   </category>
+
+<!-- ________Splash Screen________ -->
+
+  <category name="Documentation">
+  
+    <reapack name="Daniel_Open keyboard shortcuts documentation.lua" type="script" desc="Daniel_Open keyboard shortcuts documentation.lua">
+     <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Documentation/Daniel_Open%20keyboard%20shortcuts%20documentation.lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Open mouse modifiers documentation.lua" type="script" desc="Daniel_Open mouse modifiers documentation.lua">
+     <version name="1.0" author="Daniel" time="2026-09">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Documentation/Daniel_Open%20mouse%20modifiers%20documentation.lua</source>
+      </version>
+    </reapack>
+    
+  </category>
+
   
 <!-- ________Protools Scripts________ -->
   

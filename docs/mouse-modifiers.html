@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daniel's REAPER Mouse Modifiers</title>
+<style>
+:root{
+  --bg:#f7f7f8; --panel:#ffffff; --text:#1b1b1f; --muted:#6b6b76; --border:#e3e3e8;
+  --accent:#4b5fd1; --flag:#f8cbad; --flag-text:#7a3312;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#111114; --panel:#1a1a1f; --text:#eaeaef; --muted:#9a9aa5; --border:#2c2c34;
+    --accent:#8b9bff; --flag:#4a2c1f; --flag-text:#f0b191;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg); color:var(--text); padding:16px;}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font-size:1.4rem;margin:0 0 4px}
+.sub{color:var(--muted);font-size:.9rem;margin:0 0 20px}
+.controls{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;
+  position:sticky; top:0; background:var(--bg); padding:10px 0; z-index:5;}
+input[type=search], select{
+  padding:9px 12px; border-radius:8px; border:1px solid var(--border);
+  background:var(--panel); color:var(--text); font-size:.95rem;
+}
+input[type=search]{flex:1 1 220px}
+.count{color:var(--muted); font-size:.85rem; margin-left:auto}
+table{width:100%; border-collapse:collapse; background:var(--panel); border-radius:10px; overflow:hidden}
+thead th{text-align:left; font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; color:var(--muted);
+  padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer; white-space:nowrap;}
+thead th:hover{color:var(--text)}
+tbody td{padding:10px 12px; border-bottom:1px solid var(--border); font-size:.9rem; vertical-align:top}
+tbody tr:hover{background:rgba(127,127,127,.06)}
+.pill{display:inline-block; padding:2px 8px; border-radius:6px; font-size:.78rem; background:var(--bg); border:1px solid var(--border)}
+.note{color:var(--flag-text); background:var(--flag); border-radius:6px; padding:4px 8px; font-size:.8rem; display:inline-block}
+footer{color:var(--muted); font-size:.8rem; margin-top:24px; text-align:center}
+a{color:var(--accent)}
+.empty{padding:30px; text-align:center; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Daniel's REAPER Mouse Modifiers</h1>
+  <p class="sub">Custom mouse-modifier bindings, by context and click type. Everything listed is a change from REAPER's default.</p>
+
+  <div class="controls">
+    <input type="search" id="q" placeholder="Search context, action, script...">
+    <select id="ctxFilter">
+      <option value="">All contexts</option>
+      <option value="Arrange view">Arrange view</option>
+      <option value="Envelope lane">Envelope lane</option>
+      <option value="Envelope point">Envelope point</option>
+      <option value="Envelope segment">Envelope segment</option>
+      <option value="MIDI note">MIDI note</option>
+      <option value="MIDI piano roll">MIDI piano roll</option>
+      <option value="Media item">Media item</option>
+      <option value="Media item bottom half">Media item bottom half</option>
+      <option value="Mixer control panel">Mixer control panel</option>
+      <option value="Region/marker">Region/marker</option>
+      <option value="Ruler lane">Ruler lane</option>
+      <option value="Track">Track</option>
+      <option value="Track control panel">Track control panel</option>
+    </select>
+    <span class="count" id="count"></span>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th data-key="context">Context</th>
+        <th data-key="clicktype">Click type</th>
+        <th data-key="modifier">Modifier</th>
+        <th data-key="your">Your action</th>
+        <th data-key="notes">Notes</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="empty" id="empty" style="display:none">No bindings match your search.</div>
+
+  <footer>Generated from reaper-mouse.ini, cross-checked against REAPER's Preferences &rarr; Mouse Modifiers. &middot; 56 customized bindings</footer>
+</div>
+
+<script>
+const DATA = [{"context": "Arrange view", "clicktype": "right click", "modifier": "Shift", "your": "(disabled / no action)", "notes": ""}, {"context": "Arrange view", "clicktype": "right click", "modifier": "Shift+Ctrl", "your": "(disabled / no action)", "notes": ""}, {"context": "Arrange view", "clicktype": "right click", "modifier": "Alt", "your": "(disabled / no action)", "notes": ""}, {"context": "Arrange view", "clicktype": "right click", "modifier": "Shift+Alt", "your": "(disabled / no action)", "notes": ""}, {"context": "Arrange view", "clicktype": "right click", "modifier": "Shift+Ctrl+Alt", "your": "(disabled / no action)", "notes": ""}, {"context": "Media item", "clicktype": "left drag", "modifier": "Default", "your": "Select razor edit area and time", "notes": ""}, {"context": "Media item", "clicktype": "left drag", "modifier": "Shift", "your": "Select razor edit area and time", "notes": ""}, {"context": "Media item", "clicktype": "left drag", "modifier": "Ctrl", "your": "Move item contents ignoring snap", "notes": ""}, {"context": "Media item", "clicktype": "left drag", "modifier": "Alt", "your": "Add to razor edit area", "notes": ""}, {"context": "Media item", "clicktype": "left drag", "modifier": "Shift+Alt", "your": "Add to razor edit area", "notes": ""}, {"context": "Media item", "clicktype": "left click", "modifier": "Default", "your": "Script: Daniel_Track left click.lua", "notes": ""}, {"context": "Media item", "clicktype": "left click", "modifier": "Shift", "your": "Script: Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua", "notes": ""}, {"context": "Media item", "clicktype": "double click", "modifier": "Default", "your": "Script: Daniel_Razor select item or empty space between items (set time selection).lua", "notes": ""}, {"context": "Media item bottom half", "clicktype": "left drag", "modifier": "Default", "your": "Move item and time selection", "notes": ""}, {"context": "Media item bottom half", "clicktype": "left drag", "modifier": "Alt", "your": "Copy item", "notes": ""}, {"context": "Media item bottom half", "clicktype": "left click", "modifier": "Default", "your": "Script: Daniel_Razor select item or empty space between items (set time selection).lua", "notes": ""}, {"context": "Media item bottom half", "clicktype": "left click", "modifier": "Shift", "your": "Script: Daniel_Add items to selection and extend time selection and razor edit area (select tracks in between).lua", "notes": ""}, {"context": "Media item bottom half", "clicktype": "double click", "modifier": "Default", "your": "MIDI: open in editor, Subprojects: open project, Audio: show media item properties", "notes": ""}, {"context": "Media item bottom half", "clicktype": "double click", "modifier": "Shift", "your": "Script: Daniel_Color palette.lua", "notes": ""}, {"context": "Media item bottom half", "clicktype": "double click", "modifier": "Ctrl", "your": "Item properties: Show media item source properties", "notes": ""}, {"context": "Track", "clicktype": "left drag", "modifier": "Default", "your": "Select razor edit area and time", "notes": ""}, {"context": "Track", "clicktype": "left drag", "modifier": "Shift", "your": "Select razor edit area and time", "notes": ""}, {"context": "Track", "clicktype": "left drag", "modifier": "Alt", "your": "Add to razor edit area", "notes": ""}, {"context": "Track", "clicktype": "left drag", "modifier": "Shift+Alt", "your": "Add to razor edit area", "notes": ""}, {"context": "Track", "clicktype": "left click", "modifier": "Default", "your": "Script: Daniel_Track left click.lua", "notes": ""}, {"context": "Track", "clicktype": "left click", "modifier": "Shift", "your": "Script: Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua", "notes": ""}, {"context": "Track", "clicktype": "left click", "modifier": "Ctrl", "your": "Script: Daniel_Toggle track selection.lua", "notes": ""}, {"context": "Track", "clicktype": "double click", "modifier": "Default", "your": "Script: Daniel_Razor select item or empty space between items (set time selection).lua", "notes": ""}, {"context": "Track control panel", "clicktype": "double click", "modifier": "Default", "your": "Script: Daniel_Color palette.lua", "notes": ""}, {"context": "Track control panel", "clicktype": "double click", "modifier": "Shift+Ctrl", "your": "Screenset: Load window set #02", "notes": ""}, {"context": "Track control panel", "clicktype": "double click", "modifier": "Alt", "your": "SWS/S&M: Close all floating FX windows", "notes": ""}, {"context": "Track control panel", "clicktype": "double click", "modifier": "Ctrl+Alt", "your": "Script: Daniel_Floating track input meter.lua", "notes": ""}, {"context": "Mixer control panel", "clicktype": "double click", "modifier": "Default", "your": "Script: Daniel_Color palette.lua", "notes": ""}, {"context": "Mixer control panel", "clicktype": "double click", "modifier": "Alt", "your": "SWS/S&M: Close all floating FX windows", "notes": ""}, {"context": "Mixer control panel", "clicktype": "double click", "modifier": "Ctrl+Alt", "your": "Script: Daniel_Floating track input meter.lua", "notes": ""}, {"context": "Envelope lane", "clicktype": "left drag", "modifier": "Shift", "your": "No action", "notes": ""}, {"context": "Envelope lane", "clicktype": "left drag", "modifier": "Ctrl", "your": "Insert envelope point", "notes": ""}, {"context": "Envelope point", "clicktype": "left drag", "modifier": "Shift", "your": "Move envelope point horizontally", "notes": ""}, {"context": "Envelope point", "clicktype": "left drag", "modifier": "Ctrl", "your": "Move envelope point vertically (fine)", "notes": ""}, {"context": "Envelope segment", "clicktype": "left drag", "modifier": "Shift", "your": "Move envelope segment ignoring time selection", "notes": ""}, {"context": "Envelope segment", "clicktype": "left drag", "modifier": "Ctrl", "your": "Move envelope segment (fine)", "notes": ""}, {"context": "Envelope segment", "clicktype": "double click", "modifier": "Default", "your": "Envelope: Insert 4 envelope points at time selection", "notes": ""}, {"context": "MIDI note", "clicktype": "left drag", "modifier": "Shift", "your": "Move note on one axis only ignoring snap", "notes": ""}, {"context": "MIDI note", "clicktype": "left drag", "modifier": "Ctrl", "your": "Edit note velocity", "notes": ""}, {"context": "MIDI note", "clicktype": "left drag", "modifier": "Shift+Ctrl", "your": "No action", "notes": ""}, {"context": "MIDI note", "clicktype": "left drag", "modifier": "Alt", "your": "Copy note ignoring snap", "notes": ""}, {"context": "MIDI note", "clicktype": "left drag", "modifier": "Shift+Alt", "your": "Move note on one axis only", "notes": ""}, {"context": "MIDI note", "clicktype": "left drag", "modifier": "Shift+Ctrl+Alt", "your": "(disabled / no action)", "notes": ""}, {"context": "MIDI note", "clicktype": "left click", "modifier": "Default", "your": "Select note", "notes": ""}, {"context": "MIDI piano roll", "clicktype": "left drag", "modifier": "Default", "your": "Marquee select notes", "notes": ""}, {"context": "MIDI piano roll", "clicktype": "left drag", "modifier": "Ctrl", "your": "No action", "notes": ""}, {"context": "MIDI piano roll", "clicktype": "left drag", "modifier": "Alt", "your": "Copy selected notes", "notes": ""}, {"context": "Ruler lane", "clicktype": "left drag", "modifier": "Ctrl", "your": "Draw region", "notes": ""}, {"context": "Ruler lane", "clicktype": "left drag", "modifier": "Alt", "your": "(disabled / no action)", "notes": ""}, {"context": "Region/marker", "clicktype": "double click", "modifier": "Default", "your": "Edit region or marker", "notes": ""}, {"context": "Region/marker", "clicktype": "double click", "modifier": "Shift", "your": "(disabled / no action)", "notes": ""}];
+let sortKey = null, sortDir = 1;
+
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function matches(row, q, ctx){
+  if(ctx && row.context !== ctx) return false;
+  if(!q) return true;
+  const hay = [row.context, row.clicktype, row.modifier, row.your, row.notes].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+function render(){
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const ctx = document.getElementById('ctxFilter').value;
+  let rows = DATA.filter(r => matches(r, q, ctx));
+  if(sortKey){
+    rows = rows.slice().sort((a,b) => (a[sortKey]||'').localeCompare(b[sortKey]||'') * sortDir);
+  }
+  const tbody = document.getElementById('tbody');
+  document.getElementById('empty').style.display = rows.length ? 'none' : 'block';
+  document.getElementById('count').textContent = rows.length + ' / ' + DATA.length;
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${escapeHtml(r.context)}</td>
+      <td><span class="pill">${escapeHtml(r.clicktype)}</span></td>
+      <td><span class="pill">${escapeHtml(r.modifier)}</span></td>
+      <td>${escapeHtml(r.your)}</td>
+      <td>${r.notes ? `<span class="note">${escapeHtml(r.notes)}</span>` : ''}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('ctxFilter').addEventListener('change', render);
+document.querySelectorAll('thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if(sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+    render();
+  });
+});
+render();
+</script>
+</body>
+</html>

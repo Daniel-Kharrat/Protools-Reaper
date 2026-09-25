@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daniel's REAPER Keyboard Shortcuts</title>
+<style>
+:root{
+  --bg:#f7f7f8; --panel:#ffffff; --text:#1b1b1f; --muted:#6b6b76; --border:#e3e3e8;
+  --accent:#4b5fd1;
+  --changed:#fff2cc; --changed-text:#6b5900;
+  --added:#e2efda; --added-text:#2c5c2f;
+  --removed:#f8cbad; --removed-text:#7a3312;
+  --unchanged:#ededed; --unchanged-text:#555;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#111114; --panel:#1a1a1f; --text:#eaeaef; --muted:#9a9aa5; --border:#2c2c34;
+    --accent:#8b9bff;
+    --changed:#4a4322; --changed-text:#f0dd8a;
+    --added:#26402a; --added-text:#a8dcae;
+    --removed:#4a2c1f; --removed-text:#f0b191;
+    --unchanged:#2a2a30; --unchanged-text:#b7b7c0;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg); color:var(--text); padding:16px;
+}
+.wrap{max-width:1200px;margin:0 auto}
+h1{font-size:1.4rem;margin:0 0 4px}
+.sub{color:var(--muted);font-size:.9rem;margin:0 0 20px}
+.controls{
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;
+  position:sticky; top:0; background:var(--bg); padding:10px 0; z-index:5;
+}
+input[type=search]{
+  flex:1 1 220px; padding:9px 12px; border-radius:8px; border:1px solid var(--border);
+  background:var(--panel); color:var(--text); font-size:.95rem;
+}
+.chip{
+  border:1px solid var(--border); background:var(--panel); color:var(--text);
+  padding:6px 12px; border-radius:999px; font-size:.82rem; cursor:pointer; user-select:none;
+  white-space:nowrap;
+}
+.chip[aria-pressed=true]{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.count{color:var(--muted); font-size:.85rem; margin-left:auto}
+table{width:100%; border-collapse:collapse; background:var(--panel); border-radius:10px; overflow:hidden}
+thead th{
+  text-align:left; font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; color:var(--muted);
+  padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer; white-space:nowrap;
+}
+thead th:hover{color:var(--text)}
+tbody td{padding:10px 12px; border-bottom:1px solid var(--border); font-size:.9rem; vertical-align:top}
+tbody tr:hover{background:rgba(127,127,127,.06)}
+.line{display:block}
+.line+.line{margin-top:4px; padding-top:4px; border-top:1px dashed var(--border)}
+.badge{display:inline-block; padding:2px 8px; border-radius:6px; font-size:.75rem; font-weight:600}
+.badge.Changed{background:var(--changed); color:var(--changed-text)}
+.badge.Added{background:var(--added); color:var(--added-text)}
+.badge.Removed{background:var(--removed); color:var(--removed-text)}
+.badge.Unchanged{background:var(--unchanged); color:var(--unchanged-text)}
+.group-tag{color:var(--muted); font-size:.8rem}
+kbd{
+  background:var(--bg); border:1px solid var(--border); border-bottom-width:2px; border-radius:5px;
+  padding:1px 6px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.82rem;
+}
+footer{color:var(--muted); font-size:.8rem; margin-top:24px; text-align:center}
+a{color:var(--accent)}
+.empty{padding:30px; text-align:center; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Daniel's REAPER Keyboard Shortcuts</h1>
+  <p class="sub">Custom shortcuts vs. REAPER's factory defaults. Search or filter below.</p>
+
+  <div class="controls">
+    <input type="search" id="q" placeholder="Search actions, keys, scripts...">
+    <button class="chip" data-filter="status" data-value="Changed" aria-pressed="false">Changed</button>
+    <button class="chip" data-filter="status" data-value="Added" aria-pressed="false">Added</button>
+    <button class="chip" data-filter="status" data-value="Removed" aria-pressed="false">Removed</button>
+    <button class="chip" data-filter="source" data-value="Script" aria-pressed="false">Scripts</button>
+    <button class="chip" data-filter="source" data-value="Built-in" aria-pressed="false">Built-in</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th data-key="group">Group</th>
+        <th data-key="status">Status</th>
+        <th data-key="default">Default action</th>
+        <th data-key="shortcut">Shortcut</th>
+        <th data-key="your">Your action</th>
+        <th data-key="source">Source</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="empty" id="empty" style="display:none">No shortcuts match your search/filters.</div>
+
+  <footer>Generated from reaper-kb.ini compared against REAPER's factory keymap. &middot; 120 shortcuts</footer>
+</div>
+
+<script>
+const DATA = [{"group": "1 - NumPad", "status": ["Added", "Changed"], "default": ["(nothing – key had no default action)", "Transport: Play/stop"], "shortcut": ["NumPad 0", "Space"], "your": "Script: Daniel_Play-Stop.lua", "source": "Script"}, {"group": "1 - NumPad", "status": ["Changed"], "default": ["Time selection: Shift left (by time selection length)", "Item edit: Move contents of items left"], "shortcut": ["< (Shift+,)", "NumPad 1"], "your": "Script: Daniel_Rewind.lua", "source": "Script"}, {"group": "1 - NumPad", "status": ["Changed"], "default": ["Time selection: Shift right (by time selection length)", "Item edit: Move items/envelope points down one track/a bit"], "shortcut": ["> (Shift+.)", "NumPad 2"], "your": "Script: Daniel_Fast forward.lua", "source": "Script"}, {"group": "1 - NumPad", "status": ["Changed"], "default": ["Transport: Play/pause", "Item edit: Move contents of items right"], "shortcut": ["Ctrl+Space", "NumPad 3"], "your": "Transport: Record", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Changed"], "default": ["Item edit: Move items/envelope points left"], "shortcut": ["NumPad 4"], "your": "Transport: Toggle repeat", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["NumPad 5"], "your": "Record: Set record mode to normal", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Changed"], "default": ["Item edit: Move items/envelope points right"], "shortcut": ["NumPad 6"], "your": "Record: Set record mode to time selection auto-punch", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Changed"], "default": ["Item edit: Move items left, preserving timing of contents"], "shortcut": ["NumPad 7"], "your": "Options: Toggle metronome", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Added", "Changed"], "default": ["(nothing – key had no default action)", "Item edit: Move items/envelope points up one track/a bit"], "shortcut": ["Ctrl+K", "NumPad 8"], "your": "Pre-roll: Toggle pre-roll on record", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Changed"], "default": ["Item edit: Move items right, preserving timing of contents"], "shortcut": ["NumPad 9"], "your": "Theme development: Show theme tweak/configuration window", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["NumPad *"], "your": "Item properties: Set take channel mode to mono (downmix)", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Changed"], "default": ["View: Zoom out horizontal"], "shortcut": ["NumPad -"], "your": "Script: Daniel_Auto markers from transcript.lua", "source": "Script"}, {"group": "1 - NumPad", "status": ["Changed"], "default": ["View: Zoom in horizontal"], "shortcut": ["NumPad +"], "your": "View: Show monitoring FX chain", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["NumPad Enter"], "your": "Markers: Insert and/or edit marker at current position", "source": "Built-in"}, {"group": "1 - NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["NumPad ."], "your": "Script: Daniel_Insert red marker at current position.lua", "source": "Script"}, {"group": "2 - Alt+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+NumPad 1"], "your": "Screenset: Load window set #01", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+NumPad 2"], "your": "Screenset: Load window set #02", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+NumPad 3"], "your": "Screenset: Load window set #03", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Changed"], "default": ["Item edit: Shrink right edge of items"], "shortcut": ["Alt+NumPad 4"], "your": "Screenset: Load window set #04", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+NumPad 5"], "your": "Screenset: Load window set #05", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Changed"], "default": ["Item edit: Grow right edge of items"], "shortcut": ["Alt+NumPad 6"], "your": "Screenset: Load window set #06", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+NumPad 7"], "your": "Screenset: Load window set #07", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+NumPad 8"], "your": "Screenset: Load window set #08", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+NumPad 9"], "your": "Screenset: Load window set #09", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+NumPad Enter"], "your": "Markers: Delete marker near cursor", "source": "Built-in"}, {"group": "2 - Alt+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)", "(nothing – key had no default action)", "(nothing – key had no default action)"], "shortcut": ["Alt+NumPad Page Down", "Alt+Shift+NumPad 3", "Alt+Shift+NumPad Page Down"], "your": "Item: Glue items within time selection", "source": "Built-in"}, {"group": "3 - Ctrl+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Ctrl+NumPad 2"], "your": "File: Project settings...", "source": "Built-in"}, {"group": "3 - Ctrl+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Ctrl+NumPad 3"], "your": "View: Show big clock plus window", "source": "Built-in"}, {"group": "3 - Ctrl+NumPad", "status": ["Changed"], "default": ["Item edit: Grow left edge of items"], "shortcut": ["Ctrl+NumPad 4"], "your": "Script: Daniel_Show big marker name.lua", "source": "Script"}, {"group": "3 - Ctrl+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Ctrl+NumPad 5"], "your": "View: Show region/marker manager window", "source": "Built-in"}, {"group": "3 - Ctrl+NumPad", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Ctrl+NumPad 9"], "your": "Video: Show/hide video window", "source": "Built-in"}, {"group": "4 - Other NumPad (Logo+)", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Logo+NumPad 9"], "your": "Script: Daniel_Double speed playback.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Shift+Space"], "your": "Script: Daniel_Half speed playback.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["View: Move cursor left one pixel"], "shortcut": ["Left"], "your": "Script: Daniel_Go to start of time selection.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["View: Move cursor right one pixel"], "shortcut": ["Right"], "your": "Script: Daniel_Go to end of time selection.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["View: Zoom out horizontal", "View: Zoom in horizontal"], "shortcut": ["Down", "Up"], "your": "Script: Daniel_Move edit cursor to play cursor.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Peaks: Decrease peaks display zoom for project", "Peaks: Increase peaks display zoom for project"], "shortcut": ["Shift+Down", "Shift+Up"], "your": "Script: Daniel_Extend selection to play cursor (during plaback).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Track: Nudge track volume down"], "shortcut": ["Ctrl+Down"], "your": "View: Decrease selected track heights", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Track: Go to next track"], "shortcut": ["Ctrl+Alt+Down"], "your": "View: Decrease selected track heights a little bit", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Track: Nudge track volume up"], "shortcut": ["Ctrl+Up"], "your": "View: Increase selected track heights", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Track: Go to previous track"], "shortcut": ["Ctrl+Alt+Up"], "your": "View: Increase selected track heights a little bit", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Transport: Play/pause"], "shortcut": ["Enter"], "your": "Script: Daniel_Go to start of project.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["File: Project settings..."], "shortcut": ["Alt+Enter"], "your": "Script: Daniel_Go to end of project.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)", "(nothing – key had no default action)"], "shortcut": ["Shift+A", "Shift+Enter"], "your": "Script: Daniel_Select everything before edit cursor.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)", "(nothing – key had no default action)"], "shortcut": ["A", "Alt+Shift+Enter"], "your": "Script: Daniel_Select everything after edit cursor.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Options: Auto-crossfade media items when editing", "Markers: Go to next marker/project end"], "shortcut": ["Alt+X", "]"], "your": "Script: Daniel_Go to next marker.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Item: Split at previous zero crossing", "Markers: Go to previous marker/project start"], "shortcut": ["Alt+Z", "["], "your": "Script: Daniel_Go to previous marker.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added", "Changed"], "default": ["(nothing – key had no default action)", "Loop points: Set end point"], "shortcut": ["Alt+Shift+X", "} (Shift+])"], "your": "Script: Daniel_Extend razor edit area to next marker.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added", "Changed"], "default": ["(nothing – key had no default action)", "Loop points: Set start point"], "shortcut": ["Alt+Shift+Z", "{ (Shift+[)"], "your": "Script: Daniel_Extend razor edit area to previous marker.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+A"], "your": "Script: Daniel_Zoom out project.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Ctrl+="], "your": "View: Toggle mixer visible", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Ctrl+-"], "your": "View: Toggle show MIDI editor windows", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["View: Zoom in horizontal"], "shortcut": ["="], "your": "Automation: Toggle track between touch and trim/read modes", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["View: Zoom out horizontal"], "shortcut": ["-"], "your": "Track: Toggle track volume envelope visible", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Track: Toggle track pan envelope visible"], "shortcut": ["P"], "your": "Script: Daniel_Select up track.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Shift+P"], "your": "Script: Daniel_Select up track(add).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": [";"], "your": "Script: Daniel_Select down track.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": [": (Shift+;)"], "your": "Script: Daniel_Select down track(add).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["View: Go to play cursor/position", "Item navigation: Move cursor to next transient in items"], "shortcut": ["'", "Tab"], "your": "Script: Daniel_Tab to transient or items (forward).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["View: Go to edit cursor", "Item navigation: Move cursor to previous transient in items"], "shortcut": ["\" (Shift+')", "Shift+Tab"], "your": "Script: Daniel_Extend razor edit area to the right.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Options: Toggle locking"], "shortcut": ["L"], "your": "Script: Daniel_Tab to transient or items (backward).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Options: Show lock settings"], "shortcut": ["Shift+L"], "your": "Script: Daniel_Extend razor edit area to the left.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["O"], "your": "Script: Daniel_Change track routing from main to processing bus.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["I"], "your": "Script: Daniel_Volume automation ramp up.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Item grouping: Remove items from group"], "shortcut": ["U"], "your": "Script: Daniel_Volume automation ramp down.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Time selection: Remove (unselect) time selection and loop points"], "shortcut": ["ESC"], "your": "Script: Daniel_Clear selection.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["J"], "your": "Script: Daniel_Move first media item on selected track to edit cursor.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["K"], "your": "Script: Daniel_Copy first media item on selected track and paste at edit cursor.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Markers: Insert marker at current position"], "shortcut": ["M"], "your": "Move edit cursor back one measure (no seek)", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Time selection: Nudge left"], "shortcut": [","], "your": "Move edit cursor back one beat (no seek)", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Time selection: Nudge right"], "shortcut": ["."], "your": "Move edit cursor forward one beat (no seek)", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["/"], "your": "Move edit cursor forward one measure (no seek)", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Item edit: Toggle nudge/Set dialog"], "shortcut": ["N"], "your": "Script: Daniel_Insertion follows playback (toolbar toggle).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Q"], "your": "Item edit: Trim left edge of item to edit cursor", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Transport: Go to start of project"], "shortcut": ["W"], "your": "Item edit: Trim right edge of item to edit cursor", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Item: Open item inline editors"], "shortcut": ["E"], "your": "View: Toggle track zoom to maximum height (limit to 100% of arrange view)", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Transport: Toggle repeat"], "shortcut": ["R"], "your": "Script: Daniel_Zoom out horizontal.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Move comp area at mouse down, or switch items to next take"], "shortcut": ["T"], "your": "Script: Daniel_Zoom in horizontal.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Take: Activate take under mouse"], "shortcut": ["Y"], "your": "Script: Daniel_Move selected item to start of project.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Item: Split items at edit or play cursor (select right)"], "shortcut": ["S"], "your": "Script: Daniel_Toggle horizontal scroll 50%.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added", "Changed"], "default": ["(nothing – key had no default action)", "Toolbar: Show/hide toolbar docker"], "shortcut": ["Ctrl+F", "F"], "your": "Script: Daniel_Fade in, out, crossfade.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)", "(nothing – key had no default action)"], "shortcut": ["Ctrl+H", "H"], "your": "Script: Daniel_Heal splits.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Move edit cursor to next zero crossing in items"], "shortcut": ["Z"], "your": "Edit: Undo", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Move edit cursor to previous zero crossing in items"], "shortcut": ["Shift+Z"], "your": "Edit: Redo", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Edit: Cut items/tracks/envelope points (depending on focus) ignoring time selection", "Item: Crossfade items within time selection"], "shortcut": ["Ctrl+X", "X"], "your": "Script: Daniel_Cut items,tracks,envelope points (depending on focus) within time selection, if any (smart cut).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Item: Remove content (trim) behind items"], "shortcut": ["Shift+X"], "your": "Script: Daniel_Razor select current item and extend selection.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["SWS: Open console"], "shortcut": ["C"], "your": "Edit: Copy items/tracks/envelope points (depending on focus) ignoring time selection", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Tempo envelope: Insert tempo/time signature change marker at edit cursor..."], "shortcut": ["Shift+C"], "your": "Script: Daniel_Extend razor edit area to mouse cursor (select tracks in between).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Item: Paste items/tracks", "Track: Toggle track volume envelope visible"], "shortcut": ["Ctrl+V", "V"], "your": "Script: Daniel_Paste items-tracks.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added", "Changed"], "default": ["(nothing – key had no default action)", "View: Show project bay window"], "shortcut": ["B", "Ctrl+B"], "your": "Script: Daniel_Split items at selection (if exists), else at edit cursor.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["File: Save live output to disk (bounce)..."], "shortcut": ["Ctrl+Alt+B"], "your": "File: Render project to disk...", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Markers: Go to marker 01"], "shortcut": ["1"], "your": "View: Continuous scrolling during playback", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Markers: Go to marker 02"], "shortcut": ["2"], "your": "View: Toggle auto-view-scroll during playback", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Markers: Go to marker 03"], "shortcut": ["3"], "your": "Script: Daniel_Horizontal zoom preset 3.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Markers: Go to marker 04"], "shortcut": ["4"], "your": "Script: Daniel_Horizontal zoom preset 4.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Markers: Go to marker 05"], "shortcut": ["5"], "your": "Script: Daniel_Horizontal zoom preset 5.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["F13"], "your": "Script: Daniel_Set time selection for render.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["F14"], "your": "File: Add project to render queue, using the most recent render settings", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["F15"], "your": "File: Render project, using the most recent render settings", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["F16"], "your": "Script: cfillion_Insert empty space from time selection at edit cursor (moving later items).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["F17"], "your": "Markers: Insert region from time selection and edit...", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["F18"], "your": "Script: Daniel_Make item video only (disable audio).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["F19"], "your": "Script: Daniel_Make item audio only (disable video).lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Markers: Insert region from time selection"], "shortcut": ["Shift+R"], "your": "Track: Toggle record arm for selected tracks", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Markers: Insert and/or edit marker at current position"], "shortcut": ["Shift+M"], "your": "Track: Toggle mute for selected tracks", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Item: Split items at time selection or razor edit"], "shortcut": ["Shift+S"], "your": "Track: Toggle solo for selected tracks", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Shift+I"], "your": "Script: Daniel_Toggle input monitoring.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+Shift+D"], "your": "Track: Duplicate tracks", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Item properties: Normalize items (each item separately) to +0dB peak"], "shortcut": ["Ctrl+Shift+N"], "your": "Track: Insert multiple new tracks...", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Track: Insert new track", "View: Toggle track zoom to minimum height"], "shortcut": ["Ctrl+T", "`"], "your": "Script: Daniel_Insert new vo track.lua", "source": "Script"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["View: Toggle track zoom to maximum height (limit to 100% of arrange view)"], "shortcut": ["~ (Shift+`)"], "your": "Track: Rename last touched track", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["View: Toggle mixer visible"], "shortcut": ["Ctrl+M"], "your": "Item properties: Toggle items/tracks mute (depending on focus)", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed"], "default": ["Transport: Record"], "shortcut": ["Ctrl+R"], "your": "Item properties: Toggle take reverse", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Ctrl+Shift+I"], "your": "Insert/import media files...", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["§"], "your": "Item properties: Show media item source properties", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Ctrl+W"], "your": "Close current project tab", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Removed", "Changed"], "default": ["View: Scroll vertically (MIDI CC relative/mousewheel)", "View: Zoom horizontally (MIDI CC relative/mousewheel)"], "shortcut": ["Ctrl+Alt+Mousewheel", "Mousewheel"], "your": "View: Scroll vertically (MIDI CC relative/mousewheel)", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Changed", "Added", "Added"], "default": ["View: Scroll horizontally (MIDI CC relative/mousewheel)", "(nothing – key had no default action)", "(nothing – key had no default action)"], "shortcut": ["HorizWheel", "Shift+HorizWheel", "Shift+Mousewheel"], "your": "View: Scroll horizontally reversed (MIDI CC relative/mousewheel)", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+{ (Alt+Shift+[)"], "your": "Peaks: Decrease peaks display zoom for project", "source": "Built-in"}, {"group": "Ungrouped", "status": ["Added"], "default": ["(nothing – key had no default action)"], "shortcut": ["Alt+} (Alt+Shift+])"], "your": "Peaks: Increase peaks display zoom for project", "source": "Built-in"}];
+let activeFilters = { status: new Set(), source: new Set() };
+let sortKey = null, sortDir = 1;
+
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderLines(arr, cls){
+  return arr.map(v => `<span class="line ${cls?cls+' '+v:''}">${cls==='badge'?`<span class="badge ${v}">${v}</span>`:escapeHtml(v)}</span>`).join('');
+}
+
+function matches(row, q){
+  if(activeFilters.status.size && !row.status.some(s => activeFilters.status.has(s))) return false;
+  if(activeFilters.source.size && !activeFilters.source.has(row.source)) return false;
+  if(!q) return true;
+  const hay = [row.group, ...row.status, ...row.default, ...row.shortcut, row.your, row.source].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+function render(){
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  let rows = DATA.filter(r => matches(r, q));
+  if(sortKey){
+    rows = rows.slice().sort((a,b) => {
+      const av = Array.isArray(a[sortKey]) ? a[sortKey].join(' ') : a[sortKey];
+      const bv = Array.isArray(b[sortKey]) ? b[sortKey].join(' ') : b[sortKey];
+      return av.localeCompare(bv) * sortDir;
+    });
+  }
+  const tbody = document.getElementById('tbody');
+  document.getElementById('empty').style.display = rows.length ? 'none' : 'block';
+  document.getElementById('count').textContent = rows.length + ' / ' + DATA.length;
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><span class="group-tag">${escapeHtml(r.group)}</span></td>
+      <td>${renderLines(r.status,'badge')}</td>
+      <td>${renderLines(r.default)}</td>
+      <td>${r.shortcut.map(s=>`<span class="line"><kbd>${escapeHtml(s)}</kbd></span>`).join('')}</td>
+      <td>${escapeHtml(r.your)}</td>
+      <td>${escapeHtml(r.source)}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('q').addEventListener('input', render);
+document.querySelectorAll('.chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const f = btn.dataset.filter, v = btn.dataset.value;
+    const set = activeFilters[f];
+    if(set.has(v)){ set.delete(v); btn.setAttribute('aria-pressed','false'); }
+    else { set.add(v); btn.setAttribute('aria-pressed','true'); }
+    render();
+  });
+});
+document.querySelectorAll('thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if(sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+    render();
+  });
+});
+render();
+</script>
+</body>
+</html>

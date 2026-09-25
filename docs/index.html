@@ -103,6 +103,7 @@
     transition: border-color .15s, background-color .15s;
   }
   .choice:hover { border-color: var(--rec); }
+  a.choice, a.choice:hover { color: inherit; text-decoration: none; }
   .choice strong {
     display: block; font-family: "Bricolage Grotesque", "IBM Plex Sans", sans-serif;
     font-size: 21px; line-height: 1.25; margin-bottom: 4px;
@@ -242,6 +243,25 @@
         <strong>I want to restore my previous configuration</strong>
         <span>Go back to how REAPER was before.</span>
       </button>
+      <button class="choice" type="button" data-go="shortcuts">
+        <strong>I want to see the shortcuts reference</strong>
+        <span>Browse my keyboard shortcuts and mouse modifiers, compared to REAPER's defaults.</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Shortcuts reference -->
+  <section class="view" id="view-shortcuts" aria-labelledby="h-shortcuts">
+    <h2 id="h-shortcuts">Shortcuts reference</h2>
+    <div class="choices">
+      <a class="choice" href="keyboard-shortcuts.html">
+        <strong>Keyboard Shortcuts</strong>
+        <span>Every custom, added, or removed keyboard shortcut, compared to REAPER's defaults.</span>
+      </a>
+      <a class="choice" href="mouse-modifiers.html">
+        <strong>Mouse Modifiers</strong>
+        <span>Custom mouse-drag and click behaviors by context (media items, tracks, envelopes, MIDI editor, and more).</span>
+      </a>
     </div>
   </section>
 
@@ -561,6 +581,7 @@
     "update":             { id: "view-update",       crumbs: ["Update"], parent: "home" },
     "scripts":            { id: "view-scripts",      crumbs: ["Scripts or FX only"], parent: "home" },
     "restore":            { id: "view-restore",        crumbs: ["Restore"], parent: "home" },
+    "shortcuts":          { id: "view-shortcuts",      crumbs: ["Shortcuts reference"], parent: "home" },
     "restore-file":       { id: "view-restore-file",   crumbs: ["Restore", "Saved file"], parent: "restore" },
     "restore-script":     { id: "view-restore-script", crumbs: ["Restore", "No saved file"], parent: "restore" },
     "restore-before":     { id: "view-restore-before", crumbs: ["Restore", "No saved file", "Before my configuration"], parent: "restore-script" },

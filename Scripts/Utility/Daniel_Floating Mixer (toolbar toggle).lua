@@ -1,8 +1,8 @@
 local KEY = "Floating_Mixer"
 local REAPER_INI = reaper.GetResourcePath() .. "/reaper.ini"
 
--- Sets KEY=value in reaper.ini. If the key isn't there yet, it's added
--- under the [REAPER] section.
+-- Sets KEY=value in reaper.ini, on the line that's already there
+-- (in your toolbar toggles section).
 local function SetIniValue(key, value)
   local file = io.open(REAPER_INI, "rb")
   if not file then return false end
@@ -13,14 +13,6 @@ local function SetIniValue(key, value)
     "(\n" .. key .. "=)[^\r\n]*",
     function(prefix) return prefix .. value end
   )
-  if count == 0 then
-    local nl = contents:find("\r\n", 1, true) and "\r\n" or "\n"
-    new_contents, count = contents:gsub(
-      "(%[REAPER%][^\r\n]*\r?\n)",
-      function(header) return header .. key .. "=" .. value .. nl end,
-      1
-    )
-  end
   if count == 0 then return false end
 
   file = io.open(REAPER_INI, "wb")

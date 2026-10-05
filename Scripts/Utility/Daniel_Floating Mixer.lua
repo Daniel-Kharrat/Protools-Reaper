@@ -2109,7 +2109,7 @@ do
     state.snap_typing = false
     if not state.snap_win then return end
     ImGui.SetNextWindowSize(ctx, 300, 420, ImGui.Cond_FirstUseEver)
-    local title = 'Snapshots' .. (CUR_WIN > 1 and (' (Floating Mixer ' .. CUR_WIN .. ')') or '') .. '###DFM_snapshots'
+    local title = 'Snapshots (Mixer ' .. CUR_WIN .. ')###DFM_snapshots'
     local wcol = state.win_color(CUR_WIN)            -- the color of the mixer window it belongs to
     ImGui.PushStyleColor(ctx, ImGui.Col_TitleBgActive, wcol)
     ImGui.PushStyleColor(ctx, ImGui.Col_TitleBg, state.dim_color(wcol, 0.55))
@@ -2985,7 +2985,7 @@ do
     local gray = state.mixer_gray()
     ImGui.ColorButton(ctx, '##swGray', gray, ImGui.ColorEditFlags_NoTooltip | ImGui.ColorEditFlags_NoBorder, 12, 12)
     ImGui.SameLine(ctx)
-    if ImGui.MenuItem(ctx, 'Mixer gray', nil, picked and cur == gray) then state.set_win_color(n, gray) end
+    if ImGui.MenuItem(ctx, 'Default', nil, picked and cur == gray) then state.set_win_color(n, gray) end
     for _, p in ipairs(state.PALETTE) do
       ImGui.ColorButton(ctx, '##sw' .. p[1], p[2], ImGui.ColorEditFlags_NoTooltip | ImGui.ColorEditFlags_NoBorder, 12, 12)
       ImGui.SameLine(ctx)
@@ -3038,8 +3038,7 @@ state.draw_mixer_window = function(W)
   ImGui.PushStyleColor(ctx, ImGui.Col_TitleBg, state.dim_color(wcol, 0.55))    -- (dimmer when not focused)
   ImGui.PushStyleColor(ctx, ImGui.Col_Text, state.text_on(wcol))
 
-  local title = SCRIPT_NAME .. (W.n > 1 and (' ' .. W.n) or '')
-  if #tracks == 1 then local _, n = track_name(tracks[1]); title = title .. ': ' .. n end
+  local title = 'Mixer ' .. W.n                  -- short, so it fits a one-strip window
   if state.dock_req then ImGui.SetNextWindowDockID(ctx, state.dock_req); state.dock_req = nil end
   local visible, open = ImGui.Begin(ctx, title .. '###DanielFloatingMixer' .. (W.n > 1 and W.n or ''), true, WFLAGS)
   ImGui.PopStyleColor(ctx, 4); ImGui.PopStyleVar(ctx)
@@ -3159,8 +3158,16 @@ state.draw_mixer_window = function(W)
         x = x + widths[k]
       end
     else
+      -- wrapped to the window, so nothing is cut off in a one-strip window
+      local msg = state.mode == 'list'
+        and 'No tracks chosen.\n\nClick the first button on the top row to choose tracks.'
+        or 'No track selected.\n\nSelect a track, or click the first button on the top row to choose tracks.'
       ImGui.SetCursorScreenPos(ctx, wx + 8, wy + 10)
-      ImGui.TextDisabled(ctx, state.mode == 'list' and 'No tracks chosen' or 'No track selected')
+      ImGui.PushTextWrapPos(ctx, ImGui.GetWindowWidth(ctx) - 8)
+      ImGui.PushStyleColor(ctx, ImGui.Col_Text, ImGui.GetStyleColor(ctx, ImGui.Col_TextDisabled))
+      ImGui.TextWrapped(ctx, msg)
+      ImGui.PopStyleColor(ctx)
+      ImGui.PopTextWrapPos(ctx)
     end
     if ImGui.IsWindowFocused(ctx) and not ImGui.IsAnyItemActive(ctx)
        and ImGui.IsKeyPressed(ctx, ImGui.Key_Space, false) then

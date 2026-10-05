@@ -2943,20 +2943,23 @@ do
     r.SetProjExtState(0, 'Daniel_FloatingMixer', 'windows', table.concat(t, ','))   -- per project
   end
 
-  -- Window colors: each mixer window gets a color from this palette by its number (1 = Blue, 2 = Teal...).
+  -- Window colors: window 1 is the mixer's background gray (the theme's col_mixerbg); the others get a color
+  -- from this palette by their number (2 = Blue, 3 = Teal...).
   -- Right-click the top row > Window color to pick one; a picked color is saved per window in the project.
   -- "Automatic" goes back to the palette color.
   state.PALETTE = {
     { 'Blue',   0x3F6FB5FF }, { 'Teal',   0x2E9A8EFF }, { 'Green',  0x4F9A45FF }, { 'Amber',  0xC08A2EFF },
     { 'Orange', 0xC0612EFF }, { 'Red',    0xB5443FFF }, { 'Purple', 0x7E5BB5FF }, { 'Pink',   0xB0508AFF },
   }
+  state.mixer_gray = function() return theme_col('col_mixerbg', 0x333333FF) end
   local function color_key(n) return n == 1 and 'color' or ('color_' .. n) end
   -- returns the window's color (0xRRGGBBAA) and whether it was picked by hand
   state.win_color = function(n)
     local _, v = r.GetProjExtState(0, 'Daniel_FloatingMixer', color_key(n))
     local c = tonumber(v or '', 16)
     if c then return (c << 8) | 0xFF, true end
-    return state.PALETTE[(n - 1) % #state.PALETTE + 1][2], false
+    if n == 1 then return state.mixer_gray(), false end
+    return state.PALETTE[(n - 2) % #state.PALETTE + 1][2], false
   end
   -- col = 0xRRGGBBAA, or nil for automatic
   state.set_win_color = function(n, col)
@@ -2979,6 +2982,10 @@ do
     local cur, picked = state.win_color(n)
     if ImGui.MenuItem(ctx, 'Automatic', nil, not picked) then state.set_win_color(n, nil) end
     ImGui.Separator(ctx)
+    local gray = state.mixer_gray()
+    ImGui.ColorButton(ctx, '##swGray', gray, ImGui.ColorEditFlags_NoTooltip | ImGui.ColorEditFlags_NoBorder, 12, 12)
+    ImGui.SameLine(ctx)
+    if ImGui.MenuItem(ctx, 'Mixer gray', nil, picked and cur == gray) then state.set_win_color(n, gray) end
     for _, p in ipairs(state.PALETTE) do
       ImGui.ColorButton(ctx, '##sw' .. p[1], p[2], ImGui.ColorEditFlags_NoTooltip | ImGui.ColorEditFlags_NoBorder, 12, 12)
       ImGui.SameLine(ctx)
@@ -3008,7 +3015,15 @@ state.draw_mixer_window = function(W)
                and r.GetMediaTrackInfo_Value(tr, 'I_SPACER') == 1) and SPACER_W or 0
     total = total + widths[k] + gaps[k]
   end
-  local winw = (#tracks > 0) and total or 120      -- exactly the strips' width (120 only when empty)
+  local winw = total                               -- exactly the strips' width
+  if #tracks == 0 then                             -- empty: one normal strip wide, so selecting a track doesn't resize it
+    local lay = 'A'
+    if r.ThemeLayout_GetLayout then
+      local ok, d = r.ThemeLayout_GetLayout('mcp', -1)
+      if ok and d then lay = (d:gsub('^%d+%%_', '')):match('^%a') or 'A' end
+    end
+    winw = math.max(40, tp('Layout' .. lay .. '-mcpWidth', 88))
+  end
   ImGui.SetNextWindowSize(ctx, winw, 560, ImGui.Cond_FirstUseEver)
   do -- first launch ever: centered on screen; after that ReaImGui remembers where it was left
     local cx, cy = ImGui.Viewport_GetCenter(ImGui.GetMainViewport(ctx))

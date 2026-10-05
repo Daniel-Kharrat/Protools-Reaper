@@ -214,6 +214,18 @@ local function clip_text(fnt, size, x, y, col, str, xmax)
   text(fnt, size, x, y, col, str)
   ImGui.DrawList_PopClipRect(G.dl)
 end
+-- A horizontal hairline exactly one physical pixel tall, snapped to the pixel grid (x1, x2, y in screen
+-- coordinates). A half-point line (1 design unit) is one real pixel on a 2x screen, but on a 1x screen it's
+-- half a pixel and comes and goes as its position shifts; this draws the same 1 px line on every screen.
+-- (kept on G: the main chunk is close to Lua's 200-local limit)
+G.hline = function(x1, x2, y, col)
+  local dpi = 1
+  if ImGui.GetWindowDpiScale then dpi = math.max(1, ImGui.GetWindowDpiScale(ctx) or 1) end
+  local px = 1 / dpi
+  local sy = math.floor(y * dpi + 0.5) / dpi
+  ImGui.DrawList_AddRectFilled(G.dl, x1, sy, x2, sy + px, col)
+end
+
 local function rect(x1, y1, x2, y2, col, rnd, flags)
   ImGui.DrawList_AddRectFilled(G.dl, x1, y1, x2, y2, col, rnd or 0, flags or 0)
 end
@@ -1162,7 +1174,7 @@ local function draw_fx_area(tr, y0, y1)
     local a = 0.11
     local lc = rgba(bg[1] + (255 - bg[1]) * a, bg[2] + (255 - bg[2]) * a, bg[3] + (255 - bg[3]) * a)
     local ly = math.floor(split)
-    rect(X(23), Y(ly), X(DESIGN_W - 25), Y(ly + 1), lc)
+    G.hline(X(23), X(DESIGN_W - 25), Y(ly), lc)
   end
 
   -- sends
@@ -1776,7 +1788,7 @@ local function draw_fader(tr, gt, gb)
     if zc & 0xFF > 0 then
       local zy = math.floor(tb - pos_of(0) * (tb - tt))
       local zx1, zx2 = GX - cap_w / 2 - 1, GX + cap_w / 2 + 2
-      ImGui.DrawList_AddRectFilled(G.dl, X(zx1), Y(zy), X(zx2), Y(zy + 1), zc)
+      G.hline(X(zx1), X(zx2), Y(zy), zc)
     end
   end
 

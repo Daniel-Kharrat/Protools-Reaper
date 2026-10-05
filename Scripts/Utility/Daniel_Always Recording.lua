@@ -60,25 +60,42 @@ local INI_KEY = "Always_Recording"   -- the key the startup action reads
 -- The toolbar button's script: Daniel_Always Recording (toolbar toggle).lua
 local toggle_button_cmd_id = reaper.NamedCommandLookup("_RS1d334413686175f313d60578bea01a827ae4e954")
 
--- Writes Always_Recording=0/1 in reaper.ini, on the line that's already
--- there (in your toolbar toggles section).
-local function write_ini_value(value)
+-- Sets KEY=value in reaper.ini, in the [toolbar button states] section. If the line isn't
+-- there yet, it's added to that section (and the section is added at the end if it's missing).
+local function SetIniValue(key, value)
   local file = io.open(REAPER_INI, "rb")
-  if not file then return end
+  if not file then return false end
   local contents = file:read("*all")
   file:close()
   value = tostring(value)
+
   local new_contents, count = contents:gsub(
-    "(\n" .. INI_KEY .. "=)[^\r\n]*",
+    "(\n" .. key .. "=)[^\r\n]*",
     function(prefix) return prefix .. value end
   )
-  if count == 0 or new_contents == contents then return end
-  file = io.open(REAPER_INI, "wb")
-  if file then
-    file:write(new_contents)
-    file:close()
+  if count == 0 then
+    local nl = contents:find("\r\n", 1, true) and "\r\n" or "\n"
+    local header = "[toolbar button states]"
+    local s = (contents:sub(1, #header) == header) and 1 or contents:find("\n" .. header, 1, true)
+    if s then
+      local eol = contents:find("\n", s + (s == 1 and 0 or 1), true)
+      if not eol then contents = contents .. nl; eol = #contents end   -- header was the last line
+      new_contents = contents:sub(1, eol) .. key .. "=" .. value .. nl .. contents:sub(eol + 1)
+    else
+      if contents ~= "" and not contents:match("\n$") then contents = contents .. nl end
+      new_contents = contents .. header .. nl .. key .. "=" .. value .. nl
+    end
   end
+  if new_contents == contents then return true end
+
+  file = io.open(REAPER_INI, "wb")
+  if not file then return false end
+  file:write(new_contents)
+  file:close()
+  return true
 end
+
+local function write_ini_value(value) SetIniValue(INI_KEY, value) end
 
 local function set_visual_state(on)
   local v = on and 1 or 0

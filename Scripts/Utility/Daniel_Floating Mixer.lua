@@ -64,17 +64,13 @@ local function set_visual_state(on)
   local tid = toggle_button_id()
   if tid then r.SetToggleCommandState(0, tid, v); r.RefreshToolbar2(0, tid) end
 end
--- writes Floating_Mixer=0/1 in reaper.ini ([REAPER] section; added there if it isn't in the file yet)
+-- writes Floating_Mixer=0/1 in reaper.ini, on the line that's already there (your toolbar toggles section)
 local function write_ini_flag(on)
   local path = r.GetResourcePath() .. '/reaper.ini'
   local f = io.open(path, 'rb'); if not f then return end
   local d = f:read('a'); f:close()
   local val = on and '1' or '0'
   local nd, n = d:gsub('(\n' .. TOGGLE_KEY .. '=)[^\r\n]*', function(p) return p .. val end)
-  if n == 0 then
-    local nl = d:find('\r\n', 1, true) and '\r\n' or '\n'
-    nd, n = d:gsub('(%[REAPER%][^\r\n]*\r?\n)', function(h) return h .. TOGGLE_KEY .. '=' .. val .. nl end, 1)
-  end
   if n == 0 or nd == d then return end
   f = io.open(path, 'wb'); if f then f:write(nd); f:close() end
 end

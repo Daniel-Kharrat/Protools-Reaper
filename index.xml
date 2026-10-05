@@ -460,7 +460,7 @@
     </reapack>
 
     <reapack name="Daniel_Floating Mixer.lua" type="script" desc="Daniel_Floating Mixer.lua">
-      <version name="1.8" author="Daniel" time="2026-10">
+      <version name="1.9" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20Mixer.lua</source>
       </version>
     </reapack>

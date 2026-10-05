@@ -26,6 +26,7 @@ if file then
         "Insertion_Follows_Playback",
         "Link_Timeline_and_Edit_Selection",
         "Always_Recording",
+        "Floating_Mixer",
     }
 
     for _, key in ipairs(keys) do
@@ -70,8 +71,13 @@ end
 --------------------------------------------------
 
 if toggles["Always_Recording"] == "1" then
-    local id4 = reaper.NamedCommandLookup("_RS1d334413686175f313d60578bea01a827ae4e954")
-    reaper.SetToggleCommandState(0, id4, 1)
-    reaper.RefreshToolbar2(0, id4)
     reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS22184bfd14ba6fe71f7c982d8354aec893c6d2ba"), 0)
+end
+
+--------------------------------------------------
+--Floating Mixer
+--------------------------------------------------
+
+if toggles["Floating_Mixer"] == "1" then
+    reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS24ce39b36555a74bc155ee3678a8a65a7ba15bd0"), 0)
 end

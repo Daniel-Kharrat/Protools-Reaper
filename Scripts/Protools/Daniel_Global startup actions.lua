@@ -35,6 +35,16 @@ if file then
     end
 end
 
+-- Toggles that are ON when their line doesn't exist yet (a fresh install).
+-- Once someone turns one off, its toggle script writes "=0" and that choice is kept.
+local default_on = {
+    Link_Timeline_and_Edit_Selection = true,
+    Always_Recording = true,
+}
+for key in pairs(default_on) do
+    if toggles[key] == nil then toggles[key] = "1" end
+end
+
 --------------------------------------------------
 --Horizontal Scroll 50%
 --------------------------------------------------

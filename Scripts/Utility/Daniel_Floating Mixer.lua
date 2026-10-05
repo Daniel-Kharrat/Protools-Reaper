@@ -63,16 +63,42 @@ local function set_visual_state(on)
   local tid = toggle_button_id()
   if tid then r.SetToggleCommandState(0, tid, v); r.RefreshToolbar2(0, tid) end
 end
--- writes Floating_Mixer=0/1 in reaper.ini, on the line that's already there (your toolbar toggles section)
-local function write_ini_flag(on)
-  local path = r.GetResourcePath() .. '/reaper.ini'
-  local f = io.open(path, 'rb'); if not f then return end
-  local d = f:read('a'); f:close()
-  local val = on and '1' or '0'
-  local nd, n = d:gsub('(\n' .. TOGGLE_KEY .. '=)[^\r\n]*', function(p) return p .. val end)
-  if n == 0 or nd == d then return end
-  f = io.open(path, 'wb'); if f then f:write(nd); f:close() end
+local REAPER_INI = r.GetResourcePath() .. "/reaper.ini"
+-- Sets KEY=value in reaper.ini, in the [toolbar button states] section. If the line isn't
+-- there yet, it's added to that section (and the section is added at the end if it's missing).
+local function SetIniValue(key, value)
+  local file = io.open(REAPER_INI, "rb")
+  if not file then return false end
+  local contents = file:read("*all")
+  file:close()
+  value = tostring(value)
+
+  local new_contents, count = contents:gsub(
+    "(\n" .. key .. "=)[^\r\n]*",
+    function(prefix) return prefix .. value end
+  )
+  if count == 0 then
+    local nl = contents:find("\r\n", 1, true) and "\r\n" or "\n"
+    local header = "[toolbar button states]"
+    local s = (contents:sub(1, #header) == header) and 1 or contents:find("\n" .. header, 1, true)
+    if s then
+      local eol = contents:find("\n", s + (s == 1 and 0 or 1), true)
+      if not eol then contents = contents .. nl; eol = #contents end   -- header was the last line
+      new_contents = contents:sub(1, eol) .. key .. "=" .. value .. nl .. contents:sub(eol + 1)
+    else
+      if contents ~= "" and not contents:match("\n$") then contents = contents .. nl end
+      new_contents = contents .. header .. nl .. key .. "=" .. value .. nl
+    end
+  end
+  if new_contents == contents then return true end
+
+  file = io.open(REAPER_INI, "wb")
+  if not file then return false end
+  file:write(new_contents)
+  file:close()
+  return true
 end
+local function write_ini_flag(on) SetIniValue(TOGGLE_KEY, on and 1 or 0) end
 set_visual_state(true)
 write_ini_flag(true)
 DFM_closed_by_user = false   -- (global) set when the last window is closed with its X (see loop)

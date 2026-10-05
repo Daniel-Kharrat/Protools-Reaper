@@ -54,33 +54,29 @@ local _, _, section_id, cmd_id = reaper.get_action_context()
 -- script was launched (toolbar button, action list, keyboard shortcut,
 -- startup action) -- so they can never show a different on/off state than
 -- what's actually true.
-local personal_settings = reaper.GetResourcePath() .. "/Personal Settings"
-local toggle_file = personal_settings .. "/Toolbar_Toggles.ini"
-local toggle_button_cmd_id = reaper.NamedCommandLookup("_RS1d334413686175f313d60578bea01a827ae4e954")
+local REAPER_INI = reaper.GetResourcePath() .. "/reaper.ini"
+local INI_KEY = "Always_Recording"   -- the key the startup action reads
 
+-- The toggle script registers its own command ID before launching this one.
+local toggle_name = reaper.GetExtState("AlwaysRecording_Display", "toggle_cmd")
+local toggle_button_cmd_id = (toggle_name ~= "") and reaper.NamedCommandLookup(toggle_name) or 0
+
+-- Writes Always_Recording=0/1 in reaper.ini, on the line that's already
+-- there (in your toolbar toggles section).
 local function write_ini_value(value)
-  reaper.RecursiveCreateDirectory(personal_settings, 0)
-  local lines = {}
-  local found = false
-  local file = io.open(toggle_file, "r")
+  local file = io.open(REAPER_INI, "rb")
+  if not file then return end
+  local contents = file:read("*all")
+  file:close()
+  value = tostring(value)
+  local new_contents, count = contents:gsub(
+    "(\n" .. INI_KEY .. "=)[^\r\n]*",
+    function(prefix) return prefix .. value end
+  )
+  if count == 0 or new_contents == contents then return end
+  file = io.open(REAPER_INI, "wb")
   if file then
-    for line in file:lines() do
-      if line:match("^Always_Recording=") then
-        table.insert(lines, "Always_Recording=" .. tostring(value))
-        found = true
-      else
-        table.insert(lines, line)
-      end
-    end
-    file:close()
-  end
-  if not found then
-    table.insert(lines, "Always_Recording=" .. tostring(value))
-  end
-  file = io.open(toggle_file, "w")
-  if file then
-    file:write(table.concat(lines, "\n"))
-    file:write("\n")
+    file:write(new_contents)
     file:close()
   end
 end
@@ -447,8 +443,16 @@ local function clear_track_range(track, start, finish)
   end
 end
 
+-- true once the window was closed with its X (a deliberate "off", unlike
+-- REAPER quitting) -- exit() then clears the startup flag too
+local closed_by_user = false
+
 local function should_keep_running()
-  return gfx.getchar() >= 0 and reaper.GetToggleCommandStateEx(section_id, cmd_id) == 1
+  if gfx.getchar() < 0 then
+    closed_by_user = true
+    return false
+  end
+  return reaper.GetToggleCommandStateEx(section_id, cmd_id) == 1
 end
 
 local function try_drop()
@@ -850,7 +854,8 @@ end
 local function exit()
   local window_state = gfx.dock(-1)
   reaper.SetExtState(EXT_SECTION, "dockstate", tostring(window_state), true)
-  set_visual_state(false) -- visual only -- does NOT touch the persisted ini value
+  set_visual_state(false) -- buttons off; the ini flag is left alone when REAPER is quitting
+  if closed_by_user then write_ini_value(0) end -- window X: don't reopen at the next startup
   pcall(remove_all_hidden_tracks) -- no leftovers once the script is closed
 end
 

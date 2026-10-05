@@ -532,7 +532,7 @@
     </reapack>
 
     <reapack name="Daniel_Toggle horizontal scroll 50%.lua" type="script" desc="Daniel_Toggle horizontal scroll 50%.lua">
-      <version name="1.3" author="Daniel" time="2026-09">
+      <version name="1.4" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Toggle%20horizontal%20scroll%2050%25.lua</source>
       </version>
     </reapack>

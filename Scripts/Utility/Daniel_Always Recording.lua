@@ -57,9 +57,8 @@ local _, _, section_id, cmd_id = reaper.get_action_context()
 local REAPER_INI = reaper.GetResourcePath() .. "/reaper.ini"
 local INI_KEY = "Always_Recording"   -- the key the startup action reads
 
--- The toggle script registers its own command ID before launching this one.
-local toggle_name = reaper.GetExtState("AlwaysRecording_Display", "toggle_cmd")
-local toggle_button_cmd_id = (toggle_name ~= "") and reaper.NamedCommandLookup(toggle_name) or 0
+-- The toolbar button's script: Daniel_Always Recording (toolbar toggle).lua
+local toggle_button_cmd_id = reaper.NamedCommandLookup("_RS1d334413686175f313d60578bea01a827ae4e954")
 
 -- Writes Always_Recording=0/1 in reaper.ini, on the line that's already
 -- there (in your toolbar toggles section).

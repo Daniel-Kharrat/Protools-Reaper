@@ -46,8 +46,48 @@ ImGui.SetConfigVar(ctx, ImGui.ConfigVar_WindowsMoveFromTitleBarOnly, 1)
 ImGui.SetConfigVar(ctx, ImGui.ConfigVar_DockingWithShift, 1)   -- no dock previews while dragging (Shift+drag still docks)
 
 local _, _, sec_id, cmd_id = r.get_action_context()
-r.SetToggleCommandState(sec_id, cmd_id, 1); r.RefreshToolbar2(sec_id, cmd_id)
-r.atexit(function() r.SetToggleCommandState(sec_id, cmd_id, 0); r.RefreshToolbar2(sec_id, cmd_id) end)
+
+-- Toolbar sync: the toolbar button runs the separate "(toolbar toggle)" script, which registers its own
+-- command ID here before launching this one. This script keeps that button (and its own toggle state)
+-- matching whether the mixer is really open, however it was started or closed.
+do
+local TOGGLE_KEY = 'Floating_Mixer'                    -- the key in reaper.ini that the startup action reads
+local function toggle_button_id()
+  local name = r.GetExtState('Daniel_FloatingMixer', 'toggle_cmd')
+  if name == '' then return end
+  local id = r.NamedCommandLookup(name)
+  if id and id ~= 0 then return id end
+end
+local function set_visual_state(on)
+  local v = on and 1 or 0
+  r.SetToggleCommandState(sec_id, cmd_id, v); r.RefreshToolbar2(sec_id, cmd_id)
+  local tid = toggle_button_id()
+  if tid then r.SetToggleCommandState(0, tid, v); r.RefreshToolbar2(0, tid) end
+end
+-- writes Floating_Mixer=0/1 in reaper.ini ([REAPER] section; added there if it isn't in the file yet)
+local function write_ini_flag(on)
+  local path = r.GetResourcePath() .. '/reaper.ini'
+  local f = io.open(path, 'rb'); if not f then return end
+  local d = f:read('a'); f:close()
+  local val = on and '1' or '0'
+  local nd, n = d:gsub('(\n' .. TOGGLE_KEY .. '=)[^\r\n]*', function(p) return p .. val end)
+  if n == 0 then
+    local nl = d:find('\r\n', 1, true) and '\r\n' or '\n'
+    nd, n = d:gsub('(%[REAPER%][^\r\n]*\r?\n)', function(h) return h .. TOGGLE_KEY .. '=' .. val .. nl end, 1)
+  end
+  if n == 0 or nd == d then return end
+  f = io.open(path, 'wb'); if f then f:write(nd); f:close() end
+end
+set_visual_state(true)
+write_ini_flag(true)
+DFM_closed_by_user = false   -- (global) set when the last window is closed with its X (see loop)
+-- atexit only updates the buttons: REAPER quitting also runs it, and the ini flag must stay 1 then,
+-- so the mixer comes back on the next startup
+r.atexit(function()
+  set_visual_state(false)
+  if DFM_closed_by_user then write_ini_flag(false) end
+end)
+end
 -- launching the script again while it runs closes it (a toggle), without REAPER's dialog
 if r.set_action_options then r.set_action_options(1) end
 
@@ -3093,7 +3133,10 @@ local function loop()
   if next(closed) then
     local keep = {}
     for _, W in ipairs(state.wins) do if not closed[W] then keep[#keep + 1] = W end end
-    if #keep == 0 then return end
+    if #keep == 0 then
+      DFM_closed_by_user = true   -- closed on purpose: don't reopen it at the next startup
+      return
+    end
     state.wins = keep
     state.save_win_list()
   end

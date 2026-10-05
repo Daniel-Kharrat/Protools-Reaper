@@ -2110,8 +2110,18 @@ do
     if not state.snap_win then return end
     ImGui.SetNextWindowSize(ctx, 300, 420, ImGui.Cond_FirstUseEver)
     local title = 'Snapshots' .. (CUR_WIN > 1 and (' (Floating Mixer ' .. CUR_WIN .. ')') or '') .. '###DFM_snapshots'
+    local wcol = state.win_color(CUR_WIN)            -- the color of the mixer window it belongs to
+    ImGui.PushStyleColor(ctx, ImGui.Col_TitleBgActive, wcol)
+    ImGui.PushStyleColor(ctx, ImGui.Col_TitleBg, state.dim_color(wcol, 0.55))
+    ImGui.PushStyleColor(ctx, ImGui.Col_Text, state.text_on(wcol))
     local visible, open = ImGui.Begin(ctx, title, true, ImGui.WindowFlags_NoCollapse)
+    ImGui.PopStyleColor(ctx, 3)
     if visible then
+      do -- a colored strip along the top (the only color you see when it's docked)
+        local px, py = ImGui.GetWindowPos(ctx)
+        local y = py + (ImGui.IsWindowDocked(ctx) and 0 or ImGui.GetFrameHeight(ctx))
+        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), px, y, px + ImGui.GetWindowWidth(ctx), y + 4, wcol)
+      end
       local snaps = load_snaps()
       local cur = current_guids()
       local sel = state.snap_sel
@@ -2932,6 +2942,57 @@ do
     for _, W in ipairs(state.wins) do t[#t + 1] = tostring(W.n) end
     r.SetProjExtState(0, 'Daniel_FloatingMixer', 'windows', table.concat(t, ','))   -- per project
   end
+
+  -- Window colors: each mixer window gets a color from this palette by its number (1 = Blue, 2 = Teal...).
+  -- Right-click the top row > Window color to pick one; a picked color is saved per window in the project.
+  -- "Automatic" goes back to the palette color.
+  state.PALETTE = {
+    { 'Blue',   0x3F6FB5FF }, { 'Teal',   0x2E9A8EFF }, { 'Green',  0x4F9A45FF }, { 'Amber',  0xC08A2EFF },
+    { 'Orange', 0xC0612EFF }, { 'Red',    0xB5443FFF }, { 'Purple', 0x7E5BB5FF }, { 'Pink',   0xB0508AFF },
+  }
+  local function color_key(n) return n == 1 and 'color' or ('color_' .. n) end
+  -- returns the window's color (0xRRGGBBAA) and whether it was picked by hand
+  state.win_color = function(n)
+    local _, v = r.GetProjExtState(0, 'Daniel_FloatingMixer', color_key(n))
+    local c = tonumber(v or '', 16)
+    if c then return (c << 8) | 0xFF, true end
+    return state.PALETTE[(n - 1) % #state.PALETTE + 1][2], false
+  end
+  -- col = 0xRRGGBBAA, or nil for automatic
+  state.set_win_color = function(n, col)
+    r.SetProjExtState(0, 'Daniel_FloatingMixer', color_key(n), col and string.format('%06X', col >> 8) or '')
+    r.MarkProjectDirty(0)
+  end
+  state.forget_win_color = function(n) r.SetProjExtState(0, 'Daniel_FloatingMixer', color_key(n), '') end
+  -- a darker / dimmer version of a color (for inactive title bars)
+  state.dim_color = function(c, k)
+    return rgba(((c >> 24) & 255) * k, ((c >> 16) & 255) * k, ((c >> 8) & 255) * k, c & 255)
+  end
+  -- black or white text, whichever reads better on the color
+  state.text_on = function(c)
+    return brightness((c >> 24) & 255, (c >> 16) & 255, (c >> 8) & 255) > 150 and 0x1A1A1AFF or 0xFFFFFFFF
+  end
+
+  -- the color submenu (used in the top row's right-click menu)
+  state.color_menu = function(n)
+    if not ImGui.BeginMenu(ctx, 'Window color') then return end
+    local cur, picked = state.win_color(n)
+    if ImGui.MenuItem(ctx, 'Automatic', nil, not picked) then state.set_win_color(n, nil) end
+    ImGui.Separator(ctx)
+    for _, p in ipairs(state.PALETTE) do
+      ImGui.ColorButton(ctx, '##sw' .. p[1], p[2], ImGui.ColorEditFlags_NoTooltip | ImGui.ColorEditFlags_NoBorder, 12, 12)
+      ImGui.SameLine(ctx)
+      if ImGui.MenuItem(ctx, p[1], nil, picked and cur == p[2]) then state.set_win_color(n, p[2]) end
+    end
+    ImGui.Separator(ctx)
+    if ImGui.BeginMenu(ctx, 'Custom') then
+      local rv, rgb = ImGui.ColorPicker3(ctx, '##custom_color', cur >> 8,
+        ImGui.ColorEditFlags_NoSidePreview | ImGui.ColorEditFlags_NoInputs | ImGui.ColorEditFlags_NoAlpha)
+      if rv then state.set_win_color(n, (rgb << 8) | 0xFF) end
+      ImGui.EndMenu(ctx)
+    end
+    ImGui.EndMenu(ctx)
+  end
 end
 
 state.draw_mixer_window = function(W)
@@ -2955,14 +3016,18 @@ state.draw_mixer_window = function(W)
     ImGui.SetNextWindowPos(ctx, cx + off, cy + off, ImGui.Cond_FirstUseEver, 0.5, 0.5)
   end
   ImGui.SetNextWindowSizeConstraints(ctx, winw, 380, winw, 5000)   -- width is fixed by the strips
+  local wcol = state.win_color(W.n)
   ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 0, 0)
   ImGui.PushStyleColor(ctx, ImGui.Col_WindowBg, COL.bg)
+  ImGui.PushStyleColor(ctx, ImGui.Col_TitleBgActive, wcol)                     -- title bar: the window's color
+  ImGui.PushStyleColor(ctx, ImGui.Col_TitleBg, state.dim_color(wcol, 0.55))    -- (dimmer when not focused)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Text, state.text_on(wcol))
 
   local title = SCRIPT_NAME .. (W.n > 1 and (' ' .. W.n) or '')
   if #tracks == 1 then local _, n = track_name(tracks[1]); title = title .. ': ' .. n end
   if state.dock_req then ImGui.SetNextWindowDockID(ctx, state.dock_req); state.dock_req = nil end
   local visible, open = ImGui.Begin(ctx, title .. '###DanielFloatingMixer' .. (W.n > 1 and W.n or ''), true, WFLAGS)
-  ImGui.PopStyleColor(ctx); ImGui.PopStyleVar(ctx)
+  ImGui.PopStyleColor(ctx, 4); ImGui.PopStyleVar(ctx)
   if visible then ImGui.PushStyleColor(ctx, ImGui.Col_DragDropTarget, 0x00000000) end
   state.docked = visible and ImGui.IsWindowDocked(ctx) or false
   if state.docked then
@@ -2971,13 +3036,12 @@ state.draw_mixer_window = function(W)
       r.SetExtState('Daniel_FloatingMixer', inst_key('dock'), tostring(id), true)
     end
   end
-  -- right-click the title bar: "Dock window". A docked window has no title bar, so there the top row
-  -- (the buttons' row) gives "Undock window".
+  -- right-click the title bar or the colored top row (not on a button): dock / undock, window color
   if visible and ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_ChildWindows)
      and ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Right) then
     local _, wy = ImGui.GetWindowPos(ctx)
     local _, my = ImGui.GetMousePos(ctx)
-    local top = state.docked and TOOLBAR_H or ImGui.GetFrameHeight(ctx)
+    local top = (state.docked and 0 or ImGui.GetFrameHeight(ctx)) + TOOLBAR_H
     if my < wy + top and not ImGui.IsAnyItemHovered(ctx) then ImGui.OpenPopup(ctx, 'title_menu') end
   end
   if visible and ImGui.BeginPopup(ctx, 'title_menu') then
@@ -2986,16 +3050,26 @@ state.draw_mixer_window = function(W)
     elseif ImGui.MenuItem(ctx, 'Dock window') then
       state.dock_req = tonumber(r.GetExtState('Daniel_FloatingMixer', inst_key('dock'))) or -1   -- last-used docker
     end
+    ImGui.Separator(ctx)
+    state.color_menu(W.n)
     ImGui.EndPopup(ctx)
   end
   if visible then
     -- always-visible track chooser
     local tx, ty = ImGui.GetCursorScreenPos(ctx)
-    ImGui.SetCursorScreenPos(ctx, tx + 4, ty + 2)
+    -- the top row in the window's color, with the window's number on the left
+    local wpx = ImGui.GetWindowPos(ctx)
+    local tcol = state.text_on(wcol)
+    ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), wpx, ty, wpx + ImGui.GetWindowWidth(ctx), ty + TOOLBAR_H, wcol)
+    local num = tostring(W.n)
+    local num_w, num_h = ImGui.CalcTextSize(ctx, num)
+    ImGui.DrawList_AddText(ImGui.GetWindowDrawList(ctx), tx + 7, ty + (TOOLBAR_H - num_h) / 2, tcol, num)
+    local badge_w = num_w + 14
+    ImGui.SetCursorScreenPos(ctx, tx + badge_w, ty + 2)
     local label = (state.mode == 'list') and 'Tracks' or 'Follow selection'
     -- three menus on top: tracks to show | snapshots | window (dock, new / close window).
     -- Labels get shorter when the window is narrow (e.g. a single strip); full names in the tooltips.
-    local avail = ImGui.GetWindowWidth(ctx) - 8
+    local avail = ImGui.GetWindowWidth(ctx) - 8 - badge_w
     local sets = {
       { label, 'Snapshots', '+' },
       { 'Tracks', 'Snapshots', '+' },
@@ -3009,19 +3083,29 @@ state.draw_mixer_window = function(W)
       for _, t in ipairs(set) do w = w + ImGui.CalcTextSize(ctx, t) + 8 + 4 end
       if w <= avail then lab = set; break end
     end
+    -- the buttons stay neutral (translucent dark) on the colored row
+    local function small_btn(text)
+      ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0x00000055)
+      ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, 0x00000080)
+      ImGui.PushStyleColor(ctx, ImGui.Col_ButtonActive, 0x000000B0)
+      ImGui.PushStyleColor(ctx, ImGui.Col_Text, 0xFFFFFFFF)
+      local clicked = ImGui.SmallButton(ctx, text)
+      ImGui.PopStyleColor(ctx, 4)
+      return clicked
+    end
     local function topbtn(text, id, popup, tip)
-      if ImGui.SmallButton(ctx, text .. '###' .. id) then ImGui.OpenPopup(ctx, popup) end
+      if small_btn(text .. '###' .. id) then ImGui.OpenPopup(ctx, popup) end
       if tip and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_DelayNormal) then ImGui.SetTooltip(ctx, tip) end
     end
     topbtn(lab[1], 'tracksbtn', 'tracks_top', 'Tracks to show')
     tracks_menu('tracks_top')
     ImGui.SameLine(ctx, 0, 4)
-    if ImGui.SmallButton(ctx, lab[2] .. '###snapsbtn') then             -- opens / closes the Snapshots window (for this mixer window)
+    if small_btn(lab[2] .. '###snapsbtn') then             -- opens / closes the Snapshots window (for this mixer window)
       state.snap_for = (state.snap_for == W.n) and nil or W.n
     end
     if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_DelayNormal) then ImGui.SetTooltip(ctx, 'Snapshots') end
     ImGui.SameLine(ctx, 0, 4)
-    if ImGui.SmallButton(ctx, lab[3] .. '###newwin') then state.new_win_req = true end   -- opens another mixer window
+    if small_btn(lab[3] .. '###newwin') then state.new_win_req = true end   -- opens another mixer window
     if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_DelayNormal) then ImGui.SetTooltip(ctx, 'Open a new mixer window') end
 
     local wx, wy = tx, ty + TOOLBAR_H
@@ -3132,6 +3216,7 @@ local function loop()
       DFM_closed_by_user = true   -- closed on purpose: don't reopen it at the next startup
       return
     end
+    for W in pairs(closed) do state.forget_win_color(W.n) end
     state.wins = keep
     state.save_win_list()
   end

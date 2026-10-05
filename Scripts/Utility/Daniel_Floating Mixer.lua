@@ -47,15 +47,14 @@ ImGui.SetConfigVar(ctx, ImGui.ConfigVar_DockingWithShift, 1)   -- no dock previe
 
 local _, _, sec_id, cmd_id = r.get_action_context()
 
--- Toolbar sync: the toolbar button runs the separate "(toolbar toggle)" script, which registers its own
--- command ID here before launching this one. This script keeps that button (and its own toggle state)
--- matching whether the mixer is really open, however it was started or closed.
+-- Toolbar sync: the toolbar button runs the separate "(toolbar toggle)" script. This script keeps that
+-- button (and its own toggle state) matching whether the mixer is really open, however it was started or closed.
 do
 local TOGGLE_KEY = 'Floating_Mixer'                    -- the key in reaper.ini that the startup action reads
+-- the toolbar button's script: Daniel_Floating Mixer (toolbar toggle).lua
+local TOGGLE_BUTTON = '_RS973b18e586205dfc84710f0cc614eb97f048d2ec'
 local function toggle_button_id()
-  local name = r.GetExtState('Daniel_FloatingMixer', 'toggle_cmd')
-  if name == '' then return end
-  local id = r.NamedCommandLookup(name)
+  local id = r.NamedCommandLookup(TOGGLE_BUTTON)
   if id and id ~= 0 then return id end
 end
 local function set_visual_state(on)

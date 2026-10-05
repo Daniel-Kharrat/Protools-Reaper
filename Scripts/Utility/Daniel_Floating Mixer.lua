@@ -3076,6 +3076,8 @@ state.draw_mixer_window = function(W)
       { 'Tracks', 'Snap', '+' },
       { 'Trk', 'Snap', '+' },
       { 'Trk', 'Sn', '+' },
+      { 'Tr', 'Sn', '+' },
+      { 'T', 'S', '+' },          -- last resort, so the + button is never cut off
     }
     local lab = sets[#sets]
     for _, set in ipairs(sets) do

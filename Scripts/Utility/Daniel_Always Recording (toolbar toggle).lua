@@ -24,14 +24,6 @@ end
 
 local _, _, _, command_id = reaper.get_action_context()
 
--- Tell the main script which toolbar button is ours, so it can turn this
--- button on/off itself (when its window is closed, or when it's started
--- some other way, like the startup action or the action list).
-local named = reaper.ReverseNamedCommandLookup(command_id)
-if named then
-  reaper.SetExtState("AlwaysRecording_Display", "toggle_cmd", "_" .. named, true)
-end
-
 local new_state = (reaper.GetToggleCommandState(command_id) == 1) and 0 or 1
 
 reaper.SetToggleCommandState(0, command_id, new_state)

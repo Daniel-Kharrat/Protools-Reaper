@@ -454,13 +454,13 @@
     </reapack>
 
     <reapack name="Daniel_Floating Mixer (toolbar toggle).lua" type="script" desc="Daniel_Floating Mixer (toolbar toggle).lua">
-      <version name="1.1" author="Daniel" time="2026-10">
+      <version name="1.2" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20Mixer%20(toolbar%20toggle).lua</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Floating Mixer.lua" type="script" desc="Daniel_Floating Mixer.lua">
-      <version name="1.9" author="Daniel" time="2026-10">
+      <version name="2.0" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20Mixer.lua</source>
       </version>
     </reapack>
@@ -568,13 +568,13 @@
     </reapack>
 
     <reapack name="Daniel_Always Recording (toolbar toggle).lua" type="script" desc="Daniel_Always Recording (toolbar toggle).lua">
-      <version name="1.6" author="Daniel" time="2026-10">
+      <version name="1.7" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording%20(toolbar%20toggle).lua</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Always Recording.lua" type="script" desc="Daniel_Always Recording.lua">
-      <version name="1.8" author="Daniel" time="2026-10">
+      <version name="1.9" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording.lua</source>
       </version>
     </reapack>

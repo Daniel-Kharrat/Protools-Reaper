@@ -1857,8 +1857,30 @@ local function auto_fader_col(tr)
     if (am == 4 or am == 5) and touching then state.latched[g] = { mode = am, stops = state.stops or 0 } end
     key = (touching or state.latched[g]) and 'col_fadearm' or 'col_fadearm3'
   end
+  -- like the mixer: no color while the track's volume envelope is hidden (or doesn't exist)
+  if not state.vol_env_visible(tr) then return end
   local fb = ({ col_fadearm = 0xC6113CFF, col_fadearm2 = 0x006448FF, col_fadearm3 = 0x805000FF })[key]
   return (theme_col(key, fb) & ~0xFF) | 0x80
+end
+
+-- Is the track's volume envelope (the fader's, post-FX) shown? REAPER 7 answers directly ("VISIBLE");
+-- otherwise the envelope's "VIS" line is read, checked again every half second.
+-- (A state field, not a local: the main chunk is at Lua's 200-local limit.)
+state.env_vis = {}
+state.vol_env_visible = function(tr)
+  local env = r.GetTrackEnvelopeByChunkName(tr, '<VOLENV2')
+  if not env then return false end
+  local ok, v = r.GetSetEnvelopeInfo_String(env, 'VISIBLE', '', false)
+  if ok and v ~= '' then return v ~= '0' end
+  local k, now = tostring(env), r.time_precise()
+  local c = state.env_vis[k]
+  if not c or now - c.t > 0.5 then
+    local ok2, ch = r.GetEnvelopeStateChunk(env, '', true)
+    local vis = ok2 and ch:match('\n%s*VIS%s+(%d)')
+    c = { v = vis ~= nil and vis ~= '0', t = now }
+    state.env_vis[k] = c
+  end
+  return c.v
 end
 
 local function draw_fader(tr, gt, gb)

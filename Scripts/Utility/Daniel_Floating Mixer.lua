@@ -12,6 +12,8 @@
 --   - Each window can float or dock (right-click the title bar); position, size and tracks are remembered
 --   - Faders, pan, meters, FX and send lists, routing, record arm / input, mute / solo, etc.,
 --     with REAPER's own right-click menus where REAPER offers them
+--   - Fader background colored by automation mode, folder tracks indented like the mixer, and
+--     folders collapse / expand in sync with REAPER's mixer
 --   - Running the action again closes the windows (works as a toolbar toggle)
 --
 --   Requirements: REAPER 7, ReaImGui 0.9.3 or newer (ReaPack).
@@ -551,11 +553,20 @@ end
 
 local function set_track_layout(tr)
   local _, lay = r.GetSetMediaTrackInfo_String(tr, 'P_MCP_LAYOUT', '', false)
-  if tr ~= r.GetMasterTrack(0) then lay = '' end   -- tracks always use the theme's default layout (A), whatever the mixer uses
-  if lay == '' and r.ThemeLayout_GetLayout then
-    local ok, def = r.ThemeLayout_GetLayout('mcp', -1)   -- theme's default mixer layout
-    if ok and def then lay = def end
+  local def = 'A'
+  if r.ThemeLayout_GetLayout then
+    local ok, d = r.ThemeLayout_GetLayout('mcp', -1)   -- theme's default mixer layout
+    if ok and d and d ~= '' then def = d end
   end
+  if tr ~= r.GetMasterTrack(0) then
+    -- tracks use the theme's default layout (A), whatever the mixer uses (B / C would break the strip),
+    -- except its colored-fader versions (e.g. 'A_Blue Fader (mixer only)', set by SWS auto layout):
+    -- those keep layout A's shape, only their images (fader cap) differ
+    local dl = (def:gsub('^%d+%%_', '')):match('^%a') or 'A'
+    local own = lay:gsub('^%d+%%_', '')
+    if not own:match('^' .. dl .. '_') then lay = '' end
+  end
+  if lay == '' then lay = def end
   Theme.lay = (lay ~= '' and Theme.layouts[layout_key(lay)]) or {}
 end
 
@@ -687,17 +698,62 @@ local function toggle_in_list(g)
   state.mode = 'list'; save_choice()
 end
 
+--------------------------------------------------------------------------------
+-- Folder collapse in the mixer. It's REAPER's own state, shared with the real mixer: the track's
+-- "BUSCOMP" line, 2nd value (1 = children hidden in the mixer). There is no API value for it, so it is
+-- read from the track's state (undo-style, which is light) and checked again every half second.
+--------------------------------------------------------------------------------
+local mcp_comp = {}
+local function is_folder(tr) return tr ~= r.GetMasterTrack(0) and r.GetMediaTrackInfo_Value(tr, 'I_FOLDERDEPTH') == 1 end
+local function mcp_collapsed(tr)
+  if not is_folder(tr) then return false end
+  local g, now = r.GetTrackGUID(tr), r.time_precise()
+  local c = mcp_comp[g]
+  if not c or now - c.t > 0.5 then
+    local ok, ch = r.GetTrackStateChunk(tr, '', true)
+    local v = ok and tonumber(ch:match('\n%s*BUSCOMP%s+%-?%d+%s+(%-?%d+)')) or 0
+    c = { v = v, t = now }; mcp_comp[g] = c
+  end
+  return c.v ~= 0
+end
+local function set_mcp_collapsed(tr, on)
+  local ok, ch = r.GetTrackStateChunk(tr, '', true)
+  if not ok then return end
+  local v = on and '1' or '0'
+  local new, n = ch:gsub('(\n%s*BUSCOMP%s+%-?%d+%s+)%-?%d+', '%1' .. v, 1)
+  if n == 0 then new, n = ch:gsub('(\n%s*ISBUS[^\n]*)', '%1\nBUSCOMP 0 ' .. v .. ' 0 0 0', 1) end
+  if n == 0 then return end
+  r.PreventUIRefresh(1)
+  r.SetTrackStateChunk(tr, new, true)          -- undo-style: keeps the track's plugins as they are
+  r.PreventUIRefresh(-1)
+  r.TrackList_AdjustWindows(false)             -- the real mixer shows / hides the children too
+  mcp_comp[r.GetTrackGUID(tr)] = { v = on and 1 or 0, t = r.time_precise() }
+end
+-- hidden here because a folder it's in is collapsed, and that folder is shown in this window
+local function hidden_by_collapse(tr, shown)
+  local p = r.GetParentTrack(tr)
+  while p do
+    if shown[p] and mcp_collapsed(p) then return true end
+    p = r.GetParentTrack(p)
+  end
+  return false
+end
+
 local function strip_tracks()
   local proj = r.EnumProjects(-1)
   if proj ~= state.proj then state.proj = proj; load_choice() end
   if state.mode == 'list' then
-    local out = {}
+    local out, shown = {}, {}
     for _, g in ipairs(state.list) do
-      local t = track_from_guid(g); if t and not state.hidden_track(t) then out[#out + 1] = t end
+      local t = track_from_guid(g); if t and not state.hidden_track(t) then out[#out + 1] = t; shown[t] = true end
     end
     local function pos(t) return (t == r.GetMasterTrack(0)) and 0 or r.GetMediaTrackInfo_Value(t, 'IP_TRACKNUMBER') end
     table.sort(out, function(a, b) return pos(a) < pos(b) end)
-    return out
+    local vis = {}
+    for _, t in ipairs(out) do
+      if t == r.GetMasterTrack(0) or not hidden_by_collapse(t, shown) then vis[#vis + 1] = t end
+    end
+    return vis
   end
   for i = 0, r.CountSelectedTracks2(0, true) - 1 do       -- first selected track that isn't a helper track
     local t = r.GetSelectedTrack2(0, i, true)
@@ -1314,6 +1370,7 @@ local function knob(tr, id, cx, cy, v, reset, label, setter, stack_names)
   local per = 2 / (160 * G.s)
   local nv, done = drag_value(id, h, v, -1, 1, reset, per, per, 0.05)
   if nv then setter(tr, nv, done); v = nv end
+  if drag[(G.sid or '') .. id] then v = drag[(G.sid or '') .. id] end   -- held: follow the mouse, not an envelope
   text(font_list, fpx(1, 23), X(cx), Y(cy - 36), G.pan_label or gray(220), label, 'c')
 
   local bg = img('mcp_pan_knob_small', 'tcp_pan_knob_small')
@@ -1750,6 +1807,60 @@ local function window_drag_area(id, x1, y1, x2, y2)
   return h
 end
 
+-- Fader background color for the track's automation mode, like the mixer. REAPER takes it from the theme:
+--   col_fadearm2 = automation playing (READ), col_fadearm3 = TOUCH / LATCH / LATCH PREVIEW not writing,
+--   col_fadearm  = automation writing (WRITE, and TOUCH / LATCH once the fader is touched during playback).
+-- Drawn at 50% over the strip (measured: READ 19,69,55 and TOUCH 83,59,19 on the 38,38,38 background).
+-- TRIM/READ and the global "bypass" override: no color.
+-- Faders grabbed in REAPER itself (mixer or track panel). REAPER doesn't report mouse touches to scripts,
+-- so with js_ReaScriptAPI: when the left button goes down, whatever is under the mouse is checked; if
+-- it's a track's volume fader (mcp.volume / tcp.volume), that track counts as touched until release.
+-- Called once per frame from the main loop.
+local function update_reaper_touch()
+  local playing = (r.GetPlayState() & 5) ~= 0          -- counts stops, for LATCH
+  if state.was_playing and not playing then state.stops = (state.stops or 0) + 1 end
+  state.was_playing = playing
+  if not r.JS_Mouse_GetState then return end
+  local down = (r.JS_Mouse_GetState(1) & 1) == 1
+  if down and not state.mouse_was_down then
+    local x, y = r.GetMousePosition()
+    local t, info = r.GetThingFromPoint(x, y)
+    state.reaper_touch = (t and info and info:match('^[mt]cp%.volume')) and r.GetTrackGUID(t) or nil
+  elseif not down then
+    state.reaper_touch = nil
+  end
+  state.mouse_was_down = down
+end
+
+local function auto_fader_col(tr)
+  local am = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_AUTOMODE'))
+  local ov = r.GetGlobalAutomationOverride and r.GetGlobalAutomationOverride() or -1
+  if ov == 6 then return end
+  if ov >= 0 and ov <= 5 then am = ov end
+  if am <= 0 then return end
+  local key
+  if am == 1 then key = 'col_fadearm2'
+  elseif am == 3 then key = 'col_fadearm'
+  else
+    local g = r.GetTrackGUID(tr)
+    state.latched = state.latched or {}
+    -- once grabbed: LATCH stays red until playback stops; LATCH PREVIEW stays red (also after stopping)
+    -- until the track leaves that mode
+    -- switching between LATCH and LATCH PREVIEW keeps it red, like REAPER (as LATCH it then clears at the next stop)
+    local L = state.latched[g]
+    if L and L.mode ~= am and (am == 4 or am == 5) then L.mode, L.stops = am, state.stops or 0 end
+    if L and (L.mode ~= am or (am == 4 and L.stops ~= (state.stops or 0))) then state.latched[g] = nil end
+    -- touched: this window's fader, REAPER's fader (mouse), or a control surface's touch-sensitive fader
+    -- (red while held even when stopped, like REAPER)
+    local touching = state.fader_touch == g or state.reaper_touch == g
+      or (r.CSurf_GetTouchState and r.CSurf_GetTouchState(tr, 0) == true)
+    if (am == 4 or am == 5) and touching then state.latched[g] = { mode = am, stops = state.stops or 0 } end
+    key = (touching or state.latched[g]) and 'col_fadearm' or 'col_fadearm3'
+  end
+  local fb = ({ col_fadearm = 0xC6113CFF, col_fadearm2 = 0x006448FF, col_fadearm3 = 0x805000FF })[key]
+  return (theme_col(key, fb) & ~0xFF) | 0x80
+end
+
 local function draw_fader(tr, gt, gb)
   local _, vol = r.GetTrackUIVolPan(tr)
   local db = val2db(vol)
@@ -1761,14 +1872,20 @@ local function draw_fader(tr, gt, gb)
   local HALF = 43
   local tt, tb = gt + HALF, gb - HALF
 
+  local acol = auto_fader_col(tr)
   if groove then
     local gw = (groove.x1 - groove.x0) * groove.k
     -- tracks: REAPER draws the groove image 2 px wider than it is, and its middle (the black groove)
     -- stretches: 6 px instead of 4 (measured). The master keeps the image's own width (4 px, measured).
     if tr ~= r.GetMasterTrack(0) then gw = gw + 2 end
-    nine(groove, GX - gw / 2, gt - groove.T * groove.k, GX + gw / 2, gb + groove.B * groove.k)
+    local x1, y1, x2, y2 = GX - gw / 2, gt - groove.T * groove.k, GX + gw / 2, gb + groove.B * groove.k
+    nine(groove, x1, y1, x2, y2)
+    -- automation mode: REAPER lays the mode's color over the whole groove image area at 50%
+    -- (measured: groove image 50 px wide incl. its transparent edges, 18 px above / below the groove)
+    if acol then rect(X(x1), Y(y1), X(x2), Y(y2), acol) end
   else
     rect(X(GX - 3), Y(gt), X(GX + 3), Y(gb), COL.groove)
+    if acol then rect(X(GX - 25), Y(gt - 18), X(GX + 25), Y(gb + 18), acol) end
   end
 
   local h = hit('##fader', X(GX - 26), Y(gt), X(GX + 26), Y(gb),
@@ -1793,8 +1910,13 @@ local function draw_fader(tr, gt, gb)
     if h.dbl then set_vol(tr, 1, true); p = pos_of(0) end
     if h.deactivated or not h.act then state.fader_win = nil end
   else
+    -- remembered for the automation color: touching the fader makes TOUCH / LATCH write
+    if h.act then state.fader_touch = G.sid elseif state.fader_touch == G.sid then state.fader_touch = nil end
     local nv, done = drag_value('fader', h, p, 0, 1, pos_of(0), 0, 1 / ((tb - tt) * G.s), 0.01)
     if nv then set_vol(tr, vol_of_pos(nv), done); p = nv end
+    -- while held, the cap follows the mouse even if an envelope is playing (READ mode), like the mixer;
+    -- on release it goes back to whatever the automation says
+    if drag[G.sid .. 'fader'] then p = drag[G.sid .. 'fader'] end
     if h.act then ImGui.SetTooltip(ctx, fmt_vol(val2db(vol_of_pos(p)))) end
   end
 
@@ -1858,6 +1980,9 @@ local function draw_lower(tr, is_master, LT, MT, MB)
   G.ox = ox0
 
   local BX = DESIGN_W - 52
+  -- theme rule (mcpFollow): a button whose bottom + 6 pt margin reaches past the buttons section
+  -- (= the top of the name area) is hidden. Heights are the theme's (verbose layout), in design units.
+  local function fits(y, hh) return not G.btn_limit or (y + hh + 12) <= G.btn_limit end
   -- mute / solo
   local _, muted = r.GetTrackUIMute(tr)
   h = theme_button('##mute', bimg(muted and 'mcp_mute_on' or 'mcp_mute_off', muted and 'track_mute_on' or 'track_mute_off'),
@@ -1880,6 +2005,7 @@ local function draw_lower(tr, is_master, LT, MT, MB)
   local recvs = r.GetTrackNumSends(tr, -1) > 0
   local dis = (not is_master) and r.GetMediaTrackInfo_Value(tr, 'B_MAINSEND') == 0
   local io = 'mcp_io' .. (sends and '_s' or '') .. (recvs and '_r' or '') .. (dis and '_dis' or '')
+  if fits(LT + 106, 64) then
   h = theme_button('##route', bimg(io, 'mcp_io'), BX, LT + 106,
     'Routing  |  Option-click: toggle master send\nDrag onto another track (here or in REAPER) to send to it', 'ROUTE', 40, 40)
   if h.rclick then show_track_menu(tr, 'track_routing') end   -- REAPER's own routing menu
@@ -1909,11 +2035,13 @@ local function draw_lower(tr, is_master, LT, MT, MB)
     r.Main_OnCommand(40914, 0) -- set first selected track as last touched
     r.Main_OnCommand(40293, 0); state.no_refocus = true -- routing window for last touched track
   end
+  end
 
   -- FX + bypass
   local nfx = r.TrackFX_GetCount(tr)
   local fx_en = r.GetMediaTrackInfo_Value(tr, 'I_FXEN') == 1
   local fxn = nfx == 0 and 'empty' or (fx_en and 'norm' or 'dis')
+  if fits(LT + 182, 72) then
   h = theme_button('##fx', bimg('mcp_fx_' .. fxn, 'track_fx_' .. fxn), BX, LT + 182, 'FX chain', 'FX', 40, 40, COL.btn_dark)
   if h.click then
     if r.TrackFX_GetChainVisible(tr) ~= -1 then r.TrackFX_Show(tr, 0, 0) else r.TrackFX_Show(tr, 0, 1) end
@@ -1924,15 +2052,18 @@ local function draw_lower(tr, is_master, LT, MT, MB)
   if h.click then
     undo_wrap('Toggle track FX bypass', function() r.SetMediaTrackInfo_Value(tr, 'I_FXEN', fx_en and 0 or 1) end)
   end
+  end
 
   -- automation (image includes the TRIM / READ / TOUCH... label)
   local am = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_AUTOMODE'))
-  h = theme_button('##env', bimg('mcp_env' .. (ENV_SUFFIX[am] or ''), 'mcp_env'), BX, LT + 265, 'Automation mode',
-    (AUTO[am] or AUTO[0])[2], 40, 40)
-  if h.click then ImGui.OpenPopup(ctx, 'automode_menu') end
+  if fits(LT + 265, 64) then
+    h = theme_button('##env', bimg('mcp_env' .. (ENV_SUFFIX[am] or ''), 'mcp_env'), BX, LT + 265, 'Automation mode',
+      (AUTO[am] or AUTO[0])[2], 40, 40)
+    if h.click then ImGui.OpenPopup(ctx, 'automode_menu') end
+  end
 
   -- polarity sits under TRIM
-  if not is_master then
+  if not is_master and fits(LT + 336, 32) then
     local ph = r.GetMediaTrackInfo_Value(tr, 'B_PHASE') == 1
     h = theme_button('##phase', bimg(ph and 'mcp_phase_inv' or 'mcp_phase_norm', ph and 'track_phase_inv' or 'track_phase_norm'),
       BX, LT + 336, 'Invert polarity', 'ø', 40, 32, ph and COL.phase_on)
@@ -2038,18 +2169,35 @@ local function draw_bar(tr, BT, BB)
   rect(X(0), Y(BT), X(DESIGN_W), Y(BB), bg)
   local bb = brightness((bg >> 24) & 255, (bg >> 16) & 255, (bg >> 8) & 255)
   G.idx_col = (bb > 128) and gray(50 / tbm()) or rgba(clamp(110 * tbm() + 120, 0, 255), clamp(110 * tbm() + 120, 0, 255), clamp(110 * tbm() + 120, 0, 255))
-  local h = hit('##bar', X(0), Y(BT), X(DESIGN_W), Y(BB),
+  -- folder button (theme mcp.folder): folders get the collapse button on the left of the bar (40 x 40),
+  -- the last track of a folder gets the folder-end edge on the right (12 x 40). The number and the
+  -- selection dot move right by 18 on folders, like the theme.
+  local fstate = (tr == r.GetMasterTrack(0)) and 0 or r.GetMediaTrackInfo_Value(tr, 'I_FOLDERDEPTH')
+  local folder = fstate == 1
+  local bx1, bx2 = folder and 40 or 0, DESIGN_W
+  local last_im = fstate < 0 and img('mcp_folder_last') or nil
+  if last_im then bx2 = DESIGN_W - 12 end
+  local h = hit('##bar', X(bx1), Y(BT), X(bx2), Y(BB),
     name .. '\nClick: select (Shift: range, Cmd/Ctrl: toggle)  |  Drag: move track\nDouble-click: rename  |  Right-click: options')
   track_drag_source(tr)
   if h.click and not h.dbl then select_click(tr) end
-  text(font_list, fpx(3, 28), X(DESIGN_W * 0.465), Y((BT + BB) / 2), G.idx_col, num, 'c')
+  if folder then
+    local coll = mcp_collapsed(tr)
+    local hb = theme_button('##fcomp', bimg(coll and 'mcp_fcomp_tiny' or 'mcp_fcomp_off'), 0, BT,
+      coll and 'Show this folder\'s tracks' or 'Hide this folder\'s tracks', coll and '>' or 'v', 40, 40, COL.btn_dark)
+    if hb.click then set_mcp_collapsed(tr, not coll) end
+    if hb.rclick then show_track_menu(tr) end
+  end
+  if last_im then draw_img(last_im, DESIGN_W - 12, BT, 0, 3, false, nil, true) end
+  local cx = DESIGN_W * 0.465 + (folder and 18 or 0)
+  text(font_list, fpx(3, 28), X(cx), Y((BT + BB) / 2), G.idx_col, num, 'c')
   if r.IsTrackSelected(tr) then
     local dot = img('mcp_selectionDot_sel', 'tcp_selectionDot_sel')
     if dot then
       local d = (dot.x1 - dot.x0) * dot.k
-      draw_img(dot, DESIGN_W * 0.465 - d / 2, BT - d / 2, 0, 1, false, nil, true)
+      draw_img(dot, cx - d / 2, BT - d / 2, 0, 1, false, nil, true)
     else
-      ImGui.DrawList_AddCircleFilled(G.dl, X(DESIGN_W * 0.465), Y(BT), 4.5 * G.s, 0xFFFFFFFF)
+      ImGui.DrawList_AddCircleFilled(G.dl, X(cx), Y(BT), 4.5 * G.s, 0xFFFFFFFF)
     end
   end
   if h.dbl then start_rename(tr) end
@@ -2858,13 +3006,23 @@ local function draw_strip(tr, wx, wy, W, H)
     local ok, v = r.GetSetMediaTrackInfo_String(tr, 'P_EXT:Daniel_FloatingMixer_fxh', '', false)
     state.fxh[G.sid] = (ok and tonumber(v)) or state.fx_h
   end
+  -- folder indent, like the theme: each folder level makes the fader section shorter by "MCP Folder Indent"
+  -- and lifts the name + number bar, with the theme's gray infill (51,51,51) under the bar.
+  -- "MCP Folder Balance Type" 1: the name area of shallower tracks grows instead, so the bars line up.
+  local isz = tp('mcpfolderIndentSize', 10) * 2         -- theme points -> design units (200%)
+  local depth = is_master and 0 or math.max(0, r.GetTrackDepth(tr))
+  local IND = depth * isz
+  local BAL = (not is_master and tp('mcpfolderBalanceType', 0) == 1) and math.max(0, (state.max_depth or 0) - depth) * isz or 0
+  G.indent = IND
+  -- the FX/sends area is sized as for a top-level track, so it lines up across strips; the fader gives way
   local maxfx = math.max(0, D - fixed - MH_MIN)
   local fxh = clamp(state.fxh[G.sid], 0, maxfx)
   if fxh < 24 then fxh = 0 end            -- snaps shut: FX and sends are hidden, like the real mixer
-  local mh = math.max(120, D - fixed - fxh)
+  local mh = math.max(120, D - fixed - IND - BAL - fxh)
   local LT = fxh + PANEL
   local MT, MB = LT + HEAD, LT + HEAD + mh
-  local BT = MB + BOTROW + GAP
+  local BT = MB + BOTROW + GAP + BAL
+  G.btn_limit = MB + BOTROW              -- buttons that would reach into the name area are hidden (theme rule)
 
   if is_master then
     -- master: FX/sends area on top (resizable), then the master panel
@@ -2919,6 +3077,7 @@ local function draw_strip(tr, wx, wy, W, H)
   end
   draw_name(tr, MB + BOTROW, BT)
   draw_bar(tr, BT, BT + BAR)
+  if IND > 0 then rect(X(0), Y(BT + BAR), X(DESIGN_W), Y(BT + BAR + IND), rgba(51, 51, 51)) end   -- mcp.custom.indentInfill
   -- strip divider (theme: mcp.custom.mcpDiv = 1 px @100% on the strip's left edge, black at "MCP Div Opacity");
   -- in the FX/sends area the lists cover it, so it starts at the input section
   local div_a = clamp(tp('mcpDivOpacity', 80), 0, 255)
@@ -3042,6 +3201,10 @@ end
 
 state.draw_mixer_window = function(W)
   local tracks = strip_tracks()
+  state.max_depth = 0                              -- deepest folder level shown (for "MCP Folder Balance Type")
+  for _, t in ipairs(tracks) do
+    if t ~= r.GetMasterTrack(0) then state.max_depth = math.max(state.max_depth, r.GetTrackDepth(t)) end
+  end
   local widths, total = {}, 0
   -- track spacers (right-click a track > "Add spacer before/after track"): REAPER marks the track that
   -- has a spacer before it (I_SPACER); shown as a gap between strips, like the mixer
@@ -3220,6 +3383,7 @@ end
 
 local function loop()
   theme_check()
+  update_reaper_touch()
   -- the windows open in this project come back (a new project: just window 1). Switching project tabs
   -- switches to that project's windows.
   local proj = r.EnumProjects(-1)

@@ -423,18 +423,6 @@
       </version>
     </reapack>
 
-    <reapack name="Daniel_Floating input meter.lua" type="script" desc="Daniel_Floating input meter.lua">
-      <version name="1.1" author="Daniel" time="2025-11">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20input%20meter.lua</source>
-      </version>
-    </reapack>
-
-    <reapack name="Daniel_Floating track input meter.lua" type="script" desc="Daniel_Floating track input meter.lua">
-      <version name="1.0" author="Daniel" time="2025-05">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20track%20input%20meter.lua</source>
-      </version>
-    </reapack>
-
     <reapack name="Daniel_Toggle expand folder track in mixer and edit window.lua" type="script" desc="Daniel_Toggle expand folder track in mixer and edit window.lua">
       <version name="1.0" author="Daniel" time="2025-05">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Toggle%20expand%20folder%20track%20in%20mixer%20and%20edit%20window.lua</source>

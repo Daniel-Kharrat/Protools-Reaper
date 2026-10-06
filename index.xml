@@ -656,12 +656,6 @@
 <!-- ________Utility Effects________ -->
 
   <category name="utility">
-    
-    <reapack name="Daniel_Floating Meter" type="effect" desc="Daniel_Floating Meter">
-      <version name="1.2" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Floating%20Meter</source>
-      </version>
-    </reapack>
 
     <reapack name="Daniel_Simple Delay" type="effect" desc="Daniel_Simple Delay">
       <version name="1.5" author="Daniel" time="2026-09">

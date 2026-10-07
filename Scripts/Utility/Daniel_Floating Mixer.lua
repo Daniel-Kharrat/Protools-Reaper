@@ -6,7 +6,7 @@
 --   A floating mixer window that looks and works like REAPER's own mixer, drawn with the current
 --   theme's images, colors and fonts (Default 7 theme family), and always in sync with the real mixer.
 --
---   - Follow the selected track, or pick any tracks (and the master) to show side by side
+--   - Follow the selected tracks, or pick any tracks (and the master) to show side by side
 --   - Snapshots: up to 64 numbered slots per project that remember which tracks are shown
 --   - Several mixer windows at once (the + button); each project remembers its windows
 --   - Each window can float or dock (right-click the title bar); position, size and tracks are remembered
@@ -675,7 +675,7 @@ do
     return HIDDEN_TRACKS[nm:lower()] == true
   end
 end
--- mode 'follow' = first selected track; 'list' = tracks you picked (saved in the project)
+-- mode 'follow' = the selected tracks (one or several); 'list' = tracks you picked (saved in the project)
 local function load_choice()
   local _, mode = r.GetProjExtState(0, 'Daniel_FloatingMixer', inst_key('mode'))
   local _, list = r.GetProjExtState(0, 'Daniel_FloatingMixer', inst_key('tracks'))
@@ -742,24 +742,26 @@ end
 local function strip_tracks()
   local proj = r.EnumProjects(-1)
   if proj ~= state.proj then state.proj = proj; load_choice() end
+  -- 'list': the tracks you picked; 'follow': every selected track (master included), live
+  local out, shown = {}, {}
   if state.mode == 'list' then
-    local out, shown = {}, {}
     for _, g in ipairs(state.list) do
       local t = track_from_guid(g); if t and not state.hidden_track(t) then out[#out + 1] = t; shown[t] = true end
     end
-    local function pos(t) return (t == r.GetMasterTrack(0)) and 0 or r.GetMediaTrackInfo_Value(t, 'IP_TRACKNUMBER') end
-    table.sort(out, function(a, b) return pos(a) < pos(b) end)
-    local vis = {}
-    for _, t in ipairs(out) do
-      if t == r.GetMasterTrack(0) or not hidden_by_collapse(t, shown) then vis[#vis + 1] = t end
+  else
+    for i = 0, r.CountSelectedTracks2(0, true) - 1 do
+      local t = r.GetSelectedTrack2(0, i, true)
+      if t and not state.hidden_track(t) then out[#out + 1] = t; shown[t] = true end
     end
-    return vis
   end
-  for i = 0, r.CountSelectedTracks2(0, true) - 1 do       -- first selected track that isn't a helper track
-    local t = r.GetSelectedTrack2(0, i, true)
-    if not state.hidden_track(t) then return { t } end
+  -- in track order (master first), and children of a collapsed folder that's shown stay hidden
+  local function pos(t) return (t == r.GetMasterTrack(0)) and 0 or r.GetMediaTrackInfo_Value(t, 'IP_TRACKNUMBER') end
+  table.sort(out, function(a, b) return pos(a) < pos(b) end)
+  local vis = {}
+  for _, t in ipairs(out) do
+    if t == r.GetMasterTrack(0) or not hidden_by_collapse(t, shown) then vis[#vis + 1] = t end
   end
-  return {}
+  return vis
 end
 local function track_name(tr)
   if tr == r.GetMasterTrack(0) then return 'MASTER', 'MASTER' end
@@ -2536,9 +2538,36 @@ do
   end
 end
 
+-- Menu items that don't close their menu when clicked (same as the Meter Bridge). The script uses the
+-- ReaImGui 0.9.3 API, where that's a selectable with DontClosePopups; the checkmark is drawn in front of
+-- it like a menu item's. (If the newer AutoClosePopups item flag is available, real menu items are used.)
+do
+  local function const(name) local ok, v = pcall(function() return ImGui[name] end); return ok and v or nil end
+  local AUTOCLOSE = const('ItemFlags_AutoClosePopups')
+  local NOCLOSE = const('SelectableFlags_NoAutoClosePopups') or const('SelectableFlags_DontClosePopups')
+  state.keep_open_begin = function()
+    if AUTOCLOSE and const('PushItemFlag') then ImGui.PushItemFlag(ctx, AUTOCLOSE, false); return 'flag' end
+    return NOCLOSE and 'selectable' or nil
+  end
+  state.keep_open_end = function(how) if how == 'flag' then ImGui.PopItemFlag(ctx) end end
+  state.check_item = function(label, checked, how)
+    if how ~= 'selectable' then return ImGui.MenuItem(ctx, label, nil, checked) end
+    local x, y = ImGui.GetCursorScreenPos(ctx)
+    local h = ImGui.GetTextLineHeight(ctx)
+    local clicked = ImGui.Selectable(ctx, '     ' .. label, false, NOCLOSE)
+    if checked then
+      local dl, col = ImGui.GetWindowDrawList(ctx), ImGui.GetStyleColor(ctx, ImGui.Col_Text)
+      local cy = y + h / 2
+      ImGui.DrawList_AddLine(dl, x + 2, cy, x + 5, cy + 3.5, col, 1.6)
+      ImGui.DrawList_AddLine(dl, x + 5, cy + 3.5, x + 11, cy - 4, col, 1.6)
+    end
+    return clicked
+  end
+end
+
 tracks_menu = function(id)
   if not ImGui.BeginPopup(ctx, id) then return end
-  if ImGui.MenuItem(ctx, 'Follow selected track', nil, state.mode == 'follow') then
+  if ImGui.MenuItem(ctx, 'Follow selected tracks', nil, state.mode == 'follow') then
     state.mode = 'follow'; save_choice()
   end
   if ImGui.MenuItem(ctx, 'Show selected tracks') then
@@ -2552,8 +2581,10 @@ tracks_menu = function(id)
   if ImGui.MenuItem(ctx, 'Clear list') then state.list = {}; state.mode = 'list'; save_choice() end
   ImGui.Separator(ctx)
   ImGui.TextDisabled(ctx, 'Tracks to show:')
+  -- the track list stays open while you tick tracks; clicking outside the menu closes it
+  local keep = state.keep_open_begin()
   local m = r.GetMasterTrack(0)
-  if ImGui.MenuItem(ctx, 'MASTER', nil, state.mode == 'list' and in_list(r.GetTrackGUID(m)) ~= nil, true) then
+  if state.check_item('MASTER', state.mode == 'list' and in_list(r.GetTrackGUID(m)) ~= nil, keep) then
     toggle_in_list(r.GetTrackGUID(m))
   end
   for i = 0, r.CountTracks(0) - 1 do
@@ -2561,11 +2592,12 @@ tracks_menu = function(id)
     if not state.hidden_track(t) then
       local g = r.GetTrackGUID(t)
       local _, nm = r.GetSetMediaTrackInfo_String(t, 'P_NAME', '', false)
-      if ImGui.MenuItem(ctx, (i + 1) .. ': ' .. nm .. '##' .. g, nil, state.mode == 'list' and in_list(g) ~= nil) then
+      if state.check_item((i + 1) .. ': ' .. nm .. '##' .. g, state.mode == 'list' and in_list(g) ~= nil, keep) then
         toggle_in_list(g)
       end
     end
   end
+  state.keep_open_end(keep)
   ImGui.EndPopup(ctx)
 end
 

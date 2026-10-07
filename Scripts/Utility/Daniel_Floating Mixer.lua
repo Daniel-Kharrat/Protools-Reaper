@@ -101,18 +101,32 @@ local function SetIniValue(key, value)
   return true
 end
 local function write_ini_flag(on) SetIniValue(TOGGLE_KEY, on and 1 or 0) end
+-- Running the action while the mixer is open turns it off. REAPER stops the running script and, with
+-- set_action_options(1 + 2), starts it again right away; the stopped one left the time it stopped, so
+-- this new start knows it's a "turn off": it writes 0 and doesn't open. (REAPER quitting stops the
+-- script without starting it again, so the flag stays 1 and the mixer comes back at the next startup.)
+local stopped_at = tonumber(r.GetExtState('Daniel_FloatingMixer', 'stopped_at'))
+r.DeleteExtState('Daniel_FloatingMixer', 'stopped_at', false)
+if stopped_at and r.time_precise() - stopped_at < 1 then
+  set_visual_state(false)
+  write_ini_flag(false)
+  return
+end
 set_visual_state(true)
 write_ini_flag(true)
 DFM_closed_by_user = false   -- (global) set when the last window is closed with its X (see loop)
--- atexit only updates the buttons: REAPER quitting also runs it, and the ini flag must stay 1 then,
--- so the mixer comes back on the next startup
 r.atexit(function()
   set_visual_state(false)
-  if DFM_closed_by_user then write_ini_flag(false) end
+  if DFM_closed_by_user then
+    write_ini_flag(false)                        -- closed with X: stays closed
+  else                                           -- stopped by running it again (or REAPER quitting)
+    r.SetExtState('Daniel_FloatingMixer', 'stopped_at', tostring(r.time_precise()), false)
+  end
 end)
 end
--- launching the script again while it runs closes it (a toggle), without REAPER's dialog
-if r.set_action_options then r.set_action_options(1) end
+-- launching the script again while it runs closes it (a toggle), without REAPER's dialog:
+-- 1 = stop the running one, 2 = then start this one (which sees it was a "turn off", above)
+if r.set_action_options then r.set_action_options(1 | 2) end
 
 --------------------------------------------------------------------------------
 -- Look settings (measured from the Default 7 MCP at 100%)
@@ -3254,6 +3268,7 @@ do
 end
 
 state.draw_mixer_window = function(W)
+  if W.close_req then W.close_req = nil; return false end      -- "Close window" from the title-bar menu
   local tracks = strip_tracks()
   state.max_depth = 0                              -- deepest folder level shown (for "MCP Folder Balance Type")
   for _, t in ipairs(tracks) do
@@ -3313,14 +3328,17 @@ state.draw_mixer_window = function(W)
     local top = (state.docked and 0 or ImGui.GetFrameHeight(ctx)) + TOOLBAR_H
     if my < wy + top and not ImGui.IsAnyItemHovered(ctx) then ImGui.OpenPopup(ctx, 'title_menu') end
   end
+  -- same as the Meter Bridge's: New window, Window color | Dock / Undock, Close window
   if visible and ImGui.BeginPopup(ctx, 'title_menu') then
+    if ImGui.MenuItem(ctx, 'New window') then state.new_win_req = true end
+    state.color_menu(W.n)
+    ImGui.Separator(ctx)
     if state.docked then
       if ImGui.MenuItem(ctx, 'Undock window') then state.dock_req = 0 end
     elseif ImGui.MenuItem(ctx, 'Dock window') then
       state.dock_req = tonumber(r.GetExtState('Daniel_FloatingMixer', inst_key('dock'))) or -1   -- last-used docker
     end
-    ImGui.Separator(ctx)
-    state.color_menu(W.n)
+    if ImGui.MenuItem(ctx, 'Close window') then W.close_req = true end   -- same as its X
     ImGui.EndPopup(ctx)
   end
   if visible then

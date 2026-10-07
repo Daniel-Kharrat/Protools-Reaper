@@ -28,7 +28,13 @@
 --   - Click an input selector: change the track's record input
 --   - Click a clip light: reset that track (Alt-click: reset all)
 --   - Right-click anywhere: Meter Bridge options (tracks, width, hold, release, dock...)
---   - Running the action again closes the window (works as a toolbar toggle)
+--   - Running the action again closes the window
+--
+--   Toolbar / startup (same as the Floating Mixer):
+--   - The toolbar button runs "Daniel_Meter Bridge (toolbar toggle).lua"; both buttons always show
+--     whether the bridge is really open, however it was opened or closed
+--   - reaper.ini [toolbar button states] Meter_Bridge=1 while open. Closing the window writes 0;
+--     quitting REAPER leaves 1, so the startup action reopens it next time
 --
 --   Requirements: REAPER 7, ReaImGui 0.9.3 or newer (ReaPack).
 --   Recommended: js_ReaScriptAPI or SWS (keyboard focus back to REAPER).
@@ -51,8 +57,85 @@ ImGui.Attach(ctx, font_ui); ImGui.Attach(ctx, font_small); ImGui.Attach(ctx, fon
 
 -- toolbar toggle state; launching the script again while it runs closes it
 local _, _, sec_id, cmd_id = r.get_action_context()
-r.SetToggleCommandState(sec_id, cmd_id, 1); r.RefreshToolbar2(sec_id, cmd_id)
-r.atexit(function() r.SetToggleCommandState(sec_id, cmd_id, 0); r.RefreshToolbar2(sec_id, cmd_id) end)
+
+-- Toolbar sync: the toolbar button runs the separate "(toolbar toggle)" script. This script keeps that
+-- button (and its own toggle state) matching whether the bridge is really open, however it was started
+-- or closed, and keeps the Meter_Bridge flag in reaper.ini for the startup action.
+local Sync = { closed_by_user = false }
+do
+local TOGGLE_KEY = 'Meter_Bridge'                      -- the key in reaper.ini that the startup action reads
+local TOGGLE_FILE = 'Daniel_Meter Bridge (toolbar toggle).lua'
+-- a script's command ID, found by its file name in the action list (reaper-kb.ini)
+local function find_script_cmd(fname)
+  fname = fname:lower()
+  local f = io.open(r.GetResourcePath() .. '/reaper-kb.ini', 'rb')
+  if not f then return end
+  local found
+  for line in f:lines() do
+    local sec, id = line:match('^SCR%s+%d+%s+(%d+)%s+(%S+)')
+    if sec == '0' then
+      local file = line:match('"([^"]*)"%s*$') or line:match('(%S+)%s*$') or ''
+      if (file:gsub('\\', '/'):match('([^/]+)$') or ''):lower() == fname then
+        local cmd = r.NamedCommandLookup('_' .. id)
+        if cmd and cmd ~= 0 then found = cmd; break end
+      end
+    end
+  end
+  f:close()
+  return found
+end
+local function set_visual_state(on)
+  local v = on and 1 or 0
+  r.SetToggleCommandState(sec_id, cmd_id, v); r.RefreshToolbar2(sec_id, cmd_id)
+  local tid = find_script_cmd(TOGGLE_FILE)
+  if tid then r.SetToggleCommandState(0, tid, v); r.RefreshToolbar2(0, tid) end
+end
+local REAPER_INI = r.GetResourcePath() .. "/reaper.ini"
+-- Sets KEY=value in reaper.ini, in the [toolbar button states] section. If the line isn't
+-- there yet, it's added to that section (and the section is added at the end if it's missing).
+local function SetIniValue(key, value)
+  local file = io.open(REAPER_INI, "rb")
+  if not file then return false end
+  local contents = file:read("*all")
+  file:close()
+  value = tostring(value)
+
+  local new_contents, count = contents:gsub(
+    "(\n" .. key .. "=)[^\r\n]*",
+    function(prefix) return prefix .. value end
+  )
+  if count == 0 then
+    local nl = contents:find("\r\n", 1, true) and "\r\n" or "\n"
+    local header = "[toolbar button states]"
+    local s = (contents:sub(1, #header) == header) and 1 or contents:find("\n" .. header, 1, true)
+    if s then
+      local eol = contents:find("\n", s + (s == 1 and 0 or 1), true)
+      if not eol then contents = contents .. nl; eol = #contents end   -- header was the last line
+      new_contents = contents:sub(1, eol) .. key .. "=" .. value .. nl .. contents:sub(eol + 1)
+    else
+      if contents ~= "" and not contents:match("\n$") then contents = contents .. nl end
+      new_contents = contents .. header .. nl .. key .. "=" .. value .. nl
+    end
+  end
+  if new_contents == contents then return true end
+
+  file = io.open(REAPER_INI, "wb")
+  if not file then return false end
+  file:write(new_contents)
+  file:close()
+  return true
+end
+local function write_ini_flag(on) SetIniValue(TOGGLE_KEY, on and 1 or 0) end
+set_visual_state(true)
+write_ini_flag(true)
+-- atexit only updates the buttons: REAPER quitting also runs it, and the ini flag must stay 1 then,
+-- so the bridge comes back on the next startup. (The toggle script writes 0 itself when it closes it.)
+r.atexit(function()
+  set_visual_state(false)
+  if Sync.closed_by_user then write_ini_flag(false) end
+end)
+end
+-- launching the script again while it runs closes it (a toggle), without REAPER's dialog
 if r.set_action_options then r.set_action_options(1) end
 
 --------------------------------------------------------------------------------
@@ -858,7 +941,7 @@ local function loop()
   ImGui.PushFont(ctx, font_ui)
   local open = frame()
   ImGui.PopFont(ctx)
-  if open then r.defer(loop) end
+  if open then r.defer(loop) else Sync.closed_by_user = true end   -- closed with X: don't reopen at startup
 end
 
 r.defer(loop)

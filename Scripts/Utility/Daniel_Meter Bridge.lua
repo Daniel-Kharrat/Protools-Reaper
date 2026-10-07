@@ -9,25 +9,32 @@
 --   - One strip per track, laid out like the mixer: input selector, clip light, LED meter, name,
 --     and the number bar in the track color at the bottom
 --   - Input selector drawn with the theme's dropdown image (Default 7 family), showing the input
---     number or channel name; click it to change the track's input
+--     number; click it to change the track's input
 --   - Meter colors: deep green below -18, light green -18 to -6, amber -6 to 0, red = clip
 --   - Record-armed tracks show their input (as REAPER's meters do), names turn red
---   - Mono-input armed tracks can show a single meter
+--   - Armed tracks with a mono input show a single meter
 --   - Peak hold (off / 1 s / 2 s / 5 s / until reset), latched clip lights
---   - Peaks can reset automatically when recording starts
+--   - Clip lights follow REAPER's own peak hold: when REAPER resets its peaks, they reset too
 --   - Strips wrap into rows when there's room; in a short window (e.g. the top docker) they stay in
 --     one row that scrolls sideways, and the strip drops the input selector, then moves the name
 --     into the colored bar, and uses fewer, bigger LEDs as it gets shorter
 --   - Docks like any REAPER window
+--   - Several bridge windows at once (the + button, or New window), like the Floating Mixer: each has its
+--     own color (title bar, and the dB-scale column) and its own view options; each project remembers
+--     its windows. Closing the last window closes the script
 --   - Keyboard focus goes straight back to REAPER after a click (Space still plays)
 --
 --   Mouse:
+--   - Tracks per window: all, record-armed, follow the selection, or a fixed list (Show selected
+--     tracks / Clear list / Tracks to show), like the Floating Mixer; lists are saved in the project
 --   - Click meter / name / number bar: select track (Cmd/Ctrl: toggle, Shift: range)
 --   - Double-click name: rename the track (Enter: keep, Esc: cancel)
 --   - Double-click number bar: recolor the track with the Daniel_Color Palette script
 --   - Click an input selector: change the track's record input
---   - Click a clip light: reset that track (Alt-click: reset all)
---   - Right-click anywhere: Meter Bridge options (tracks, width, hold, release, dock...)
+--   - Click a clip light: reset that track (Cmd/Ctrl-click: reset all)
+--   - + (top of the dB column, level with the input selectors): open a new bridge window
+--   - Right-click the title bar or the dB column: New window, Window color, Dock / Undock, Close window
+--   - Right-click anywhere else: options (tracks, width, peak hold, release, names, input selector...)
 --   - Running the action again closes the window
 --
 --   Toolbar / startup (same as the Floating Mixer):
@@ -141,24 +148,38 @@ if r.set_action_options then r.set_action_options(1) end
 --------------------------------------------------------------------------------
 -- Settings (saved in REAPER's extstate)
 --------------------------------------------------------------------------------
-local S = {}
+local S, G = {}, {}   -- S: the settings of the window being drawn; G: the ones shared by all windows
 local DEFAULTS = {
-  filter = 'all',        -- 'all' | 'armed' | 'selected'
-  master = 1,            -- show the master
-  skip_hidden = 0,       -- skip tracks hidden in the mixer
-  mono = 1,              -- armed tracks with a mono input: one meter
+  filter = 'all',        -- 'all' | 'armed' | 'follow' (selected tracks, live) | 'list' (chosen tracks)
+  skip_hidden = 1,       -- skip tracks hidden in the mixer (on until you turn it off)
   width = 'narrow',      -- 'narrow' | 'normal' | 'wide'
-  hold = 2,              -- peak hold seconds; 0 = off, -1 = until reset
+  hold = 1,              -- peak hold seconds; 0 = off, -1 = until reset
   release = 'fast',      -- 'fast' | 'medium' | 'slow'
   names = 1,             -- track names under the meter
-  input = 'number',      -- input selector label: 'number' | 'name' | 'off'
-  rec_reset = 1,         -- reset peaks when recording starts
+  input = 'number',      -- input selector: 'number' (shown) | 'off'
 }
-for k, d in pairs(DEFAULTS) do
-  local v = r.GetExtState(EXT, k)
-  if v == '' or (k == 'release' and not ({ fast = 1, medium = 1, slow = 1 })[v]) then S[k] = d elseif type(d) == 'number' then S[k] = tonumber(v) or d else S[k] = v end
+-- view options are per window; window 1 uses the original names (its settings carry over), others '_2'...
+local WIN_KEYS = { filter = true, skip_hidden = true, width = true, names = true, input = true, dock = true }
+local function opt_key(k, n) return (n == 1 or not WIN_KEYS[k]) and k or (k .. '_' .. n) end
+local function load_opt(k, n)
+  local v, d = r.GetExtState(EXT, opt_key(k, n)), DEFAULTS[k]
+  if v == '' or (k == 'release' and not ({ fast = 1, medium = 1, slow = 1 })[v]) then return d end
+  if type(d) == 'number' then return tonumber(v) or d end
+  if k == 'filter' and v == 'selected' then return 'follow' end   -- (older name)
+  if k == 'input' and v ~= 'off' then return 'number' end        -- (channel names were dropped)
+  return v
 end
-local function set_opt(k, v) S[k] = v; r.SetExtState(EXT, k, tostring(v), true) end
+for k in pairs(DEFAULTS) do if not WIN_KEYS[k] then G[k] = load_opt(k, 1) end end
+local function win_settings(n)
+  local t = setmetatable({ _n = n }, { __index = G })
+  for k in pairs(WIN_KEYS) do if DEFAULTS[k] ~= nil then t[k] = load_opt(k, n) end end
+  return t
+end
+S = win_settings(1)
+local function set_opt(k, v)
+  if WIN_KEYS[k] then S[k] = v else G[k] = v end
+  r.SetExtState(EXT, opt_key(k, S._n), tostring(v), true)
+end
 
 local WIDTHS  = { narrow = 24, normal = 36, wide = 48 }
 -- dB per second. REAPER's own meter decay (Preferences > Track control panels) also applies:
@@ -233,16 +254,66 @@ local function hidden_track(tr)
   return HIDDEN_TRACKS[nm:lower()] == true
 end
 
-local function bridge_tracks()
+-- Chosen tracks (like the Floating Mixer's list): a window's own list of tracks, saved in the project.
+-- "Show selected tracks" copies the selection into it once; changing the selection later doesn't change it.
+local List = {}
+do
+  local PEXT = 'Daniel_MeterBridge'
+  local function key(n) return n == 1 and 'tracks' or ('tracks_' .. n) end
+  List.get = function(W)
+    if not W.list then
+      local _, v = r.GetProjExtState(0, PEXT, key(W.n))
+      W.list = {}
+      for g in (v or ''):gmatch('[^,]+') do W.list[#W.list + 1] = g end
+    end
+    return W.list
+  end
+  List.set = function(W, list)
+    W.list = list
+    r.SetProjExtState(0, PEXT, key(W.n), table.concat(list, ','))
+  end
+  List.forget = function(n) r.SetProjExtState(0, PEXT, key(n), '') end
+  List.has = function(W, g) for k, v in ipairs(List.get(W)) do if v == g then return k end end end
+  List.toggle = function(W, g)
+    local l = { table.unpack(List.get(W)) }
+    local k = List.has(W, g)
+    if k then table.remove(l, k) else l[#l + 1] = g end
+    List.set(W, l)
+  end
+  List.from_selection = function(W)
+    local l = {}
+    local m = r.GetMasterTrack(0)
+    if r.IsTrackSelected(m) then l[1] = r.GetTrackGUID(m) end
+    for i = 0, r.CountSelectedTracks(0) - 1 do
+      local t = r.GetSelectedTrack(0, i)
+      if not hidden_track(t) then l[#l + 1] = r.GetTrackGUID(t) end
+    end
+    List.set(W, l)
+  end
+end
+
+local function bridge_tracks(W)
   local out = {}
   local m = r.GetMasterTrack(0)
-  if S.master == 1 and S.filter ~= 'armed' and (S.filter ~= 'selected' or r.IsTrackSelected(m)) then out[1] = m end
+  if S.filter == 'list' then                     -- the chosen tracks, in track order (master first)
+    local want = {}
+    for _, g in ipairs(List.get(W)) do want[g] = true end
+    if want[r.GetTrackGUID(m)] then out[1] = m end
+    for i = 0, r.CountTracks(0) - 1 do
+      local t = r.GetTrack(0, i)
+      if want[r.GetTrackGUID(t)] and not hidden_track(t) then out[#out + 1] = t end
+    end
+    return out
+  end
+  -- the master: in All tracks; in Follow selected when it's selected; never in Record-armed
+  -- (a list shows it when MASTER is ticked in Tracks to show)
+  if S.filter ~= 'armed' and (S.filter ~= 'follow' or r.IsTrackSelected(m)) then out[1] = m end
   for i = 0, r.CountTracks(0) - 1 do
     local t = r.GetTrack(0, i)
     local ok = not hidden_track(t)
     if ok and S.skip_hidden == 1 and r.GetMediaTrackInfo_Value(t, 'B_SHOWINMIXER') == 0 then ok = false end
     if ok and S.filter == 'armed' and r.GetMediaTrackInfo_Value(t, 'I_RECARM') ~= 1 then ok = false end
-    if ok and S.filter == 'selected' and not r.IsTrackSelected(t) then ok = false end
+    if ok and S.filter == 'follow' and not r.IsTrackSelected(t) then ok = false end
     if ok then out[#out + 1] = t end
   end
   return out
@@ -259,7 +330,7 @@ end
 
 -- armed with a mono audio input -> one meter column
 local function n_meters(tr)
-  if S.mono ~= 1 or tr == r.GetMasterTrack(0) then return 2 end
+  if tr == r.GetMasterTrack(0) then return 2 end
   if r.GetMediaTrackInfo_Value(tr, 'I_RECARM') ~= 1 then return 2 end
   local ri = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_RECINPUT'))
   if ri >= 0 and ri < 4096 and ri & (1024 | 2048) == 0 then return 1 end
@@ -288,15 +359,12 @@ function INP.full(v)
   if v & 1024 ~= 0 then return INP.chan_name(idx) .. ' / ' .. INP.chan_name(idx + 1) end
   return INP.chan_name(idx)
 end
--- short label for the selector: input number(s) or the channel name
+-- short label for the selector: the input number(s)
 function INP.label(v)
   if v < 0 then return '-' end
   if v >= 4096 then return 'MIDI' end
   local idx = v & 1023
   local stereo, multi = v & 1024 ~= 0, v & 2048 ~= 0
-  if S.input == 'name' then
-    return INP.chan_name(idx) .. (stereo and ('/' .. INP.chan_name(idx + 1)) or (multi and '+' or ''))
-  end
   local pre, base = '', idx + 1
   if idx >= 512 then pre, base = 'R', idx - 511 end           -- ReaRoute / loopback
   if stereo then return pre .. base .. '/' .. (base + 1) end
@@ -520,7 +588,7 @@ local function seg_y(i, mt, mb)
   return mt + (i - 1) * sh, mt + i * sh, sh
 end
 
-local function draw_scale(x, y0, h, bg, row_h)
+local function draw_scale(x, y0, h, bg, row_h, txt)
   local _, mt, mb = geom(y0, h)
   -- covers everything left of the strips, from the window's own edge (the padding included),
   -- so strips scrolled sideways don't show through
@@ -539,7 +607,7 @@ local function draw_scale(x, y0, h, bg, row_h)
       for _, py in ipairs(placed) do if math.abs(py - cy) < 11 then ok = false; break end end
       if ok then
         placed[#placed + 1] = cy
-        text_in(font_small, x, cy - 7, x + SCALE_W - 2, cy + 7, COL.text_dim, tostring(t), 'r')
+        text_in(font_small, x, cy - 7, x + SCALE_W - 2, cy + 7, txt or COL.text_dim, tostring(t), 'r')
       end
     end
   end
@@ -684,10 +752,21 @@ local function draw_strip(tr, x, y0, w, h, now)
   local hold_db = -150
   for c = 0, (n == 1 and 0 or 1) do hold_db = math.max(hold_db, r.Track_GetPeakHoldDB(tr, c, false) * 100) end
   local clipped = hold_db > 0
+  -- REAPER reset its peaks (on record start if it's set to, Cmd/Ctrl-click in its mixer...): drop our
+  -- held LEDs for this track too
+  do
+    local g = r.GetTrackGUID(tr)
+    D.rhold = D.rhold or {}
+    local prev = D.rhold[g]
+    if prev and hold_db < prev - 0.5 then
+      for ch = 0, 1 do local st = meters[g .. ':' .. ch]; if st then st.hold, st.hold_t = st.disp, 0 end end
+    end
+    D.rhold[g] = hold_db
+  end
   rect(mx1, ct, mx2, ct + CLIP_H, clipped and COL.red or COL.clip_off)
   local hr = hit('##clip', x1, ct - 2, x2, ct + CLIP_H + 2,
-    'Max peak ' .. fmt_peak(hold_db) .. ' dB\nClick: reset  |  Alt-click: reset all')
-  if hr.click then if is_alt() then reset_all() else reset_track(tr) end end
+    'Max peak ' .. fmt_peak(hold_db) .. ' dB\nClick: reset  |  Cmd/Ctrl-click: reset all')
+  if hr.click then if is_ctrl() or is_alt() then reset_all() else reset_track(tr) end end
 
   local tip = num .. ': ' .. name .. '\nClick: select (Cmd/Ctrl: toggle, Shift: range)'
 
@@ -702,7 +781,7 @@ local function draw_strip(tr, x, y0, w, h, now)
       if brightness(tcol) < 85 then R, G, B = 100 + 2 * R, 100 + 2 * G, 100 + 2 * B end
       nc = rgba(R, G, B)
     end
-    if D.renaming == tr then
+    if D.renaming == tr and D.rename_win == D.win then
       rename_field(tr, x1 + 1, ny, x2 - 1, by)
     else
       ImGui.PushFont(ctx, font_name)
@@ -712,7 +791,7 @@ local function draw_strip(tr, x, y0, w, h, now)
       if hn.click then select_click(tr) end
       if hn.dbl and not is_master then
         local _, cur = r.GetSetMediaTrackInfo_String(tr, 'P_NAME', '', false)
-        D.renaming, D.name_buf, D.rename_focus = tr, cur, true
+        D.renaming, D.name_buf, D.rename_focus, D.rename_win = tr, cur, true, D.win
       end
     end
   end
@@ -738,52 +817,211 @@ local function draw_strip(tr, x, y0, w, h, now)
 end
 
 --------------------------------------------------------------------------------
--- Options menu
+-- Windows (same system as the Floating Mixer): several numbered bridge windows; each project
+-- remembers which are open. Window 1 is the theme's mixer gray; the others get a color from the
+-- palette by their number (2 = Blue, 3 = Teal...). Right-click > Window color picks one, saved per
+-- window in the project; "Automatic" goes back to the palette color.
 --------------------------------------------------------------------------------
-local function options_menu()
-  if not ImGui.BeginPopup(ctx, 'options') then return end
-  ImGui.TextDisabled(ctx, 'Tracks')
-  if ImGui.MenuItem(ctx, 'All tracks', nil, S.filter == 'all') then set_opt('filter', 'all') end
-  if ImGui.MenuItem(ctx, 'Record-armed tracks only', nil, S.filter == 'armed') then set_opt('filter', 'armed') end
-  if ImGui.MenuItem(ctx, 'Selected tracks only', nil, S.filter == 'selected') then set_opt('filter', 'selected') end
-  if ImGui.MenuItem(ctx, 'Show master', nil, S.master == 1) then set_opt('master', 1 - S.master) end
-  if ImGui.MenuItem(ctx, 'Skip tracks hidden in the mixer', nil, S.skip_hidden == 1) then set_opt('skip_hidden', 1 - S.skip_hidden) end
-  if ImGui.MenuItem(ctx, 'Armed with mono input: one meter', nil, S.mono == 1) then set_opt('mono', 1 - S.mono) end
+local Win = {}
+do
+  local PEXT = 'Daniel_MeterBridge'
+  Win.PALETTE = {
+    { 'Blue',   0x3F6FB5FF }, { 'Teal',   0x2E9A8EFF }, { 'Green',  0x4F9A45FF }, { 'Amber',  0xC08A2EFF },
+    { 'Orange', 0xC0612EFF }, { 'Red',    0xB5443FFF }, { 'Purple', 0x7E5BB5FF }, { 'Pink',   0xB0508AFF },
+  }
+  Win.mixer_gray = function()
+    if r.GetThemeColor then
+      local c = r.GetThemeColor('col_mixerbg', 0)
+      if c and c >= 0 then local R, G_, B = r.ColorFromNative(c); return rgba(R, G_, B) end
+    end
+    return 0x333333FF
+  end
+  local function color_key(n) return n == 1 and 'color' or ('color_' .. n) end
+  -- returns the window's color (0xRRGGBBAA) and whether it was picked by hand
+  Win.color = function(n)
+    local _, v = r.GetProjExtState(0, PEXT, color_key(n))
+    local c = tonumber(v or '', 16)
+    if c then return (c << 8) | 0xFF, true end
+    if n == 1 then return Win.mixer_gray(), false end
+    return Win.PALETTE[(n - 2) % #Win.PALETTE + 1][2], false
+  end
+  -- col = 0xRRGGBBAA, or nil for automatic
+  Win.set_color = function(n, col)
+    r.SetProjExtState(0, PEXT, color_key(n), col and string.format('%06X', col >> 8) or '')
+    r.MarkProjectDirty(0)
+  end
+  Win.forget = function(n)
+    r.SetProjExtState(0, PEXT, color_key(n), '')
+    if n > 1 then for k in pairs(WIN_KEYS) do if k ~= 'dock' then r.DeleteExtState(EXT, opt_key(k, n), true) end end end
+  end
+  -- a darker / dimmer version of a color (for inactive title bars)
+  Win.dim = function(c, k)
+    return rgba(((c >> 24) & 255) * k, ((c >> 16) & 255) * k, ((c >> 8) & 255) * k, c & 255)
+  end
+  -- black or white text, whichever reads better on the color
+  Win.text_on = function(c) return brightness(c) > 150 and 0x1A1A1AFF or 0xFFFFFFFF end
+
+  Win.save_list = function()
+    local t = {}
+    for _, W in ipairs(Win.list) do t[#t + 1] = tostring(W.n) end
+    r.SetProjExtState(0, PEXT, 'windows', table.concat(t, ','))   -- per project
+  end
+  -- the windows open in this project come back (a new project: just window 1); switching project
+  -- tabs switches to that project's windows
+  Win.load = function()
+    local proj = r.EnumProjects(-1)
+    if Win.list and Win.proj == proj then return end
+    Win.proj, Win.list = proj, {}
+    local seen = {}
+    local _, list = r.GetProjExtState(0, PEXT, 'windows')
+    for n in (list or ''):gmatch('%d+') do
+      n = tonumber(n)
+      if n and n >= 1 and not seen[n] then seen[n] = true; Win.list[#Win.list + 1] = { n = n } end
+    end
+    if #Win.list == 0 then Win.list[1] = { n = 1 } end
+    table.sort(Win.list, function(a, b) return a.n < b.n end)
+  end
+  Win.add = function()                     -- new window, first free number
+    local used, n = {}, 1
+    for _, W in ipairs(Win.list) do used[W.n] = true end
+    while used[n] do n = n + 1 end
+    Win.list[#Win.list + 1] = { n = n }
+    table.sort(Win.list, function(a, b) return a.n < b.n end)
+    Win.save_list()
+  end
+
+  -- the color submenu
+  Win.color_menu = function(n)
+    if not ImGui.BeginMenu(ctx, 'Window color') then return end
+    local cur, picked = Win.color(n)
+    if ImGui.MenuItem(ctx, 'Automatic', nil, not picked) then Win.set_color(n, nil) end
+    ImGui.Separator(ctx)
+    local gray = Win.mixer_gray()
+    ImGui.ColorButton(ctx, '##swGray', gray, ImGui.ColorEditFlags_NoTooltip | ImGui.ColorEditFlags_NoBorder, 12, 12)
+    ImGui.SameLine(ctx)
+    if ImGui.MenuItem(ctx, 'Default', nil, picked and cur == gray) then Win.set_color(n, gray) end
+    for _, p in ipairs(Win.PALETTE) do
+      ImGui.ColorButton(ctx, '##sw' .. p[1], p[2], ImGui.ColorEditFlags_NoTooltip | ImGui.ColorEditFlags_NoBorder, 12, 12)
+      ImGui.SameLine(ctx)
+      if ImGui.MenuItem(ctx, p[1], nil, picked and cur == p[2]) then Win.set_color(n, p[2]) end
+    end
+    ImGui.Separator(ctx)
+    if ImGui.BeginMenu(ctx, 'Custom') then
+      local rv, rgb = ImGui.ColorPicker3(ctx, '##custom_color', cur >> 8,
+        ImGui.ColorEditFlags_NoSidePreview | ImGui.ColorEditFlags_NoInputs | ImGui.ColorEditFlags_NoAlpha)
+      if rv then Win.set_color(n, (rgb << 8) | 0xFF) end
+      ImGui.EndMenu(ctx)
+    end
+    ImGui.EndMenu(ctx)
+  end
+end
+
+--------------------------------------------------------------------------------
+-- Options menu (right-click anywhere in a window, title bar included)
+--------------------------------------------------------------------------------
+-- the window menu: right-click the title bar or the dB column (the colored part, also when docked)
+local function window_menu(W)
+  if not ImGui.BeginPopup(ctx, 'win_menu') then return end
+  if ImGui.MenuItem(ctx, 'New window') then Win.new_req = true end
+  Win.color_menu(W.n)
   ImGui.Separator(ctx)
-  if ImGui.BeginMenu(ctx, 'Strip width') then
-    for _, k in ipairs({ 'narrow', 'normal', 'wide' }) do
-      if ImGui.MenuItem(ctx, k:sub(1, 1):upper() .. k:sub(2), nil, S.width == k) then set_opt('width', k) end
-    end
-    ImGui.EndMenu(ctx)
-  end
-  if ImGui.BeginMenu(ctx, 'Peak hold') then
-    for _, o in ipairs({ { 'Off', 0 }, { '1 second', 1 }, { '2 seconds', 2 }, { '5 seconds', 5 }, { 'Until reset', -1 } }) do
-      if ImGui.MenuItem(ctx, o[1], nil, S.hold == o[2]) then set_opt('hold', o[2]) end
-    end
-    ImGui.EndMenu(ctx)
-  end
-  if ImGui.BeginMenu(ctx, 'Release') then
-    for _, k in ipairs({ 'fast', 'medium', 'slow' }) do
-      if ImGui.MenuItem(ctx, k:sub(1, 1):upper() .. k:sub(2) .. ' (' .. RELEASE[k] .. ' dB/s)', nil, S.release == k) then set_opt('release', k) end
-    end
-    ImGui.EndMenu(ctx)
-  end
-  if ImGui.MenuItem(ctx, 'Show track names', nil, S.names == 1) then set_opt('names', 1 - S.names) end
-  if ImGui.BeginMenu(ctx, 'Input selector') then
-    for _, o in ipairs({ { 'Input numbers', 'number' }, { 'Channel names', 'name' }, { 'Hidden', 'off' } }) do
-      if ImGui.MenuItem(ctx, o[1], nil, S.input == o[2]) then set_opt('input', o[2]) end
-    end
-    ImGui.EndMenu(ctx)
-  end
-  ImGui.Separator(ctx)
-  if ImGui.MenuItem(ctx, 'Reset peaks when recording starts', nil, S.rec_reset == 1) then set_opt('rec_reset', 1 - S.rec_reset) end
-  if ImGui.MenuItem(ctx, 'Reset all peaks') then reset_all() end
-  ImGui.Separator(ctx)
-  if D.docked then
-    if ImGui.MenuItem(ctx, 'Undock window') then D.dock_req = 0 end
+  if W.docked then
+    if ImGui.MenuItem(ctx, 'Undock window') then W.dock_req = 0 end
   elseif ImGui.MenuItem(ctx, 'Dock window') then
-    D.dock_req = tonumber(r.GetExtState(EXT, 'dock')) or -1     -- last-used docker
+    W.dock_req = tonumber(r.GetExtState(EXT, opt_key('dock', W.n))) or -1   -- last-used docker
   end
+  if ImGui.MenuItem(ctx, 'Close window') then W.close_req = true end
+  ImGui.EndPopup(ctx)
+end
+
+-- Menu items that don't close their menu when clicked (ReaImGui 0.9.3: the AutoClosePopups item flag).
+-- If that flag isn't there (older ReaImGui), a selectable that keeps the menu open is used instead.
+local Menu = {}
+do
+  local function const(name) local ok, v = pcall(function() return ImGui[name] end); return ok and v or nil end
+  local AUTOCLOSE = const('ItemFlags_AutoClosePopups')
+  local NOCLOSE = const('SelectableFlags_NoAutoClosePopups') or const('SelectableFlags_DontClosePopups')
+  Menu.keep_open_begin = function()
+    if AUTOCLOSE and ImGui.PushItemFlag then ImGui.PushItemFlag(ctx, AUTOCLOSE, false); return 'flag' end
+    return NOCLOSE and 'selectable' or nil
+  end
+  Menu.keep_open_end = function(how) if how == 'flag' then ImGui.PopItemFlag(ctx) end end
+  Menu.pad = function(label, how) return how == 'selectable' and ('     ' .. label) or label end
+  Menu.check_item = function(label, checked, how)
+    if how ~= 'selectable' then return ImGui.MenuItem(ctx, label, nil, checked) end
+    -- a selectable that leaves the menu open, with the checkmark drawn in front (like a menu item's)
+    local x, y = ImGui.GetCursorScreenPos(ctx)
+    local h = ImGui.GetTextLineHeight(ctx)
+    local clicked = ImGui.Selectable(ctx, '     ' .. label, false, NOCLOSE)
+    if checked then
+      local dl, col = ImGui.GetWindowDrawList(ctx), ImGui.GetStyleColor(ctx, ImGui.Col_Text)
+      local cy = y + h / 2
+      ImGui.DrawList_AddLine(dl, x + 2, cy, x + 5, cy + 3.5, col, 1.6)
+      ImGui.DrawList_AddLine(dl, x + 5, cy + 3.5, x + 11, cy - 4, col, 1.6)
+    end
+    return clicked
+  end
+end
+
+-- the options: right-click anywhere else
+local function options_menu(W)
+  if not ImGui.BeginPopup(ctx, 'options') then return end
+  -- the whole menu stays open while you change things; clicking outside it closes it
+  local keep = Menu.keep_open_begin()
+  local function item(label, checked) return Menu.check_item(label, checked, keep) end
+  local function submenu(label) return ImGui.BeginMenu(ctx, Menu.pad(label, keep)) end
+
+  if submenu('Tracks to show') then
+    if item('All tracks', S.filter == 'all') then set_opt('filter', 'all') end
+    -- a fixed list, like the Floating Mixer: changing the selection afterwards doesn't change it
+    if item('Show selected tracks', false) then List.from_selection(W); set_opt('filter', 'list') end
+    if item('Record-armed tracks only', S.filter == 'armed') then set_opt('filter', 'armed') end
+    ImGui.Separator(ctx)
+    local m = r.GetMasterTrack(0)
+    local inlist = S.filter == 'list'
+    local function track_item(label, g)
+      if item(label, inlist and List.has(W, g) ~= nil) then
+        if not inlist then List.set(W, {}); inlist = true end
+        List.toggle(W, g); set_opt('filter', 'list')
+      end
+    end
+    track_item('MASTER', r.GetTrackGUID(m))
+    for i = 0, r.CountTracks(0) - 1 do
+      local t = r.GetTrack(0, i)
+      if not hidden_track(t) then
+        local g = r.GetTrackGUID(t)
+        local _, nm = r.GetSetMediaTrackInfo_String(t, 'P_NAME', '', false)
+        track_item((i + 1) .. ': ' .. nm .. '##' .. g, g)
+      end
+    end
+    ImGui.EndMenu(ctx)
+  end
+  if item('Follow selected tracks', S.filter == 'follow') then set_opt('filter', 'follow') end
+  if item('Clear list', false) then List.set(W, {}); set_opt('filter', 'list') end
+  ImGui.Separator(ctx)
+  if item('Skip tracks hidden in the mixer', S.skip_hidden == 1) then set_opt('skip_hidden', 1 - S.skip_hidden) end
+  ImGui.Separator(ctx)
+  if submenu('Strip width') then
+    for _, k in ipairs({ 'narrow', 'normal', 'wide' }) do
+      if item(k:sub(1, 1):upper() .. k:sub(2), S.width == k) then set_opt('width', k) end
+    end
+    ImGui.EndMenu(ctx)
+  end
+  if submenu('Peak hold') then
+    for _, o in ipairs({ { 'Off', 0 }, { '1 second', 1 }, { '2 seconds', 2 }, { '5 seconds', 5 }, { 'Until reset', -1 } }) do
+      if item(o[1], S.hold == o[2]) then set_opt('hold', o[2]) end
+    end
+    ImGui.EndMenu(ctx)
+  end
+  if submenu('Release') then
+    for _, k in ipairs({ 'fast', 'medium', 'slow' }) do
+      if item(k:sub(1, 1):upper() .. k:sub(2) .. ' (' .. RELEASE[k] .. ' dB/s)', S.release == k) then set_opt('release', k) end
+    end
+    ImGui.EndMenu(ctx)
+  end
+  if item('Show track names', S.names == 1) then set_opt('names', 1 - S.names) end
+  if item('Show input selector', S.input ~= 'off') then set_opt('input', S.input == 'off' and 'number' or 'off') end
+  Menu.keep_open_end(keep)
   ImGui.EndPopup(ctx)
 end
 
@@ -852,34 +1090,37 @@ end
 --------------------------------------------------------------------------------
 local WFLAGS = ImGui.WindowFlags_NoCollapse | ImGui.WindowFlags_HorizontalScrollbar
 
-local function frame()
-  local now = r.time_precise()
-  Theme.check()
-  -- reset peaks when recording starts
-  local recording = (r.GetPlayState() & 4) ~= 0
-  if recording and not D.was_rec and S.rec_reset == 1 then reset_all() end
-  D.was_rec = recording
-
-  local tracks = bridge_tracks()
+local function draw_window(W, now)
+  if W.close_req then W.close_req = nil; return false, false end      -- "Close window" from the menu
+  W.S = W.S or win_settings(W.n)
+  S = W.S
+  D.win = W.n
+  local tracks = bridge_tracks(W)
   local SW = WIDTHS[S.width] or 24
   ImGui.SetNextWindowSize(ctx, SCALE_W + 16 * SW + 8, 260, ImGui.Cond_FirstUseEver)
-  if D.dock_req then ImGui.SetNextWindowDockID(ctx, D.dock_req); D.dock_req = nil end
-  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 4, 2)
-  local bg = 0x2A2A2AFF
-  if r.GetThemeColor then
-    local c = r.GetThemeColor('col_mixerbg', 0)
-    if c and c >= 0 then local R, G, B = r.ColorFromNative(c); bg = rgba(R, G, B) end
+  do -- a new window opens near the middle of the screen, later ones a little offset
+    local cx, cy = ImGui.Viewport_GetCenter(ImGui.GetMainViewport(ctx))
+    local off = (W.n - 1) * 30
+    ImGui.SetNextWindowPos(ctx, cx + off, cy + off, ImGui.Cond_FirstUseEver, 0.5, 0.5)
   end
+  if W.dock_req then ImGui.SetNextWindowDockID(ctx, W.dock_req); W.dock_req = nil end
+  local bg = Win.mixer_gray()
+  local wcol = Win.color(W.n)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 4, 2)
   ImGui.PushStyleColor(ctx, ImGui.Col_WindowBg, bg)
-  local visible, open = ImGui.Begin(ctx, 'Meter Bridge###DanielMeterBridge', true, WFLAGS)
-  ImGui.PopStyleColor(ctx); ImGui.PopStyleVar(ctx)
-  if not visible then return open end
+  ImGui.PushStyleColor(ctx, ImGui.Col_TitleBgActive, wcol)                -- title bar: the window's color
+  ImGui.PushStyleColor(ctx, ImGui.Col_TitleBg, Win.dim(wcol, 0.55))       -- (dimmer when not focused)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Text, Win.text_on(wcol))
+  local visible, open = ImGui.Begin(ctx, 'Meter Bridge ' .. W.n .. '###DanielMeterBridge' .. (W.n > 1 and W.n or ''), true, WFLAGS)
+  ImGui.PopStyleColor(ctx, 4); ImGui.PopStyleVar(ctx)
+  if not visible then return open, false end
 
   D.dl = ImGui.GetWindowDrawList(ctx)
-  D.docked = ImGui.IsWindowDocked(ctx)
-  if D.docked then
+  W.docked = ImGui.IsWindowDocked(ctx)
+  if W.docked then
     local id = ImGui.GetWindowDockID(ctx)
-    if id < 0 and tostring(id) ~= r.GetExtState(EXT, 'dock') then r.SetExtState(EXT, 'dock', tostring(id), true) end
+    local key = opt_key('dock', W.n)
+    if id < 0 and tostring(id) ~= r.GetExtState(EXT, key) then r.SetExtState(EXT, key, tostring(id), true) end
   end
 
   local ox, oy = ImGui.GetCursorScreenPos(ctx)
@@ -895,13 +1136,17 @@ local function frame()
   if content_w > aw then ah = ah - sbar end      -- the horizontal scrollbar takes some height
   local rh = math.max(MIN_ROW_H, math.floor(ah / rows))
   D.lay = strip_layout(rh - 4)
+  local sx = ox + ImGui.GetScrollX(ctx)              -- the scale stays at the left edge
+  -- the dB-scale column shows the window's color (the only color you see when it's docked)
+  local scale_txt = (wcol ~= bg) and ((Win.text_on(wcol) & ~0xFF) | 0xD0) or nil
   if n == 0 then
     local msg = (S.filter == 'armed' and 'No record-armed tracks.')
-             or (S.filter == 'selected' and 'No selected tracks.') or 'No tracks.'
-    ImGui.SetCursorScreenPos(ctx, ox + 6, oy + 6)
+             or (S.filter == 'follow' and 'No selected tracks.')
+             or (S.filter == 'list' and 'No tracks in the list.') or 'No tracks.'
+    draw_scale(sx, oy, rh - 4, wcol, rh, scale_txt)
+    ImGui.SetCursorScreenPos(ctx, ox + SCALE_W + 6, oy + 6)
     ImGui.TextDisabled(ctx, msg .. '  Right-click for options.')
   else
-    local sx = ox + ImGui.GetScrollX(ctx)            -- the scale stays at the left edge
     D.clip_x = sx + SCALE_W
     for row = 0, rows - 1 do
       local y0 = oy + row * rh
@@ -913,18 +1158,31 @@ local function frame()
         draw_strip(tr, ox + SCALE_W + c * SW, y0, SW, rh - 4, now)
         ImGui.PopID(ctx)
       end
-      draw_scale(sx, y0, rh - 4, bg, rh)
+      draw_scale(sx, y0, rh - 4, wcol, rh, scale_txt)
     end
   end
-  ImGui.SetCursorScreenPos(ctx, ox, oy)
   D.clip_x = nil
+  -- + : a new window. Top of the dB column, level with the input selectors (only when they're shown)
+  if D.lay.input then
+    local bx1, by1, bx2, by2 = sx + 2, oy + 3, sx + SCALE_W - 2, oy + 3 + INPUT_H
+    local hb = hit('##newwin', bx1, by1, bx2, by2, 'Open a new meter bridge window')
+    rect(bx1, by1, bx2, by2, hb.hov and 0x00000080 or 0x00000055, 4)
+    local pc = (wcol ~= bg) and Win.text_on(wcol) or 0xD0D0D0FF
+    local cx, cy = math.floor((bx1 + bx2) / 2), math.floor((by1 + by2) / 2)
+    rect(cx - 4, cy, cx + 5, cy + 1, pc)                     -- drawn, so it's centered at any font size
+    rect(cx, cy - 4, cx + 1, cy + 5, pc)
+    if hb.click then Win.new_req = true end
+  end
+  ImGui.SetCursorScreenPos(ctx, ox, oy)
   ImGui.Dummy(ctx, content_w, rows * rh - 4)     -- content size, so the window scrolls when strips don't fit
 
-  -- right-click anywhere in the window: options
+  -- right-click: the title bar or the dB column -> window menu; anywhere else -> options
   if ImGui.IsWindowHovered(ctx) and ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Right) then
-    ImGui.OpenPopup(ctx, 'options')
+    local mx, my = ImGui.GetMousePos(ctx)
+    ImGui.OpenPopup(ctx, (my < oy - 1 or mx < sx + SCALE_W) and 'win_menu' or 'options')
   end
-  options_menu()
+  window_menu(W)
+  options_menu(W)
   if D.open_input then D.open_input = nil; ImGui.OpenPopup(ctx, 'input_menu') end
   input_menu()
 
@@ -932,16 +1190,40 @@ local function frame()
   if focused and not ImGui.IsAnyItemActive(ctx) and ImGui.IsKeyPressed(ctx, ImGui.Key_Space, false) then
     r.Main_OnCommand(40044, 0)    -- Transport: Play/stop
   end
-  keep_reaper_focus(focused)
   ImGui.End(ctx)
-  return open
+  return open, focused
 end
 
 local function loop()
+  local now = r.time_precise()
+  Theme.check()
+
+  Win.load()
+  if Win.new_req then Win.new_req = nil; Win.add() end
+
   ImGui.PushFont(ctx, font_ui)
-  local open = frame()
+  local closed, any_focus = {}, false
+  for _, W in ipairs(Win.list) do
+    local open, focused = draw_window(W, now)
+    if not open then closed[W] = true end
+    any_focus = any_focus or focused
+  end
   ImGui.PopFont(ctx)
-  if open then r.defer(loop) else Sync.closed_by_user = true end   -- closed with X: don't reopen at startup
+  keep_reaper_focus(any_focus)
+
+  -- closing windows: the last one closing ends the script (and isn't reopened at the next startup)
+  if next(closed) then
+    local keep = {}
+    for _, W in ipairs(Win.list) do if not closed[W] then keep[#keep + 1] = W end end
+    if #keep == 0 then
+      Sync.closed_by_user = true
+      return
+    end
+    for W in pairs(closed) do Win.forget(W.n); if W.n > 1 then List.forget(W.n) end end
+    Win.list = keep
+    Win.save_list()
+  end
+  r.defer(loop)
 end
 
 r.defer(loop)

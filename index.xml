@@ -567,8 +567,14 @@
       </version>
     </reapack>
 
-    <reapack name="Daniel_Meter Bridge.lua" type="script" desc="Daniel_Meter Bridge.lua">
+    <reapack name="Daniel_Meter Bridge (toolbar toggle).lua" type="script" desc="Daniel_Meter Bridge (toolbar toggle).lua">
       <version name="1.0" author="Daniel" time="2026-10">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Meter%20Bridge%20(toolbar%20toggle).lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Meter Bridge.lua" type="script" desc="Daniel_Meter Bridge.lua">
+      <version name="1.1" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Meter%20Bridge.lua</source>
       </version>
     </reapack>

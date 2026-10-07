@@ -27,6 +27,7 @@ if file then
         "Link_Timeline_and_Edit_Selection",
         "Always_Recording",
         "Floating_Mixer",
+        "Meter_Bridge",
     }
 
     for _, key in ipairs(keys) do
@@ -90,4 +91,12 @@ end
 
 if toggles["Floating_Mixer"] == "1" then
     reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS24ce39b36555a74bc155ee3678a8a65a7ba15bd0"), 0)
+end
+
+--------------------------------------------------
+--Meter Bridge
+--------------------------------------------------
+
+if toggles["Meter_Bridge"] == "1" then
+    reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS95c0d1ef698fa7584e467dd208090390663f420b"), 0)
 end

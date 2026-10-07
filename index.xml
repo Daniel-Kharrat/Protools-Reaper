@@ -448,7 +448,7 @@
     </reapack>
 
     <reapack name="Daniel_Floating Mixer.lua" type="script" desc="Daniel_Floating Mixer.lua">
-      <version name="2.2" author="Daniel" time="2026-10">
+      <version name="2.3" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Floating%20Mixer.lua</source>
       </version>
     </reapack>
@@ -568,7 +568,7 @@
     </reapack>
 
     <reapack name="Daniel_Meter Bridge (toolbar toggle).lua" type="script" desc="Daniel_Meter Bridge (toolbar toggle).lua">
-      <version name="1.0" author="Daniel" time="2026-10">
+      <version name="1.1" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Meter%20Bridge%20(toolbar%20toggle).lua</source>
       </version>
     </reapack>

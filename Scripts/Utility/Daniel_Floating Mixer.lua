@@ -2712,9 +2712,11 @@ local function draw_popups(tr)
   end
   if ImGui.BeginPopup(ctx, 'recmode_menu') then
     local rm = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_RECMODE'))
-    for i = 0, #RECMODE do
-      if ImGui.Selectable(ctx, RECMODE[i][2], i == rm) then
-        undo_wrap('Set record mode', function() r.SetMediaTrackInfo_Value(tr, 'I_RECMODE', i) end)
+    -- the common modes, labelled like REAPER's own record menu (I_RECMODE values)
+    for _, m in ipairs({ { 0, 'Record: input (audio or MIDI)' }, { 1, 'Record: output (stereo)' },
+                         { 5, 'Record: output (mono)' }, { 2, 'Record: disable (input monitoring only)' } }) do
+      if ImGui.Selectable(ctx, m[2], m[1] == rm) then
+        undo_wrap('Set record mode', function() r.SetMediaTrackInfo_Value(tr, 'I_RECMODE', m[1]) end)
       end
     end
     ImGui.EndPopup(ctx)
@@ -2726,7 +2728,6 @@ local function draw_popups(tr)
         undo_wrap('Set record input', function() r.SetMediaTrackInfo_Value(tr, 'I_RECINPUT', v) end)
       end
     end
-    item('Input: None', -1)
     local n = r.GetNumAudioInputs()
     if ImGui.BeginMenu(ctx, 'Input: Mono') then
       for i = 0, n - 1 do item(r.GetInputChannelName(i) or ('In ' .. (i + 1)), i) end
@@ -2737,6 +2738,7 @@ local function draw_popups(tr)
       ImGui.EndMenu(ctx)
     end
     item('Input: MIDI (all inputs, all channels)', 4096 + (63 << 5))
+    item('Input: None', -1)                       -- last, like REAPER's menu
     ImGui.EndPopup(ctx)
   end
   tracks_menu('bar_menu')

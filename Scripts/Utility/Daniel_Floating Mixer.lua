@@ -816,8 +816,9 @@ local function draw_img(im, x, y, frame, nframes, vertical, tint, raw)
   local k = im.k * G.s
   local sx, sy = X(x), Y(y)
   if not raw then sx, sy = sx - im.L * k, sy - im.T * k end
+  local e = (G.s ~= 0.5) and 0.5 or 0   -- in-between size (Windows display scaling): see nine()
   ImGui.DrawList_AddImage(G.dl, im.img, sx, sy, sx + fw * k, sy + fh * k,
-    fx0 / im.w, fy0 / im.h, (fx0 + fw) / im.w, (fy0 + fh) / im.h, tint or 0xFFFFFFFF)
+    (fx0 + e) / im.w, (fy0 + e) / im.h, (fx0 + fw - e) / im.w, (fy0 + fh - e) / im.h, tint or 0xFFFFFFFF)
 end
 
 -- core size (design units) of a 3-state button image
@@ -836,6 +837,9 @@ local function nine(im, x1, y1, x2, y2, frame, nframes, tint)
   local sy = { Y(y1), Y(y1) + im.T * k, Y(y2) - im.B * k, Y(y2) }
   local u = { im.x0, im.x0 + im.L, im.x1 - im.R, im.x1 }
   local v = { fy0, fy0 + im.T, fy0 + fh - im.B, fy0 + fh }
+  -- drawn at an in-between size (Windows display scaling): the smoothing would pull in the pink border
+  -- or the next frame at the outer edges, so those are sampled half a pixel inside. Never at 100% / macOS.
+  if G.s ~= 0.5 then u[1], u[4], v[1], v[4] = u[1] + 0.5, u[4] - 0.5, v[1] + 0.5, v[4] - 0.5 end
   if sx[3] < sx[2] then local m = (sx[1] + sx[4]) / 2; sx[2], sx[3] = m, m end
   if sy[3] < sy[2] then local m = (sy[1] + sy[4]) / 2; sy[2], sy[3] = m, m end
   -- stretched pieces are sampled half a pixel inside their own area, so smoothing doesn't pull in the
@@ -3053,7 +3057,7 @@ local function draw_strip(tr, wx, wy, W, H)
   set_tint(tr)
   set_track_layout(tr)
   -- fixed scale: 1 design unit = one pixel of the theme's 200% images = half a point (same size as the mixer)
-  G.ox, G.oy, G.s, G.dl = wx, wy, 0.5, ImGui.GetWindowDrawList(ctx)
+  G.ox, G.oy, G.s, G.dl = wx, wy, 0.5 * (state.draw_k or 1), ImGui.GetWindowDrawList(ctx)   -- see draw_k (Windows display scaling)
   G.h = H
   DESIGN_W = W / G.s
   G.sid = r.GetTrackGUID(tr)
@@ -3274,15 +3278,20 @@ state.draw_mixer_window = function(W)
   for _, t in ipairs(tracks) do
     if t ~= r.GetMasterTrack(0) then state.max_depth = math.max(state.max_depth, r.GetTrackDepth(t)) end
   end
+  -- Windows display scaling (e.g. 125%): ReaImGui enlarges everything by it, REAPER's mixer doesn't,
+  -- so the strips are drawn smaller by the same factor to stay the mixer's size. K is measured after
+  -- Begin (the window's display scale) and used from the next frame on; 1 on macOS / Linux.
+  local K = state.ui_k or 1
+  state.draw_k = K
   local widths, total = {}, 0
   -- track spacers (right-click a track > "Add spacer before/after track"): REAPER marks the track that
   -- has a spacer before it (I_SPACER); shown as a gap between strips, like the mixer
   local gaps, SPACER_W = {}, 16   -- measured on the real mixer: 32 px on Retina = 16 pt
   for k, tr in ipairs(tracks) do
-    widths[k] = strip_width(tr)
+    widths[k] = strip_width(tr) * K
     local prev = tracks[k - 1]
     gaps[k] = (prev and prev ~= r.GetMasterTrack(0) and tr ~= r.GetMasterTrack(0)
-               and r.GetMediaTrackInfo_Value(tr, 'I_SPACER') == 1) and SPACER_W or 0
+               and r.GetMediaTrackInfo_Value(tr, 'I_SPACER') == 1) and SPACER_W * K or 0
     total = total + widths[k] + gaps[k]
   end
   local winw = total                               -- exactly the strips' width
@@ -3292,7 +3301,7 @@ state.draw_mixer_window = function(W)
       local ok, d = r.ThemeLayout_GetLayout('mcp', -1)
       if ok and d then lay = (d:gsub('^%d+%%_', '')):match('^%a') or 'A' end
     end
-    winw = math.max(40, tp('Layout' .. lay .. '-mcpWidth', 88))
+    winw = math.max(40, tp('Layout' .. lay .. '-mcpWidth', 88)) * K
   end
   ImGui.SetNextWindowSize(ctx, winw, 560, ImGui.Cond_FirstUseEver)
   do -- first launch ever: centered on screen; after that ReaImGui remembers where it was left
@@ -3314,6 +3323,11 @@ state.draw_mixer_window = function(W)
   ImGui.PopStyleColor(ctx, 4); ImGui.PopStyleVar(ctx)
   if visible then ImGui.PushStyleColor(ctx, ImGui.Col_DragDropTarget, 0x00000000) end
   state.docked = visible and ImGui.IsWindowDocked(ctx) or false
+  if visible then
+    local d = 1
+    if ImGui.GetWindowDpiScale and (r.GetOS() or ''):find('Win') then d = ImGui.GetWindowDpiScale(ctx) or 1 end
+    state.ui_k = (d > 0) and 1 / d or 1
+  end
   if state.docked then
     local id = ImGui.GetWindowDockID(ctx)
     if id < 0 and tostring(id) ~= r.GetExtState('Daniel_FloatingMixer', inst_key('dock')) then

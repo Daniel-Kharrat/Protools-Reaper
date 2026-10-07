@@ -237,7 +237,7 @@ end
 
 local function text_size(fnt, size, str)
   ImGui.PushFont(ctx, fnt); local w, h = ImGui.CalcTextSize(ctx, str); ImGui.PopFont(ctx)
-  local k = size * G.s / FONT_BASE
+  local k = size * G.s / (G.font_base or FONT_BASE)   -- the size the fonts were made at (see sync_fonts)
   return w * k, h * k
 end
 local function fit(fnt, size, str, maxw)
@@ -636,7 +636,7 @@ local function theme_check()
     for i = 3, 20 do Theme.font_px[i] = px_of('user_font' .. i) end
     if face ~= '' and face ~= Theme.face then
       Theme.face = face
-      local ok, f = pcall(ImGui.CreateFont, face, FONT_BASE)
+      local ok, f = pcall(ImGui.CreateFont, face, G.font_base or FONT_BASE)
       if ok and f and pcall(ImGui.Attach, ctx, f) then font_list = f end
     end
   end
@@ -3465,6 +3465,7 @@ end
 
 local function loop()
   theme_check()
+  G.sync_fonts()
   update_reaper_touch()
   -- the windows open in this project come back (a new project: just window 1). Switching project tabs
   -- switches to that project's windows.
@@ -3564,6 +3565,42 @@ do
   -- smaller copy for the rename field (fonts have a fixed size here, so it's created up front too)
   local okr, fr = pcall(ImGui.CreateFont, src, 14)
   if okr and fr and pcall(ImGui.Attach, ctx, fr) then font_rename = fr end
+  G.label_src = src
+end
+
+-- Windows display scaling: the strips are drawn smaller by K (see draw_k). Their text would then be
+-- shrunk from the size its fonts were made at and look soft, so the strip fonts are made again at
+-- K x their size; the text then keeps the same proportions as at 100%. Runs at the start of a frame,
+-- only when K changes (never on macOS / Linux, where K stays 1). The top row and menus keep font_ui.
+G.sync_fonts = function()
+  local K = state.ui_k or 1
+  if math.abs(K - (G.font_k or 1)) < 0.001 then return end
+  G.font_k = K
+  local function mk(face, size, flags)
+    local ok, f = pcall(ImGui.CreateFont, face, size, flags)
+    if ok and f and pcall(ImGui.Attach, ctx, f) then return f end
+  end
+  local base = math.max(6, math.floor(FONT_BASE * K + 0.5))
+  local old = { font_reg, font_bold, font_list, font_label, font_rename }
+  local list_is_reg = font_list == font_reg
+  local nr = mk('sans-serif', base)
+  local nb = mk('sans-serif', base, ImGui.FontFlags_Bold)
+  if not (nr and nb) then G.font_k = 1; return end    -- couldn't make them: keep the old fonts as they are
+  font_reg, font_bold = nr, nb
+  G.font_base = base
+  if list_is_reg then font_list = font_reg
+  elseif Theme.face then font_list = mk(Theme.face, base) or font_reg end
+  if G.label_src then
+    font_label = mk(G.label_src, base) or font_label
+    font_rename = mk(G.label_src, math.max(6, math.floor(14 * K + 0.5))) or font_rename
+  end
+  state_list_fix = nil                                  -- measured again with the new fonts
+  local now = { [font_reg] = true, [font_bold] = true, [font_list] = true }
+  if font_label then now[font_label] = true end
+  if font_rename then now[font_rename] = true end
+  for _, f in ipairs(old) do
+    if f and not now[f] then pcall(ImGui.Detach, ctx, f) end
+  end
 end
 
 r.defer(loop)

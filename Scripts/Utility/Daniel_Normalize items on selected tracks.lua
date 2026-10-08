@@ -746,6 +746,17 @@ local COLORS = {
   { ImGui.Col_TextSelectedBg,   gray(0.55, 0.35) },
 }
 
+-- needs js_ReaScriptAPI or SWS; without either, focus just stays here
+local focusBack = false
+local function focusMain()
+  local hwnd = reaper.GetMainHwnd()
+  if reaper.JS_Window_SetFocus then
+    reaper.JS_Window_SetFocus(hwnd)
+  elseif reaper.BR_Win32_SetFocus then
+    reaper.BR_Win32_SetFocus(hwnd)
+  end
+end
+
 local function frame()
   presetRow()
   settings()
@@ -767,6 +778,20 @@ local function frame()
   if ImGui.Button(ctx, "Apply", BTN_W) then
     saveLastUsed(S)
     warn = not run(S)
+  end
+
+  -- hand keyboard focus back to REAPER once you're done clicking:
+  -- waits while a number box is being typed in, a button is held, or the
+  -- preset list / a dialog is open, then gives focus back
+  if ImGui.IsMouseReleased(ctx, 0)
+     and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
+    focusBack = true
+  end
+  local busy = ImGui.IsAnyItemActive(ctx)
+    or ImGui.IsPopupOpen(ctx, "", ImGui.PopupFlags_AnyPopupId)
+  if focusBack and not busy then
+    focusBack = false
+    focusMain()
   end
 end
 

@@ -19,7 +19,8 @@
 --
 -- Gain is written to the take volume, compensating for any item volume
 -- already set, so take x item volume always lands on the target.
--- No peak limiting is applied.
+-- No peak limiting is applied; where the result would clip, a magenta
+-- "CLIPPING" marker is added instead.
 --
 -- Window: settings plus a preset list (save / delete), like an FX window.
 -- Presets are saved in REAPER's presets folder, next to the FX presets:
@@ -414,6 +415,66 @@ end
 -- measured on the raw file, so any existing item volume is compensated
 -- for (an item already at +6 dB gets 6 dB less take volume). The take
 -- volume itself is replaced, not added to.
+-- ---------------------------------------------------------------- clipping markers
+-- Wherever the gain pushes the audio over 0 dBFS, a "CLIPPING" marker is
+-- added (one per burst). The gain itself is never held back.
+local CLIP_NAME  = "CLIPPING"
+local CLIP_COLOR = reaper.ColorToNative(255, 0, 255) | 0x1000000 -- magenta
+local CLIP_MERGE = 0.5  -- clips closer together than this get one marker (s)
+local PEAK_RATE  = 200  -- peak blocks per second scanned (5 ms)
+
+-- removes CLIPPING markers from an earlier run inside a time range
+local function removeClipMarkers(t1, t2)
+  local _, nm, nr = reaper.CountProjectMarkers(0)
+  for i = nm + nr - 1, 0, -1 do
+    local _, isrgn, pos, _, name = reaper.EnumProjectMarkers(i)
+    if not isrgn and name == CLIP_NAME and pos >= t1 - 1e-6 and pos <= t2 + 1e-6 then
+      reaper.DeleteProjectMarkerByIndex(0, i)
+    end
+  end
+end
+
+local function flagClipping(item, take, gain)
+  local src, s, e, offs, rate = sourceRange(item, take)
+  if e - s <= 0 then return end
+
+  -- quick check: skip the scan if even the loudest peak stays under 0 dBFS
+  local toPeak = reaper.CalculateNormalization(src, 2, 0, s, e) -- 2 = peak
+  if bad(toPeak) or gain / toPeak <= 1 then return end
+
+  local pos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+  local nch = math.max(1, reaper.GetMediaSourceNumChannels(src))
+  local CHUNK = 4096
+  local buf = reaper.new_array(CHUNK * nch * 2)
+  local lastClip = -math.huge
+  local t = s
+  while t < e do
+    local n = math.min(CHUNK, math.ceil((e - t) * PEAK_RATE))
+    if n <= 0 then break end
+    buf.clear()
+    local got = reaper.PCM_Source_GetPeaks(src, PEAK_RATE, t, nch, n, 0, buf) & 0xFFFFF
+    if got == 0 then break end
+    local d = buf.table()
+    for i = 0, got - 1 do
+      local m = 0
+      for c = 1, nch do
+        local hi = math.abs(d[i * nch + c] or 0)          -- block maxima
+        local lo = math.abs(d[n * nch + i * nch + c] or 0) -- then block minima
+        if hi > m then m = hi end
+        if lo > m then m = lo end
+      end
+      if m * gain > 1 then
+        local projT = pos + (t + i / PEAK_RATE - offs) / rate
+        if projT - lastClip > CLIP_MERGE then
+          reaper.AddProjectMarker2(0, false, projT, 0, CLIP_NAME, -1, CLIP_COLOR)
+        end
+        lastClip = projT
+      end
+    end
+    t = t + got / PEAK_RATE
+  end
+end
+
 local function setGain(item, gain)
   local take = reaper.GetActiveTake(item)
   if not take then return end
@@ -423,6 +484,7 @@ local function setGain(item, gain)
   local oldVol = reaper.GetMediaItemTakeInfo_Value(take, "D_VOL")
   local sign = oldVol < 0 and -1 or 1
   reaper.SetMediaItemTakeInfo_Value(take, "D_VOL", sign * gain / itemVol)
+  flagClipping(item, take, gain)
 end
 
 local function normalizeItem(item)
@@ -532,6 +594,10 @@ local function run(S)
     for _, item in ipairs(items) do
       local take = reaper.GetActiveTake(item)
       local pieces = { item }
+
+      -- clear CLIPPING markers left on this item by an earlier run
+      local iPos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      removeClipMarkers(iPos, iPos + reaper.GetMediaItemInfo_Value(item, "D_LENGTH"))
 
       if doSplit and take and not reaper.TakeIsMIDI(take) then
         local src, s, e, offs, rate = sourceRange(item, take)

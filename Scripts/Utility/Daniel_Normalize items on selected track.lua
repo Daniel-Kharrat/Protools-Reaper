@@ -49,8 +49,8 @@ local function getDefault(key, fallback)
 end
 
 -- ---------------------------------------------------------------- input
-local keys     = { "target", "minlen", "maxboost", "split", "thresh", "minsect3", "gapdb", "silboost10", "pausedip10", "delpause", "clickms" }
-local fallback = { "-20",    "1.0",    "30",       "1",     "4",      "3",        "20",    "10",         "10",         "1.0",      "120" }
+local keys     = { "target", "minlen04", "maxboost", "split", "thresh", "minsect3", "gapdb", "silboost10", "pausedip10", "delpause", "clickms" }
+local fallback = { "-20",    "0.4",   "30",       "1",     "4",      "3",        "20",    "10",         "10",         "1.0",      "120" }
 local defaults = {}
 for i, k in ipairs(keys) do defaults[i] = getDefault(k, fallback[i]) end
 

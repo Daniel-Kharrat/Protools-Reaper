@@ -579,9 +579,9 @@
       </version>
     </reapack>
 
-    <reapack name="Daniel_Normalize items on selected track.lua" type="script" desc="Daniel_Normalize items on selected track.lua">
-      <version name="1.2" author="Daniel" time="2026-10">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Normalize%20items%20on%20selected%20track.lua</source>
+    <reapack name="Daniel_Normalize items on selected tracks.lua" type="script" desc="Daniel_Normalize items on selected tracks.lua">
+      <version name="1.0" author="Daniel" time="2026-10">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Normalize%20items%20on%20selected%20tracks.lua</source>
       </version>
     </reapack>
     

@@ -1,3 +1,4 @@
+-- Daniel_Normalize Track Items to LUFS.lua
 -- Normalizes every audio item on the selected track(s) to the same
 -- integrated loudness (LUFS-I), so the "body" of each clip matches.
 -- LUFS-I is gated: pauses and near-silence don't drag the reading down.
@@ -16,7 +17,8 @@
 -- the item stays where it is in time. Very short sounds with silence on
 -- both sides (mouth clicks, small noises) count as part of the pause.
 --
--- Gain is written to the take volume (item volume is left alone).
+-- Gain is written to the take volume, compensating for any item volume
+-- already set, so take x item volume always lands on the target.
 -- No peak limiting is applied.
 
 local SCRIPT = "Daniel_Normalize Track Items to LUFS"
@@ -327,13 +329,19 @@ local function findPauses(item, take)
 end
 
 -- ---------------------------------------------------------------- normalizing
+-- Sets the take volume so that take x item volume = gain. Loudness is
+-- measured on the raw file, so any existing item volume is compensated
+-- for (an item already at +6 dB gets 6 dB less take volume). The take
+-- volume itself is replaced, not added to.
 local function setGain(item, gain)
   local take = reaper.GetActiveTake(item)
   if not take then return end
+  local itemVol = reaper.GetMediaItemInfo_Value(item, "D_VOL")
+  if itemVol <= 0 then return end -- item turned all the way down: leave it
   -- keep polarity if the take was flipped
   local oldVol = reaper.GetMediaItemTakeInfo_Value(take, "D_VOL")
   local sign = oldVol < 0 and -1 or 1
-  reaper.SetMediaItemTakeInfo_Value(take, "D_VOL", sign * gain)
+  reaper.SetMediaItemTakeInfo_Value(take, "D_VOL", sign * gain / itemVol)
 end
 
 local function normalizeItem(item)

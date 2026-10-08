@@ -746,15 +746,30 @@ local COLORS = {
   { ImGui.Col_TextSelectedBg,   gray(0.55, 0.35) },
 }
 
--- needs js_ReaScriptAPI or SWS; without either, focus just stays here
-local focusBack = false
-local function focusMain()
-  local hwnd = reaper.GetMainHwnd()
-  if reaper.JS_Window_SetFocus then
-    reaper.JS_Window_SetFocus(hwnd)
-  elseif reaper.BR_Win32_SetFocus then
-    reaper.BR_Win32_SetFocus(hwnd)
+-- Hand the keyboard back to REAPER's main window after clicks (same as
+-- the Floating Mixer). Needs js_ReaScriptAPI or SWS. Waits while you're
+-- typing in a number box, holding the mouse, or using the preset list or
+-- a dialog. Called once per frame between Begin and End.
+local refocus = false
+local function setFocus(h)
+  if reaper.JS_Window_SetFocus then reaper.JS_Window_SetFocus(h)
+  elseif reaper.BR_Win32_SetFocus then reaper.BR_Win32_SetFocus(h) end
+end
+
+local function keepReaperFocus()
+  if not ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) then return end
+  if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left)
+  or ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Right) then
+    refocus = true
   end
+  if not refocus then return end
+  local typing = false
+  for _, on in pairs(editing) do if on then typing = true end end
+  if typing
+  or ImGui.IsPopupOpen(ctx, "", ImGui.PopupFlags_AnyPopupId)
+  or ImGui.IsMouseDown(ctx, ImGui.MouseButton_Left) then return end
+  refocus = false
+  setFocus(reaper.GetMainHwnd())
 end
 
 local function frame()
@@ -779,20 +794,6 @@ local function frame()
     saveLastUsed(S)
     warn = not run(S)
   end
-
-  -- hand keyboard focus back to REAPER once you're done clicking:
-  -- waits while a number box is being typed in, a button is held, or the
-  -- preset list / a dialog is open, then gives focus back
-  if ImGui.IsMouseReleased(ctx, 0)
-     and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
-    focusBack = true
-  end
-  local busy = ImGui.IsAnyItemActive(ctx)
-    or ImGui.IsPopupOpen(ctx, "", ImGui.PopupFlags_AnyPopupId)
-  if focusBack and not busy then
-    focusBack = false
-    focusMain()
-  end
 end
 
 local function loop()
@@ -801,6 +802,7 @@ local function loop()
   local visible, open = ImGui.Begin(ctx, TITLE .. "###main", true, flags)
   if visible then
     frame()
+    keepReaperFocus()
     ImGui.End(ctx)
   end
   ImGui.PopStyleColor(ctx, #COLORS)

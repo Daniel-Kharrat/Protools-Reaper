@@ -17,8 +17,8 @@
 -- the item stays where it is in time. Very short sounds with silence on
 -- both sides (mouth clicks, small noises) count as part of the pause.
 --
--- Gain is written to the take volume, compensating for any item volume
--- already set, so take x item volume always lands on the target.
+-- Gain is written to the item volume knob (so the knob shows it); the
+-- take volume is reset to 0 dB.
 -- No peak limiting is applied; where the result would clip, a magenta
 -- "CLIPPING" marker is added instead.
 --
@@ -411,10 +411,9 @@ local function findPauses(item, take)
 end
 
 -- ---------------------------------------------------------------- normalizing
--- Sets the take volume so that take x item volume = gain. Loudness is
--- measured on the raw file, so any existing item volume is compensated
--- for (an item already at +6 dB gets 6 dB less take volume). The take
--- volume itself is replaced, not added to.
+-- Loudness is measured on the raw file, so the gain is the total change
+-- from the file: it's written to the item volume knob (replacing whatever
+-- was there) and the take volume is reset to 0 dB.
 -- ---------------------------------------------------------------- clipping markers
 -- Wherever the gain pushes the audio over 0 dBFS, a "CLIPPING" marker is
 -- added (one per burst). The gain itself is never held back.
@@ -480,10 +479,11 @@ local function setGain(item, gain)
   if not take then return end
   local itemVol = reaper.GetMediaItemInfo_Value(item, "D_VOL")
   if itemVol <= 0 then return end -- item turned all the way down: leave it
-  -- keep polarity if the take was flipped
+  -- the gain goes on the item's volume knob, so the knob shows it; the take
+  -- volume is reset to 0 dB (keeping polarity if the take was flipped)
   local oldVol = reaper.GetMediaItemTakeInfo_Value(take, "D_VOL")
-  local sign = oldVol < 0 and -1 or 1
-  reaper.SetMediaItemTakeInfo_Value(take, "D_VOL", sign * gain / itemVol)
+  reaper.SetMediaItemTakeInfo_Value(take, "D_VOL", oldVol < 0 and -1 or 1)
+  reaper.SetMediaItemInfo_Value(item, "D_VOL", gain)
   flagClipping(item, take, gain)
 end
 

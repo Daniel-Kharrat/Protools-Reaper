@@ -620,6 +620,34 @@ local function run(S)
   return true
 end
 
+-- Sets every item on the selected tracks back to 0 dB (item volume knob
+-- and take volume, keeping polarity) and removes their CLIPPING markers.
+-- Cuts and deleted pauses stay as they are; undo the Apply for those.
+local function resetGains()
+  local n = reaper.CountSelectedTracks(0)
+  if n == 0 then return false end
+  reaper.Undo_BeginBlock()
+  reaper.PreventUIRefresh(1)
+  for ti = 0, n - 1 do
+    local track = reaper.GetSelectedTrack(0, ti)
+    for ii = 0, reaper.CountTrackMediaItems(track) - 1 do
+      local item = reaper.GetTrackMediaItem(track, ii)
+      reaper.SetMediaItemInfo_Value(item, "D_VOL", 1)
+      local take = reaper.GetActiveTake(item)
+      if take then
+        local v = reaper.GetMediaItemTakeInfo_Value(take, "D_VOL")
+        reaper.SetMediaItemTakeInfo_Value(take, "D_VOL", v < 0 and -1 or 1)
+      end
+      local pos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      removeClipMarkers(pos, pos + reaper.GetMediaItemInfo_Value(item, "D_LENGTH"))
+    end
+  end
+  reaper.PreventUIRefresh(-1)
+  reaper.UpdateArrange()
+  reaper.Undo_EndBlock("Reset item gains to 0 dB", -1)
+  return true
+end
+
 -- ---------------------------------------------------------------- window
 local ctx      = ImGui.CreateContext(SCRIPT)
 local S        = loadLastUsed()
@@ -854,8 +882,17 @@ local function frame()
     ImGui.TextDisabled(ctx, "Select a track first")
     ImGui.SameLine(ctx)
   end
+  -- [Reset] [Apply] on the right, same width as the number boxes
+  local sp = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
   local avail = ImGui.GetContentRegionAvail(ctx)
-  ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + math.max(0, avail - BTN_W))
+  ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + math.max(0, avail - 2 * BTN_W - sp))
+  if ImGui.Button(ctx, "Reset", BTN_W) then
+    warn = not resetGains()
+  end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx, "Set all items on the selected tracks back to 0 dB")
+  end
+  ImGui.SameLine(ctx)
   if ImGui.Button(ctx, "Apply", BTN_W) then
     saveLastUsed(S)
     warn = not run(S)

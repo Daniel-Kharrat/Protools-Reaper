@@ -391,6 +391,31 @@ function Theme.find_dir(dir, depth)
     i = i + 1
   end
 end
+-- fingerprint of a zip: its size + the zip's own table of contents (central directory), which holds
+-- the CRC32, size and date of every file inside. Same as the Floating Mixer's, so both scripts agree
+-- on whether the shared cache is current and neither re-extracts what the other just extracted.
+function Theme.zip_stamp(p)
+  local f = io.open(p, 'rb'); if not f then return '' end
+  local n = f:seek('end')
+  local tail_len = math.min(n, 65557)                       -- end record + max comment length
+  f:seek('set', n - tail_len)
+  local tail = f:read(tail_len) or ''
+  local pos, e = nil, 1
+  while true do local s = tail:find('PK\5\6', e, true); if not s then break end; pos, e = s, s + 1 end
+  local cd = ''
+  if pos and pos + 21 <= #tail then
+    local cd_size, cd_off = string.unpack('<I4I4', tail, pos + 12)
+    if cd_off + cd_size <= n then f:seek('set', cd_off); cd = f:read(cd_size) or '' end
+  end
+  f:close()
+  local h1, h2 = 5381, 0
+  for i = 1, #cd do
+    local b = cd:byte(i)
+    h1 = (h1 * 33 + b) & 0xFFFFFFFF
+    h2 = (h2 + b * i) & 0xFFFFFFFF
+  end
+  return string.format('%d-%d-%08x%08x', n, #cd, h1, h2)
+end
 function Theme.resolve(tf)
   if not tf or tf == '' then return end
   local low = tf:lower()
@@ -401,8 +426,10 @@ function Theme.resolve(tf)
   local zip = (low:match('%.reaperthemezip$') and tf) or (Theme.exists(base .. '.ReaperThemeZip') and base .. '.ReaperThemeZip')
   if not zip then return end
   local name = base:match('([^/\\]+)$') or 'theme'
-  local dest = r.GetResourcePath() .. '/Data/Daniel_MeterBridge/theme_cache/' .. name
-  local f = io.open(zip, 'rb'); local stamp = f and tostring(f:seek('end')) or ''; if f then f:close() end
+  -- shared theme cache in Data/Daniel Kharrat (the Floating Mixer reads the same folder and uses the
+  -- same stamp, so there's one copy; the folder is created if it isn't there)
+  local dest = r.GetResourcePath() .. '/Data/Daniel Kharrat/theme_cache/' .. name
+  local stamp = Theme.zip_stamp(zip)
   local sf = io.open(dest .. '/.stamp', 'rb'); local old = sf and sf:read('a'); if sf then sf:close() end
   if old ~= stamp or not Theme.find_dir(dest, 3) then
     r.RecursiveCreateDirectory(dest, 0)

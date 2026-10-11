@@ -429,7 +429,9 @@ local function resolve_theme_dir(tf)
   local zip = (low:match('%.reaperthemezip$') and tf) or (file_exists(base .. '.ReaperThemeZip') and base .. '.ReaperThemeZip')
   if not zip then return nil, ini end
   local name = base:match('([^/\\]+)$') or 'theme'
-  local dest = r.GetResourcePath() .. '/Data/Daniel_FloatingMixer/theme_cache/' .. name
+  -- shared theme cache in Data/Daniel Kharrat (the Meter Bridge reads the same folder and uses the
+  -- same stamp, so there's one copy; the folder is created if it isn't there)
+  local dest = r.GetResourcePath() .. '/Data/Daniel Kharrat/theme_cache/' .. name
   local stamp = zip_stamp(zip)
   if read_all(dest .. '/.stamp') ~= stamp or not find_theme_dir(dest, 3) then
     extract_zip(zip, dest)

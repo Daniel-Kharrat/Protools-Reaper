@@ -166,7 +166,7 @@
     </reapack>
 
     <reapack name="Daniel_Global startup actions.lua" type="script" desc="Daniel_Global startup actions.lua">
-      <version name="2.5" author="Daniel" time="2026-10">
+      <version name="2.6" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Global%20startup%20actions.lua</source>
       </version>
     </reapack>
@@ -579,6 +579,18 @@
       </version>
     </reapack>
 
+    <reapack name="Daniel_Auto Mixer Panel (toolbar toggle).lua" type="script" desc="Daniel_Auto Mixer Panel (toolbar toggle).lua">
+      <version name="1.0" author="Daniel" time="2026-10">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Auto%20Mixer%20Panel%20(toolbar%20toggle).lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Auto Mixer Panel.lua" type="script" desc="Daniel_Auto Mixer Panel.lua">
+      <version name="1.0" author="Daniel" time="2026-10">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Auto%20Mixer%20Panel.lua</source>
+      </version>
+    </reapack>
+
     <reapack name="Daniel_Normalize items on selected tracks.lua" type="script" desc="Daniel_Normalize items on selected tracks.lua">
       <version name="1.6" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Normalize%20items%20on%20selected%20tracks.lua</source>
@@ -702,6 +714,12 @@
     <reapack name="Daniel_Always Recording" type="effect" desc="Daniel_Always Recording">
       <version name="1.2" author="Daniel" time="2026-09">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Always%20Recording</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Auto Mixer" type="effect" desc="Daniel_Auto Mixer">
+      <version name="1.0" author="Daniel" time="2026-10">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Auto%20Mixer</source>
       </version>
     </reapack>
     

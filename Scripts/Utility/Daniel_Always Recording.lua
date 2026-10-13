@@ -5,6 +5,7 @@
 --
 -- RIGHT-CLICK MENU:
 --   Dock Window in Docker / Undock Window
+--   Support (Ko-fi) : at the bottom, opens ko-fi.com/danielkharrat
 --   Source ->
 --     Effect on a track (manual) : the original behavior. You put the JSFX
 --                                  on any track / Input FX / Monitor FX.
@@ -628,6 +629,15 @@ local function show_context_menu(mx, my)
   sep()
   add(is_preset and "Custom..." or ("Custom (" .. cur .. " seconds)..."),
       ask_custom_buffer, not is_preset, true)
+
+  sep()
+  add("♥ Support (Ko-fi)", function()
+    local url = "https://ko-fi.com/danielkharrat"
+    if reaper.CF_ShellExecute then reaper.CF_ShellExecute(url)          -- SWS
+    elseif reaper.GetOS():find("Win") then os.execute('start "" "' .. url .. '"')
+    elseif reaper.GetOS():find("OSX") or reaper.GetOS():find("mac") then os.execute('open "' .. url .. '"')
+    else os.execute('xdg-open "' .. url .. '" &') end
+  end)
 
   gfx.x, gfx.y = mx, my
   local choice = gfx.showmenu(table.concat(items, "|"))

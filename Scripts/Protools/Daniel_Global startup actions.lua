@@ -28,6 +28,7 @@ if file then
         "Always_Recording",
         "Floating_Mixer",
         "Meter_Bridge",
+        "Auto_Mixer_Panel",
     }
 
     for _, key in ipairs(keys) do
@@ -99,4 +100,13 @@ end
 
 if toggles["Meter_Bridge"] == "1" then
     reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS95c0d1ef698fa7584e467dd208090390663f420b"), 0)
+end
+
+--------------------------------------------------
+--Auto Mixer Panel
+--------------------------------------------------
+
+if toggles["Auto_Mixer_Panel"] == "1" then
+    --Script: Daniel_Auto Mixer Panel.lua
+    reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS091ceb4b08e5cda888e096fc0c3054bd03cd907b"), 0)
 end

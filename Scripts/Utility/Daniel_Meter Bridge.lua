@@ -1,5 +1,7 @@
 -- @description Daniel_Meter Bridge
--- @version 1.0
+-- @version 1.3
+-- @changelog
+--   Support heart (Ko-fi) at the bottom of the dB column, and "Support (Ko-fi)" in the window menu.
 -- @author Daniel
 -- @about
 --   # Meter Bridge
@@ -33,6 +35,7 @@
 --   - Click an input selector: change the track's record input
 --   - Click a clip light: reset that track (Cmd/Ctrl-click: reset all)
 --   - + (top of the dB column, level with the input selectors): open a new bridge window
+--   - Heart (bottom of the dB column, level with the number bars): support the script on Ko-fi
 --   - Right-click the title bar or the dB column: New window, Window color, Dock / Undock, Close window
 --   - Right-click anywhere else: options (tracks, width, peak hold, release, names, input selector...)
 --   - Running the action again closes the window
@@ -45,6 +48,8 @@
 --
 --   Requirements: REAPER 7, ReaImGui 0.9.3 or newer (ReaPack).
 --   Recommended: js_ReaScriptAPI or SWS (keyboard focus back to REAPER).
+--
+--   Support: ko-fi.com/danielkharrat
 
 local r = reaper
 if not r.ImGui_GetBuiltinPath then
@@ -947,6 +952,26 @@ end
 -- Options menu (right-click anywhere in a window, title bar included)
 --------------------------------------------------------------------------------
 -- the window menu: right-click the title bar or the dB column (the colored part, also when docked)
+-- support link (Ko-fi): the heart at the bottom of the dB column and the window menu item
+local Support = { url = 'https://ko-fi.com/danielkharrat' }
+Support.open = function()
+  local url = Support.url
+  if r.CF_ShellExecute then r.CF_ShellExecute(url)                       -- SWS
+  elseif r.GetOS():find('Win') then os.execute('start "" "' .. url .. '"')
+  elseif r.GetOS():find('OSX') or r.GetOS():find('mac') then os.execute('open "' .. url .. '"')
+  else os.execute('xdg-open "' .. url .. '" &') end
+end
+-- a small button like the + : translucent dark, heart in the column's text colour
+Support.button = function(x1, y1, x2, y2, col)
+  local hb = hit('##support', x1, y1, x2, y2, 'Support the Meter Bridge: buy me a coffee\nko-fi.com/danielkharrat')
+  rect(x1, y1, x2, y2, hb.hov and 0x00000080 or 0x00000055, 4)
+  local cx, cy = (x1 + x2) / 2, (y1 + y2) / 2 - 0.5
+  ImGui.DrawList_AddCircleFilled(D.dl, cx - 2.2, cy - 1.0, 2.5, col)
+  ImGui.DrawList_AddCircleFilled(D.dl, cx + 2.2, cy - 1.0, 2.5, col)
+  ImGui.DrawList_AddTriangleFilled(D.dl, cx - 4.6, cy - 0.2, cx + 4.6, cy - 0.2, cx, cy + 4.6, col)
+  if hb.click then Support.open() end
+end
+
 local function window_menu(W)
   if not ImGui.BeginPopup(ctx, 'win_menu') then return end
   if ImGui.MenuItem(ctx, 'New window') then Win.new_req = true end
@@ -958,6 +983,8 @@ local function window_menu(W)
     W.dock_req = tonumber(r.GetExtState(EXT, opt_key('dock', W.n))) or -1   -- last-used docker
   end
   if ImGui.MenuItem(ctx, 'Close window') then W.close_req = true end
+  ImGui.Separator(ctx)
+  if ImGui.MenuItem(ctx, 'Support (Ko-fi)') then Support.open() end
   ImGui.EndPopup(ctx)
 end
 
@@ -1199,6 +1226,12 @@ local function draw_window(W, now)
     rect(cx - 4, cy, cx + 5, cy + 1, pc)                     -- drawn, so it's centered at any font size
     rect(cx, cy - 4, cx + 1, cy + 5, pc)
     if hb.click then Win.new_req = true end
+  end
+  -- heart: bottom of the dB column, level with the number bars of the last row (always there)
+  do
+    local y2 = oy + (rows - 1) * rh + (rh - 4)
+    local hc = (wcol ~= bg) and Win.text_on(wcol) or 0xD0D0D0FF
+    Support.button(sx + 2, y2 - NUM_H, sx + SCALE_W - 2, y2, hc)
   end
   ImGui.SetCursorScreenPos(ctx, ox, oy)
   ImGui.Dummy(ctx, content_w, rows * rh - 4)     -- content size, so the window scrolls when strips don't fit

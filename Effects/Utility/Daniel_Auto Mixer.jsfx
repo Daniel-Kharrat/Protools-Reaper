@@ -1,0 +1,221 @@
+desc:Daniel_Auto Mixer
+author: Daniel Kharrat
+version: 2.3
+changelog:
+  Last mic hold remembers the gains from while someone was clearly talking (10 dB above
+  the hold level) and blends into them as the level falls, so the other mics stay down.
+  Level detector averages over 10 ms (RMS) before the attack/release, so steady room noise
+  reads at its true level: last mic hold now works with a realistic noise floor.
+  4 groups (was 8), matching the panel.
+  Always automatic: the Mode setting (Auto / Manual / Mute) is gone.
+  No window of its own: everything is controlled from "Daniel_Auto Mixer Panel".
+  The settings are still parameters, so they can be automated.
+about:
+  Gain-sharing automatic microphone mixer (Dugan-style) for live sound.
+  Insert one instance on each mic track, after EQ/compression and before the fader,
+  or let "Daniel_Auto Mixer Panel" do it for you.
+  All instances in the same group share one "open mic" worth of gain: whoever is
+  talking gets the gain, the others turn down smoothly. Nothing gates or chops.
+  Instances find each other automatically through shared memory, so there is no
+  fixed channel count (up to 64 per REAPER session). It works with or without the
+  panel open.
+
+// ---------------------------------------------------------------------------
+// How it works
+//   Each instance measures its own speech-band level (power), weighted by the
+//   Weight control, and publishes it to shared memory. It then reads the levels
+//   of all other active instances in the same group and sets its own gain to
+//       gain = sqrt( own / (own + others) )
+//   so the gains of the group always add up (in power) to one open mic.
+//   Other channels' levels are read once per audio block and interpolated
+//   across the block, so there is no zipper noise.
+//
+// Shared memory layout (gmem "Daniel_AutoMixer"), used by the panel script:
+//   gmem[0] = layout version, gmem[1] = max slots
+//   slot base = 16 + slot*16, fields:
+//     +0 owner id     +1 heartbeat (time_precise)   +2 group     +3 active
+//     +4 power        +5 gain (linear)              +6 input peak (block)
+//     +7 exclude flag (written by the panel, e.g. track muted)
+//     +8 (unused)     +9 weight dB                  +10 active count in group
+//     +11 holding flag
+//
+// Slider numbers are kept from version 1 (slider1 was Mode) so saved projects
+// keep their settings.
+// ---------------------------------------------------------------------------
+
+options:gmem=Daniel_AutoMixer
+
+slider2:weight_s=0<-12,12,0.5>-Weight (dB)
+slider3:group_s=1<1,4,1>-Group
+slider4:rel_s=120<20,600,1>-Release (ms)
+slider5:hold_s=1<0,1,1{Off,On}>-Last mic hold
+slider6:holdthr_s=-55<-80,-20,1>-Hold below (dBFS)
+slider10:slot_s=-1<-1,63,1>-Slot (auto)
+
+@init
+ext_noinit = 1;
+
+MAXSLOT = 64; BASE = 16; STRIDE = 16;
+F_OWNER = 0; F_HB = 1; F_GROUP = 2; F_ACTIVE = 3; F_POW = 4; F_GAIN = 5;
+F_INPK = 6; F_EXCL = 7; F_MODE = 8; F_WEIGHT = 9; F_COUNT = 10; F_HOLD = 11;
+STALE = 0.5;                  // seconds without a heartbeat before a slot counts as gone
+EPS = 0.0000000001;           // ~ -100 dBFS floor so silent channels share gain equally
+
+function bq_set(type, f, q) instance(b0, b1, b2, a1, a2) local(w, c, s, al, a0)
+(
+  w = 2 * $pi * f / srate; c = cos(w); s = sin(w); al = s / (2 * q);
+  type == 0 ? ( b0 = (1 + c) / 2; b1 = -(1 + c); b2 = (1 + c) / 2; )   // high-pass
+            : ( b0 = (1 - c) / 2; b1 = 1 - c;    b2 = (1 - c) / 2; );  // low-pass
+  a0 = 1 + al; a1 = -2 * c; a2 = 1 - al;
+  b0 /= a0; b1 /= a0; b2 /= a0; a1 /= a0; a2 /= a0;
+);
+
+function bq_run(x) instance(b0, b1, b2, a1, a2, x1, x2, y1, y2) local(y)
+(
+  y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+  abs(y) < 0.0000000000000000000000001 ? y = 0;
+  x2 = x1; x1 = x; y2 = y1; y1 = y;
+  y;
+);
+
+function claim_slot() local(i, b, now, found)
+(
+  now = time_precise();
+  found = -1;
+  // try to keep the slot saved with the project
+  slot_s >= 0 && slot_s < MAXSLOT ? (
+    b = BASE + slot_s * STRIDE;
+    (gmem[b + F_OWNER] == myid || now - gmem[b + F_HB] > STALE) ? found = slot_s;
+  );
+  // otherwise take the first free one
+  i = 0;
+  loop(MAXSLOT,
+    found < 0 ? (
+      b = BASE + i * STRIDE;
+      now - gmem[b + F_HB] > STALE ? found = i;
+    );
+    i += 1;
+  );
+  found >= 0 ? (
+    b = BASE + found * STRIDE;
+    gmem[b + F_OWNER] = myid;
+    gmem[b + F_HB] = now;
+    gmem[b + F_EXCL] = 0;
+    gmem[b + F_POW] = 0;
+    gmem[b + F_ACTIVE] = 0;
+    found != slot_s ? ( slot_s = found; sliderchange(slider10); );
+  ) : (
+    slot_s = -1;
+  );
+);
+
+gmem[0] = 2;
+gmem[1] = MAXSLOT;
+myid = floor(rand(1000000000)) + 1;
+
+hp.bq_set(0, 150, 0.707);
+lp.bq_set(1, 5000, 0.707);
+rms_c = 1 - exp(-1 / (0.010 * srate)); // 10 ms power average (RMS) before the envelope
+att = 1 - exp(-1 / (0.002 * srate));   // 2 ms detector attack
+gsm = 1 - exp(-1 / (0.001 * srate));   // 1 ms gain smoothing
+
+ms = 0; env = 0; g = 1; g_held = 1; held_valid = 0; holding = 0;
+others_cur = 0; others_d = 0; n_others = 0; n_active = 1; excl = 0;
+blk_pk = 0;
+
+@slider
+wlin = 10 ^ (weight_s / 10);
+rel = 1 - exp(-1 / (rel_s * 0.001 * srate));
+holdthr_p = 10 ^ (holdthr_s / 10);
+holdcap_p = holdthr_p * 10;            // 10 dB above: where the held gains are taken from
+hold_s == 0 ? held_valid = 0;
+
+@block
+now = time_precise();
+
+slot_s >= 0 && slot_s < MAXSLOT ? (
+  b = BASE + slot_s * STRIDE;
+  gmem[b + F_OWNER] != myid ? claim_slot();
+) : (
+  claim_slot();
+);
+
+slot_s >= 0 ? (
+  b = BASE + slot_s * STRIDE;
+  excl = gmem[b + F_EXCL];
+  active = excl == 0 ? 1 : 0;
+
+  // publish own state
+  gmem[b + F_HB] = now;
+  gmem[b + F_GROUP] = group_s;
+  gmem[b + F_ACTIVE] = active;
+  gmem[b + F_POW] = active ? env * wlin : 0;
+  gmem[b + F_GAIN] = g;
+  gmem[b + F_INPK] = blk_pk;
+  gmem[b + F_MODE] = 0;
+  gmem[b + F_WEIGHT] = weight_s;
+  gmem[b + F_HOLD] = holding;
+
+  // gather the other active channels in this group
+  others = 0; n_others = 0; i = 0;
+  loop(MAXSLOT,
+    i != slot_s ? (
+      bb = BASE + i * STRIDE;
+      (now - gmem[bb + F_HB] < STALE && gmem[bb + F_ACTIVE] > 0 && gmem[bb + F_GROUP] == group_s) ? (
+        others += gmem[bb + F_POW] + EPS;
+        n_others += 1;
+      );
+    );
+    i += 1;
+  );
+  n_active = n_others + active;
+  gmem[b + F_COUNT] = n_active;
+
+  // ramp to the new sum across this block (no zipper noise)
+  others_d = samplesblock > 0 ? (others - others_cur) / samplesblock : 0;
+  samplesblock <= 0 ? others_cur = others;
+);
+blk_pk = 0;
+
+@sample
+slot_s >= 0 ? (
+  x = num_ch > 1 ? (spl0 + spl1) * 0.5 : spl0;
+
+  // speech-band level detector
+  y = lp.bq_run(hp.bq_run(x));
+  p = y * y;
+  ms += (p - ms) * rms_c;                    // average first, so noise isn't read by its peaks
+  env += (ms - env) * (ms > env ? att : rel);
+
+  others_cur = max(0, others_cur + others_d);
+  holding = 0;
+
+  excl > 0 ? (
+    gt = 1;                                   // taken out of the sharing by the panel (track muted)
+  ) : (
+    wp = env * wlin;
+    total_raw = wp + others_cur - n_others * EPS;
+    share = sqrt((wp + EPS) / (wp + EPS + others_cur));
+    (hold_s && held_valid && total_raw < holdcap_p) ? (
+      total_raw < holdthr_p ? (
+        gt = g_held;                          // everyone quiet: keep the last mic open
+        holding = 1;
+      ) : (
+        // fading out: blend from the live share into the held gains over the last 10 dB
+        k = log10(total_raw / holdthr_p);     // 1 at the capture level .. 0 at the hold level
+        gt = g_held + (share - g_held) * k;
+      );
+    ) : (
+      gt = share;
+      total_raw >= holdcap_p ? ( g_held = gt; held_valid = 1; );   // someone is clearly talking
+    );
+  );
+
+  g += (gt - g) * gsm;
+
+  ch = 0;
+  loop(num_ch, spl(ch) *= g; ch += 1; );
+
+  ax = abs(x);
+  ax > blk_pk ? blk_pk = ax;
+);

@@ -596,6 +596,12 @@
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Normalize%20items%20on%20selected%20tracks.lua</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Marker based cleanup.lua" type="script" desc="Daniel_Marker based cleanup.lua">
+      <version name="1.0" author="Daniel" time="2026-10">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Marker%20based%20cleanup.lua</source>
+      </version>
+    </reapack>
     
   </category>
 

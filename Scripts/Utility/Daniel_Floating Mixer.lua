@@ -1,5 +1,8 @@
 -- @description Daniel_Floating Mixer
--- @version 1.0
+-- @version 3.2
+-- @changelog
+--   A small heart at the start of the top row (in place of the window number) links to Ko-fi
+--   to support the script.
 -- @author Daniel
 -- @about
 --   # Floating Mixer
@@ -20,6 +23,8 @@
 --   Recommended: SWS (opens the SWS Snapshots window for mix snapshots) and js_ReaScriptAPI
 --   (keeps your keyboard shortcuts working while you use the window).
 --   Made for the Default 7 theme and themes based on it; other themes may not lay out correctly.
+--
+--   Support: ko-fi.com/danielkharrat
 
 local r = reaper
 if not r.ImGui_GetBuiltinPath then
@@ -3362,14 +3367,34 @@ state.draw_mixer_window = function(W)
   if visible then
     -- always-visible track chooser
     local tx, ty = ImGui.GetCursorScreenPos(ctx)
-    -- the top row in the window's color, with the window's number on the left
+    -- the top row in the window's color, with the support heart (Ko-fi) on the left
     local wpx = ImGui.GetWindowPos(ctx)
-    local tcol = state.text_on(wcol)
     ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), wpx, ty, wpx + ImGui.GetWindowWidth(ctx), ty + TOOLBAR_H, wcol)
-    local num = tostring(W.n)
-    local num_w, num_h = ImGui.CalcTextSize(ctx, num)
-    ImGui.DrawList_AddText(ImGui.GetWindowDrawList(ctx), tx + 7, ty + (TOOLBAR_H - num_h) / 2, tcol, num)
-    local badge_w = num_w + 14
+    -- support heart: a small button like the others on this row (translucent dark, white symbol)
+    local hb_w, hb_h = 20, ImGui.GetTextLineHeight(ctx)
+    local badge_w = 4 + hb_w + 4
+    do
+      local bx, by = tx + 4, ty + 2
+      ImGui.SetCursorScreenPos(ctx, bx, by)
+      if ImGui.InvisibleButton(ctx, '##support', hb_w, hb_h) then
+        local url = 'https://ko-fi.com/danielkharrat'
+        if r.CF_ShellExecute then r.CF_ShellExecute(url)                       -- SWS
+        elseif r.GetOS():find('Win') then os.execute('start "" "' .. url .. '"')
+        elseif r.GetOS():find('OSX') or r.GetOS():find('mac') then os.execute('open "' .. url .. '"')
+        else os.execute('xdg-open "' .. url .. '" &') end
+      end
+      local hov, act = ImGui.IsItemHovered(ctx), ImGui.IsItemActive(ctx)
+      if hov and not act then ImGui.SetTooltip(ctx, 'Support the Floating Mixer: buy me a coffee\nko-fi.com/danielkharrat') end
+      local dl = ImGui.GetWindowDrawList(ctx)
+      local rnd = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding)
+      ImGui.DrawList_AddRectFilled(dl, bx, by, bx + hb_w, by + hb_h,
+        act and 0x000000B0 or hov and 0x00000080 or 0x00000055, rnd)   -- same colours as the other buttons
+      local hx, hy = bx + hb_w / 2, by + hb_h / 2 - 0.5
+      local hc = 0xFFFFFFFF                                              -- white, like the buttons' text
+      ImGui.DrawList_AddCircleFilled(dl, hx - 2.3, hy - 1.1, 2.7, hc)
+      ImGui.DrawList_AddCircleFilled(dl, hx + 2.3, hy - 1.1, 2.7, hc)
+      ImGui.DrawList_AddTriangleFilled(dl, hx - 5.0, hy - 0.2, hx + 5.0, hy - 0.2, hx, hy + 5.0, hc)
+    end
     ImGui.SetCursorScreenPos(ctx, tx + badge_w, ty + 2)
     local label = (state.mode == 'list') and 'Tracks' or 'Follow selection'
     -- three menus on top: tracks to show | snapshots | window (dock, new / close window).

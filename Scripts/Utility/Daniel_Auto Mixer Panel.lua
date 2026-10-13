@@ -1,7 +1,11 @@
 -- @description Daniel_Auto Mixer Panel
 -- @author Daniel Kharrat
--- @version 2.8
+-- @version 2.9
 -- @changelog
+--   Opening or closing the panel from the action list or a shortcut now saves its on/off
+--   state for the startup action too (before, only the toolbar button did), like the
+--   Floating Mixer.
+--   2.8:
 --   Right-click the title bar or any empty space: Dock window / Undock window, Close window.
 --   Reopens docked if it was docked (and in the same docker).
 --   2.7:
@@ -80,10 +84,9 @@ local HIDDEN_TRACK = "Always Recording (auto)"
 -- This script keeps that button and its own toggle state matching whether
 -- the panel is really open, however it was started or closed.
 -- reaper.ini [toolbar button states] Auto_Mixer_Panel: 1 while open,
--- 0 when you close it (window X or toolbar button). Quitting REAPER while
+-- 0 when you close it (window X, toolbar button, action or shortcut). Quitting REAPER while
 -- it's open leaves it at 1 so the startup action reopens it.
 ---------------------------------------------------------------------
-reaper.set_action_options(1)  -- running it again closes it, no prompt
 
 -- the toolbar button's script: Daniel_Auto Mixer Panel (toolbar toggle).lua
 local TOGGLE_BUTTON = "_RS6a841203ee0f0c1ce567f92c49dd4924626d0a8f"
@@ -123,6 +126,20 @@ local function set_visual_state(on)
     reaper.RefreshToolbar2(0, tid)
   end
 end
+
+-- Running the action while the panel is open turns it off, from anywhere (action list, shortcut,
+-- toolbar). REAPER stops the running panel and, with set_action_options(1 + 2), starts it again
+-- right away; the stopped one left the time it stopped, so this new start knows it's a "turn off":
+-- it writes 0 and doesn't open. REAPER quitting stops it without starting it again, so the flag
+-- stays 1 and the panel comes back at the next startup.
+local stopped_at = tonumber(reaper.GetExtState(EXT, "stopped_at"))
+reaper.DeleteExtState(EXT, "stopped_at", false)
+if stopped_at and reaper.time_precise() - stopped_at < 1 then
+  set_visual_state(false)
+  set_ini_flag(0)
+  return
+end
+reaper.set_action_options(1 | 2)
 
 if not reaper.ImGui_GetBuiltinPath then
   reaper.MB("This script needs ReaImGui (0.9 or newer).\nInstall it with ReaPack: Extensions > ReaPack > Browse packages > ReaImGui.", SCRIPT_NAME, 0)
@@ -1313,11 +1330,14 @@ local function loop()
   end
 end
 
--- atexit also runs when REAPER quits: then the ini flag must stay 1,
--- so it's only cleared when the window was closed with its X
+-- (see "turn off" above)
 reaper.atexit(function()
   set_visual_state(false)
-  if S.closed_by_user then set_ini_flag(0) end
+  if S.closed_by_user then
+    set_ini_flag(0)                               -- closed with X: stays closed
+  else                                            -- stopped by running it again (or REAPER quitting)
+    reaper.SetExtState(EXT, "stopped_at", tostring(reaper.time_precise()), false)
+  end
 end)
 
 -- open docked if it was docked when last closed

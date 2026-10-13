@@ -62,6 +62,7 @@ local ImGui = require "imgui" "0.9"
 
 -- ---------------------------------------------------------------- settings
 local FIELDS = {
+  { key = "tsel",     label = "Only inside time selection",           def = 0,   bool = true, group = "Range" },
   { key = "target",   max = 0, label = "Target loudness (LUFS-I)",             def = -22, step = 0.5, fmt = "%.1f", group = "Loudness" },
   { key = "minlen", min = 0,   label = "Skip items shorter than (s)",          def = 0.4, step = 0.1, fmt = "%.2f" },
   { key = "maxgain",  min = 0, max = 24, label = "Max gain change (dB)", def = 24,  step = 1,   fmt = "%.1f" },
@@ -570,6 +571,38 @@ local function normalizeItem(item)
 end
 
 -- ---------------------------------------------------------------- main
+-- The items to work on for one track. With "Only inside time selection"
+-- on and a time selection set, items crossing its edges are cut there
+-- (short crossfade) and only the parts inside are returned; items fully
+-- outside are left alone. Otherwise every item on the track.
+local function itemsInScope(track, S)
+  local items = {}
+  for ii = 0, reaper.CountTrackMediaItems(track) - 1 do
+    items[#items + 1] = reaper.GetTrackMediaItem(track, ii)
+  end
+  if S.tsel == 0 then return items end
+  local t1, t2 = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
+  if t2 - t1 <= 0 then return items end -- no time selection: whole track
+
+  local inside = {}
+  for _, item in ipairs(items) do
+    local pos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+    local len = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+    local fin = pos + len
+    if pos < t2 and fin > t1 then
+      local cuts = {}
+      if pos < t1 then cuts[#cuts + 1] = t1 end
+      if fin > t2 then cuts[#cuts + 1] = t2 end
+      for _, pc in ipairs(#cuts > 0 and splitAt(item, cuts) or { item }) do
+        local p1 = reaper.GetMediaItemInfo_Value(pc, "D_POSITION")
+        local p2 = p1 + reaper.GetMediaItemInfo_Value(pc, "D_LENGTH")
+        if p1 >= t1 - XFADE and p2 <= t2 + XFADE then inside[#inside + 1] = pc end
+      end
+    end
+  end
+  return inside
+end
+
 local function run(S)
   target, minlen, maxgain = S.target, S.minlen, S.maxgain
   doSplit, thresh, minSection = S.split ~= 0, S.thresh, S.minsect
@@ -586,10 +619,7 @@ local function run(S)
     local track = reaper.GetSelectedTrack(0, ti)
 
     -- collect first: splitting changes the track's item list
-    local items = {}
-    for ii = 0, reaper.CountTrackMediaItems(track) - 1 do
-      items[#items + 1] = reaper.GetTrackMediaItem(track, ii)
-    end
+    local items = itemsInScope(track, S)
 
     for _, item in ipairs(items) do
       local take = reaper.GetActiveTake(item)
@@ -623,15 +653,14 @@ end
 -- Sets every item on the selected tracks back to 0 dB (item volume knob
 -- and take volume, keeping polarity) and removes their CLIPPING markers.
 -- Cuts and deleted pauses stay as they are; undo the Apply for those.
-local function resetGains()
+local function resetGains(S)
   local n = reaper.CountSelectedTracks(0)
   if n == 0 then return false end
   reaper.Undo_BeginBlock()
   reaper.PreventUIRefresh(1)
   for ti = 0, n - 1 do
     local track = reaper.GetSelectedTrack(0, ti)
-    for ii = 0, reaper.CountTrackMediaItems(track) - 1 do
-      local item = reaper.GetTrackMediaItem(track, ii)
+    for _, item in ipairs(itemsInScope(track, S)) do
       reaper.SetMediaItemInfo_Value(item, "D_VOL", 1)
       local take = reaper.GetActiveTake(item)
       if take then
@@ -887,10 +916,10 @@ local function frame()
   local avail = ImGui.GetContentRegionAvail(ctx)
   ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + math.max(0, avail - 2 * BTN_W - sp))
   if ImGui.Button(ctx, "Reset", BTN_W) then
-    warn = not resetGains()
+    warn = not resetGains(S)
   end
   if ImGui.IsItemHovered(ctx) then
-    ImGui.SetTooltip(ctx, "Set all items on the selected tracks back to 0 dB")
+    ImGui.SetTooltip(ctx, "Set the items on the selected tracks back to 0 dB\n(only inside the time selection when that option is on)")
   end
   ImGui.SameLine(ctx)
   if ImGui.Button(ctx, "Apply", BTN_W) then

@@ -50,6 +50,5 @@ SetIniValue(KEY, tostring(new_state))
 reaper.SetToggleCommandState(section_id, command_id, new_state)
 reaper.RefreshToolbar2(section_id, command_id)
 
--- starts the panel, or closes it if it's running (the panel uses set_action_options(1))
+-- starts the panel, or closes it if it's running (the panel handles that itself)
 reaper.Main_OnCommand(main_id, 0)
-

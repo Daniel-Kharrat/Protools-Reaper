@@ -700,22 +700,97 @@ local function rect(x, y, w, h, hex, a)
   gfx.rect(math.floor(x * S), math.floor(y * S), math.ceil(w * S), math.ceil(h * S), 1)
 end
 
-local function rrect(x, y, w, h, r, hex, a)
-  color(hex, a)
-  x, y, w, h, r = x * S, y * S, w * S, h * S, r * S
-  r = math.min(r, h / 2, w / 2)
-  gfx.rect(x + r, y, w - 2 * r, h, 1)
-  gfx.rect(x, y + r, r, h - 2 * r, 1)
-  gfx.rect(x + w - r, y + r, r, h - 2 * r, 1)
-  gfx.circle(x + r, y + r, r, 1, 1)
-  gfx.circle(x + w - r - 1, y + r, r, 1, 1)
-  gfx.circle(x + r, y + h - r - 1, r, 1, 1)
-  gfx.circle(x + w - r - 1, y + h - r - 1, r, 1, 1)
+-- Shapes are filled row by row with gfx.rect only (with smooth, anti-aliased edges), so they
+-- look the same on macOS, Windows and Linux. (gfx.circle draws a different size on each OS,
+-- which made rounded shapes bulge at the ends on Linux.)
+local SUB = { 0.125, 0.375, 0.625, 0.875 }   -- 4 sample lines per pixel row
+local Ls, Rs = {}, {}
+
+-- fill a shape given by span(y) -> left, right (pixel units), between pixel rows y0 and y1
+local function fill_rows(y0, y1, span, a)
+  local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
+  for j = floor(y0), ceil(y1) - 1 do
+    local n = 0
+    for k = 1, 4 do
+      local yc = j + SUB[k]
+      if yc > y0 and yc < y1 then
+        local l, r = span(yc)
+        if l and r > l then n = n + 1; Ls[n], Rs[n] = l, r end
+      end
+    end
+    if n > 0 then
+      local minL, maxL, minR, maxR = Ls[1], Ls[1], Rs[1], Rs[1]
+      for k = 2, n do
+        minL = min(minL, Ls[k]); maxL = max(maxL, Ls[k])
+        minR = min(minR, Rs[k]); maxR = max(maxR, Rs[k])
+      end
+      local function edge(p0, p1)
+        for p = p0, p1 do
+          local cov = 0
+          for k = 1, n do
+            local o = min(p + 1, Rs[k]) - max(p, Ls[k])
+            if o > 0 then cov = cov + o end
+          end
+          if cov > 0.01 then gfx.a = a * cov / 4; gfx.rect(p, j, 1, 1, 1) end
+        end
+      end
+      local i0, i1 = ceil(maxL), floor(minR)
+      if i1 > i0 then
+        gfx.a = a * n / 4
+        gfx.rect(i0, j, i1 - i0, 1, 1)
+        edge(floor(minL), i0 - 1)
+        edge(i1, ceil(maxR) - 1)
+      else
+        edge(floor(minL), ceil(maxR) - 1)
+      end
+    end
+  end
 end
 
-local function circle(x, y, r, hex, fill, a)
+local function rrect(x, y, w, h, r, hex, a)
+  a = a or 1
   color(hex, a)
-  gfx.circle(x * S, y * S, r * S, fill and 1 or 0, 1)
+  local X, Y, W, H = x * S, y * S, w * S, h * S
+  local R = math.min(r * S, H / 2, W / 2)
+  if W <= 0 or H <= 0 then return end
+  local function span(yc)
+    local dy = 0
+    if yc < Y + R then dy = Y + R - yc elseif yc > Y + H - R then dy = yc - (Y + H - R) end
+    local ins = R - math.sqrt(math.max(0, R * R - dy * dy))
+    return X + ins, X + W - ins
+  end
+  -- the straight middle part in one go (fast), the rounded top and bottom row by row
+  local m0, m1 = math.ceil(Y + R), math.floor(Y + H - R)
+  if m1 > m0 then
+    fill_rows(Y, m0, span, a)
+    local i0, i1 = math.ceil(X), math.floor(X + W)
+    gfx.a = a
+    if i1 > i0 then gfx.rect(i0, m0, i1 - i0, m1 - m0, 1) end
+    local lc = i0 - X                       -- left edge column coverage
+    if lc > 0.01 then gfx.a = a * lc; gfx.rect(i0 - 1, m0, 1, m1 - m0, 1) end
+    local rc = X + W - i1                   -- right edge column coverage
+    if rc > 0.01 then gfx.a = a * rc; gfx.rect(i1, m0, 1, m1 - m0, 1) end
+    fill_rows(m1, Y + H, span, a)
+  else
+    fill_rows(Y, Y + H, span, a)
+  end
+end
+
+-- filled circle, or a ring (fill = false) drawn on the window background
+local function circle(x, y, r, hex, fill, a)
+  rrect(x - r, y - r, 2 * r, 2 * r, r, hex, a)
+  if not fill then rrect(x - r + 1.25, y - r + 1.25, 2 * r - 2.5, 2 * r - 2.5, r - 1.25, COL.bg) end
+end
+
+-- filled triangle pointing down: flat top edge from (xl, yt) to (xr, yt), tip at (xm, yb); logical units
+local function tri_down(xl, xr, yt, xm, yb, hex, a)
+  a = a or 1
+  color(hex, a)
+  local XL, XR, YT, XM, YB = xl * S, xr * S, yt * S, xm * S, yb * S
+  fill_rows(YT, YB, function(yc)
+    local t = (yc - YT) / (YB - YT)
+    return XL + (XM - XL) * t, XR + (XR - XM) * -t
+  end, a)
 end
 
 local function text_w(str, font)
@@ -788,11 +863,9 @@ local SUPPORT_URL = "https://ko-fi.com/danielkharrat"
 
 local function heart(cx, cy, hex, a, k)
   k = k or 1
-  color(hex, a)
-  gfx.circle((cx - 2.6 * k) * S, (cy - 1.2 * k) * S, 3.1 * k * S, 1, 1)
-  gfx.circle((cx + 2.6 * k) * S, (cy - 1.2 * k) * S, 3.1 * k * S, 1, 1)
-  gfx.triangle((cx - 5.6 * k) * S, (cy - 0.2 * k) * S, (cx + 5.6 * k) * S, (cy - 0.2 * k) * S,
-    cx * S, (cy + 5.6 * k) * S)
+  circle(cx - 2.6 * k, cy - 1.2 * k, 3.1 * k, hex, true, a)
+  circle(cx + 2.6 * k, cy - 1.2 * k, 3.1 * k, hex, true, a)
+  tri_down(cx - 5.6 * k, cx + 5.6 * k, cy - 0.2 * k, cx, cy + 5.6 * k, hex, a)
 end
 
 local function open_url(url)
@@ -1156,10 +1229,13 @@ local function draw()
     for _, id in ipairs(it.ids) do iw = iw + math.max(22, text_w(cap_label(id), 4) + 14) + 4 end
     return iw
   end
-  local widest = 0
-  for _, it in ipairs(items) do widest = math.max(widest, item_width(it)) end
+  -- two columns whenever the keys plus a bit of label fit (labels that are too long get shortened),
+  -- so wider fonts (Windows, Linux) don't push the list into one tall column
+  local widest_keys = 0
+  for _, it in ipairs(items) do widest_keys = math.max(widest_keys, item_width(it) - text_w(it.label, 1)) end
   local colw = (W - 2 * pad) / 2
-  local ncols = (widest + 12 <= colw) and 2 or 1
+  local ncols = (widest_keys + 90 <= colw) and 2 or 1
+  if ncols == 1 then colw = W - 2 * pad end
   local nrows = math.ceil(#items / ncols)
 
   -- layout from the bottom up, with a margin at the bottom
@@ -1169,7 +1245,14 @@ local function draw()
   local hdr = shortcuts_hidden and (H - pad - 14) or (row1 - 28) -- "SHORTCUTS" header line
   local sely = hdr - 26
   local wy = 140
-  local wh = math.max(70, sely - 10 - wy)
+  local wh = sely - 10 - wy
+  if wh < 70 then
+    -- window too short for everything: keep the waveform at its smallest and move the rest
+    -- down below it (rows that don't fit are left out) so nothing ever draws on top of it
+    local push = 70 - wh
+    wh = 70
+    sely, hdr, row1 = sely + push, hdr + push, row1 + push
+  end
 
   draw_wave(pad, wy, W - 2 * pad, wh, track, cur)
 
@@ -1241,6 +1324,7 @@ local function draw()
   for i, it in ipairs(items) do
     local x = pad + ((i - 1) % ncols) * colw
     local y = row1 + ((i - 1) // ncols) * rowh
+    if y + 22 > H then break end              -- doesn't fit in the window
     for n, id in ipairs(it.ids) do
       local x0 = x
       x = keycap(cap_label(id), x, y, capturing == id)
@@ -1250,7 +1334,12 @@ local function draw()
       end
       if n < #it.ids then x = x + 4 end
     end
-    text(it.label, x + 8, y + 4, 1, COL.muted)
+    local label, room = it.label, pad + ((i - 1) % ncols) * colw + colw - 12 - (x + 8)
+    if text_w(label, 1) > room then
+      while #label > 1 and text_w(label .. "...", 1) > room do label = label:sub(1, -2) end
+      label = label .. "..."
+    end
+    text(label, x + 8, y + 4, 1, COL.muted)
   end
   if clicked and capturing and not key_clicked then capturing = nil; say("Cancelled") end
 end

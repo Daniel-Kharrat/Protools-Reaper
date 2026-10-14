@@ -1,7 +1,9 @@
 -- @description Daniel_Auto Mixer Panel
 -- @author Daniel Kharrat
--- @version 2.9
+-- @version 2.10
 -- @changelog
+--   Group labels (G1, G2…) are centred in their chips on every OS (they sat low on Windows).
+--   2.9:
 --   Opening or closing the panel from the action list or a shortcut now saves its on/off
 --   state for the startup action too (before, only the toolbar button did), like the
 --   Floating Mixer.
@@ -720,7 +722,9 @@ local function group_chip(x, y, tr, fx, pi, group)
   local h = hit("##grp", x - w, y, w, 18, "Group: channels only share gain within their group")
   rr(x - w, y, w, 18, 9, ACCENT, h.hov and 0.3 or 0.18)
   ImGui.DrawList_AddCircleFilled(DL, x - w + 9, y + 9, 3.5, rgba(ACCENT))
-  text_at(font_label, label, x - w + 16, y + 3, ACCENT)
+  -- centred by the font's real line height (it differs per OS font: Segoe UI sat low with a fixed offset)
+  local _, th = text_w(font_label, label)
+  text_at(font_label, label, x - w + 16, y + (18 - th) / 2, ACCENT)
   if h.click then ImGui.OpenPopup(ctx, "group") end
   if ImGui.BeginPopup(ctx, "group") then
     for g = 1, N_GROUPS do

@@ -430,11 +430,12 @@ local function red_target()
   end
 end
 
+-- the switch happens at the start of the next frame (see loop), so the frame being drawn
+-- doesn't mix the old marker with the new selection (that made the waveform flicker)
+local PENDING = {}
 local function set_target(key)
   if key == target then return end
-  with_track(function(track)
-    if not switch_target(key, track) then say("No markers to clean") end
-  end)
+  PENDING.target = key
 end
 
 ---------------------------------------------------------------- PREVIOUS / NEXT MARKER
@@ -1369,7 +1370,10 @@ local function draw_tooltip()
 end
 
 local frame = 0
-local resize_fix = nil   -- a window resize still being corrected (Windows / Linux)
+-- Window size on Windows / Linux: gfx.init doesn't size an open window the same way on every
+-- system. With the JS extension the window's outside height is simply changed by the needed
+-- amount. Without it, gfx.init is used and any error is corrected on the next resize.
+local WIN = { off_w = 0, off_h = 0 }
 local function loop()
   local ch = gfx.getchar()
   if ch < 0 then return end
@@ -1377,6 +1381,23 @@ local function loop()
     if ch > 0 then assign_key(capturing, ch); capturing = nil end
   else
     if ch > 0 then handle_key(ch) end
+  end
+
+  -- after a resize: see how far off the window came out, and fix that for the next resize
+  if WIN.check_at and reaper.time_precise() > WIN.check_at then
+    if gfx.dock(-1) & 1 == 0 then
+      WIN.off_w = math.max(-80, math.min(80, WIN.off_w + (WIN.want_w - gfx.w / S)))
+      WIN.off_h = math.max(-80, math.min(80, WIN.off_h + (WIN.want_h - gfx.h / S)))
+    end
+    WIN.check_at = nil
+  end
+  -- a new marker colour / name chosen last frame: switch now, before anything is drawn
+  if PENDING.target then
+    local key = PENDING.target
+    PENDING.target = nil
+    with_track(function(track)
+      if not switch_target(key, track) then say("No markers to clean") end
+    end)
   end
 
   mx, my = gfx.mouse_x / S, gfx.mouse_y / S
@@ -1396,28 +1417,26 @@ local function loop()
     if d & 1 == 0 then
       local w, h = gfx.w / S, gfx.h / S
       local nh = math.max(200, h + resize_by)
-      -- macOS measures window position from the bottom of the screen: move it so the TOP edge stays put
-      if OS_IS_MAC then wy = wy + (h - nh) end
-      gfx.init("", w, nh, d, wx, wy)
-      -- Windows and Linux can count the window's frame/title bar in this size, so the window comes
-      -- out a little smaller each time. Remember the size we want and correct it below.
-      if not OS_IS_MAC then
-        resize_fix = { want_w = w, want_h = nh, pw = w, ph = nh, at = reaper.time_precise(), tries = 0 }
+      local ok, l, t, r, b
+      if WIN.hwnd then
+        WIN.hwnd = reaper.JS_Window_Find("Marker Cleanup", true) or WIN.hwnd -- (changes after docking)
+        ok, l, t, r, b = reaper.JS_Window_GetRect(WIN.hwnd)
+      end
+      if ok then
+        -- Windows / Linux with the JS extension: change the window's current outside height by
+        -- exactly the amount needed. Nothing is re-measured, so the size can't drift.
+        local top, oh = math.min(t, b), math.abs(b - t)
+        reaper.JS_Window_SetPosition(WIN.hwnd, l, top, r - l, math.floor(oh + (nh - h) * S + 0.5))
+      else
+        -- macOS measures window position from the bottom of the screen: move it so the TOP edge stays put
+        if OS_IS_MAC then wy = wy + (h - nh) end
+        gfx.init("", w + WIN.off_w, nh + WIN.off_h, d, wx, wy)
+        if not OS_IS_MAC then
+          WIN.want_w, WIN.want_h, WIN.check_at = w, nh, reaper.time_precise() + 0.25
+        end
       end
     end
     resize_by = 0
-  elseif resize_fix and reaper.time_precise() - resize_fix.at > 0.08 then
-    local fx = resize_fix
-    local d, wx, wy = gfx.dock(-1, 0, 0, 0, 0)
-    local aw, ah = gfx.w / S, gfx.h / S
-    local dw, dh = fx.want_w - aw, fx.want_h - ah
-    if d & 1 ~= 0 or (math.abs(dw) <= 1 and math.abs(dh) <= 1) or fx.tries >= 3 then
-      resize_fix = nil                               -- right size now (or docked / gave up)
-    else
-      fx.pw, fx.ph = fx.pw + dw, fx.ph + dh          -- ask for more by exactly what was missing
-      fx.tries, fx.at = fx.tries + 1, reaper.time_precise()
-      gfx.init("", fx.pw, fx.ph, d, wx, wy)
-    end
   end
   gfx.update()
   frame = frame + 1
@@ -1432,13 +1451,9 @@ gfx.ext_retina = 1
 -- after that the saved size/position is used
 gfx.init("Marker Cleanup", tonumber(w) or 540, tonumber(h) or 540,
   tonumber(d) or 0, tonumber(x) or 200, tonumber(y) or 200)
-
--- start on the red markers by default (if the project has any)
-local red = red_target()
-if red and red ~= target then
-  target, pick_mode = red, "colour"
-  reaper.SetExtState(SECTION, "target2", red, true)
-  set_current(nil)
+-- Windows / Linux: with the JS extension the window is resized directly (see the loop)
+if not OS_IS_MAC and reaper.JS_Window_Find and reaper.JS_Window_SetPosition then
+  WIN.hwnd = reaper.JS_Window_Find("Marker Cleanup", true)
 end
 
 initial_count = #target_markers()

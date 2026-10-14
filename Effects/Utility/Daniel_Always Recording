@@ -15,10 +15,14 @@ desc: Daniel_Always Recording
 //
 //   Put this on the Input FX of your voiceover track.
 //   Audio passes through completely untouched.
+//
+//   No controls of its own: the buffer length is set from the
+//   "Daniel_Always Recording.lua" window (it stays a hidden parameter,
+//   so saved projects keep their setting).
 
 options:gmem=Daniel_Always_Recording, maxmem=50000000, gfx_idle=1
 
-slider1:buf_seconds=30<5,60,1>Rolling buffer length (seconds)
+slider1:buf_seconds=30<5,60,1>-Rolling buffer length (seconds)
 
 in_pin:left input
 in_pin:right input
@@ -27,6 +31,7 @@ out_pin:right output
 
 @init
 ext_noinit = 1;
+gfx_ext_retina = 1;   // sharp text on Retina screens
 MAX_BUF = 24000000;     // private local buffer capacity, 60s stereo @ up to 192kHz
 scratch_buf = MAX_BUF;  // private scratch region for contiguous export copy
 DISP_N = 600;           // number of waveform display buckets
@@ -92,6 +97,19 @@ counter >= buf_len ? (
 
 function wmod(num, mod) (
   num < 0 ? mod - ((-num) % mod) : num % mod;
+);
+
+// The FX window: dark background with one quiet line, like the other Daniel scripts
+gfx_w > 0 ? (
+  gfx_set(0.2, 0.2, 0.2, 1);                       // 51,51,51 = REAPER mixer background
+  gfx_rect(0, 0, gfx_w, gfx_h);
+  gfx_setfont(1, "Arial", 16 * (gfx_ext_retina > 1 ? gfx_ext_retina : 1));
+  gfx_set(0.541, 0.541, 0.588, 1);                 // 0x8A8A96
+  #msg = "Controlled from the Always Recording window";
+  gfx_measurestr(#msg, tw, th);
+  gfx_x = floor((gfx_w - tw) / 2);
+  gfx_y = floor((gfx_h - th) / 2);
+  gfx_drawstr(#msg);
 );
 
 export_req = gmem[0];

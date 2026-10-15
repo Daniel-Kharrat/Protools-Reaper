@@ -21,9 +21,10 @@
 -- take volume is reset to 0 dB.
 -- No peak limiting is applied; where the result would clip, a magenta
 -- "CLIPPING" marker is added instead. "Find clipping" jumps to the next one
--- after the edit cursor and zooms in on it. "Fix" selects the phrase around
--- that marker (between the pauses on either side) and runs the normalize on
--- just that time selection, so the louder phrase gets its own, lower gain.
+-- after the edit cursor, time-selects the phrase around it (between the
+-- pauses on either side) and zooms in. Adjust the selection by hand if
+-- needed; "Fix" then runs the normalize on just the time selection, so that
+-- phrase gets its own, lower gain.
 --
 -- Window: settings plus a preset list (save / delete), like an FX window.
 -- Presets are saved in REAPER's presets folder, next to the FX presets:
@@ -929,17 +930,6 @@ local function gotoNextClip(list)
   reaper.UpdateArrange()
 end
 
--- the CLIPPING marker being worked on: the one at the edit cursor (after
--- "Find clipping"), otherwise the next one after it (and jump there)
-local function currentClip(list)
-  local cur = reaper.GetCursorPosition()
-  for _, p in ipairs(list) do
-    if math.abs(p - cur) < 0.25 then return p end
-  end
-  gotoNextClip(list)
-  return reaper.GetCursorPosition()
-end
-
 local FIX_SEARCH = 4.0 -- how far either side of the marker to look for a pause (s)
 
 -- the phrase around a time: from the pause before it to the pause after it
@@ -987,18 +977,32 @@ local function phraseAround(track, t, S)
   return a or t0, b or (t0 + nframes * fdur)
 end
 
--- select the phrase around the current CLIPPING marker and normalize only it
-local function fixClip(list, S)
-  if #list == 0 then return true end
+-- "Find clipping": jump to the next CLIPPING marker, time-select the phrase
+-- around it (on the first selected track) and zoom in so it's all in view
+local function findClip(list, S)
+  if #list == 0 then return end
+  gotoNextClip(list)
+  local t = reaper.GetCursorPosition()
   local track = reaper.GetSelectedTrack(0, 0)
-  if not track then return false end
-  local t = currentClip(list)
+  if not track then return end                         -- no track: just jump there
   local a, b = phraseAround(track, t, S)
-  if not a then return true end
-  reaper.GetSet_LoopTimeRange(true, false, a, b, false)  -- time selection
+  if not a then return end
+  reaper.GetSet_LoopTimeRange(true, false, a, b, false) -- time selection
+  local pad = math.max(0.3, (b - a) * 0.25)
+  local v1, v2 = math.max(0, a - pad), b + pad
+  if v2 - v1 < CLIP_VIEW then                          -- keep at least CLIP_VIEW in view
+    local c = (a + b) / 2
+    v1, v2 = math.max(0, c - CLIP_VIEW / 2), math.max(0, c - CLIP_VIEW / 2) + CLIP_VIEW
+  end
+  reaper.GetSet_ArrangeView2(0, true, 0, 0, v1, v2)
+  reaper.UpdateArrange()
+end
+
+-- "Fix": normalize only what's inside the current time selection
+local function fixSelection(S)
   local only = {}
   for k, v in pairs(S) do only[k] = v end
-  only.tsel = 1                                          -- just this time selection
+  only.tsel = 1
   return run(only)
 end
 
@@ -1017,15 +1021,19 @@ local function frame()
   local clips = clipMarkers()
   ImGui.BeginDisabled(ctx, #clips == 0)
   if ImGui.Button(ctx, #clips > 0 and ("Find clipping (" .. #clips .. ")") or "No clipping") then
-    gotoNextClip(clips)
+    findClip(clips, S)
   end
   if ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, "Find clipping markers") end
+  ImGui.EndDisabled(ctx)
   ImGui.SameLine(ctx)
+  -- [Fix] works on the time selection (set by Find clipping, or by hand)
+  local ts1, ts2 = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
+  ImGui.BeginDisabled(ctx, ts2 - ts1 <= 0)
   if ImGui.Button(ctx, "Fix") then
-    warn = not fixClip(clips, S)
+    warn = not fixSelection(S)
   end
   if ImGui.IsItemHovered(ctx) then
-    ImGui.SetTooltip(ctx, "Select the phrase around this clipping marker\nand normalize only that time selection")
+    ImGui.SetTooltip(ctx, "Normalize only the time selection")
   end
   ImGui.EndDisabled(ctx)
   ImGui.SameLine(ctx)

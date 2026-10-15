@@ -1,2 +1,2 @@
-Daniel_Reaper_Protools v6.3.ReaperConfigZip
-ad9f7c94477ff6033bfbecd3c850a269893b3b328dda2fcf13f84b9e84505e1a
+Daniel_Reaper_Protools v6.4.ReaperConfigZip
+22faff53bedabfeeaeabbc01bb5ac59a03ea1210b80aa52ccf2c3bd7eb1be3ce

@@ -20,8 +20,10 @@
 -- Gain is written to the item volume knob (so the knob shows it); the
 -- take volume is reset to 0 dB.
 -- No peak limiting is applied; where the result would clip, a magenta
--- "CLIPPING" marker is added instead. The "Next clipping" button in the
--- window jumps to the next one after the edit cursor and zooms in on it.
+-- "CLIPPING" marker is added instead. "Find clipping" jumps to the next one
+-- after the edit cursor and zooms in on it. "Fix" selects the phrase around
+-- that marker (between the pauses on either side) and runs the normalize on
+-- just that time selection, so the louder phrase gets its own, lower gain.
 --
 -- Window: settings plus a preset list (save / delete), like an FX window.
 -- Presets are saved in REAPER's presets folder, next to the FX presets:
@@ -927,6 +929,79 @@ local function gotoNextClip(list)
   reaper.UpdateArrange()
 end
 
+-- the CLIPPING marker being worked on: the one at the edit cursor (after
+-- "Find clipping"), otherwise the next one after it (and jump there)
+local function currentClip(list)
+  local cur = reaper.GetCursorPosition()
+  for _, p in ipairs(list) do
+    if math.abs(p - cur) < 0.25 then return p end
+  end
+  gotoNextClip(list)
+  return reaper.GetCursorPosition()
+end
+
+local FIX_SEARCH = 4.0 -- how far either side of the marker to look for a pause (s)
+
+-- the phrase around a time: from the pause before it to the pause after it
+-- (a pause = at least MIN_GAP quieter than gapdb below the loudest part near
+-- the marker). Read from the first selected track, as it plays.
+local function phraseAround(track, t, S)
+  local sr, fl = 16000, 160                       -- 10 ms frames
+  local fdur = fl / sr
+  local t0 = math.max(0, t - FIX_SEARCH)
+  local nframes = math.floor((t + FIX_SEARCH - t0) / fdur)
+  local n = nframes * fl
+  local acc = reaper.CreateTrackAudioAccessor(track)
+  local buf = reaper.new_array(n)
+  local ok = reaper.GetAudioAccessorSamples(acc, sr, 1, t0, n, buf)
+  reaper.DestroyAudioAccessor(acc)
+  if ok ~= 1 then return nil end
+  local smp = buf.table()
+  local db = {}
+  for f = 1, nframes do
+    local sum, base = 0, (f - 1) * fl
+    for i = base + 1, base + fl do local v = smp[i]; sum = sum + v * v end
+    db[f] = 10 * math.log(sum / fl + 1e-12, 10)
+  end
+  -- loudest level within half a second of the marker = the speech level
+  local mf = math.max(1, math.min(nframes, math.floor((t - t0) / fdur) + 1))
+  local peak = -200
+  for f = math.max(1, mf - 50), math.min(nframes, mf + 50) do
+    if db[f] > peak then peak = db[f] end
+  end
+  local thr = peak - S.gapdb
+  local need = math.max(1, math.floor(MIN_GAP / fdur + 0.5))
+  local function quiet(f) return db[f] < thr end
+  -- walk out from the marker until a long enough quiet stretch; the edge sits
+  -- in the middle of that pause
+  local a, run = nil, 0
+  for f = mf, 1, -1 do
+    if quiet(f) then run = run + 1 else run = 0 end
+    if run >= need then a = t0 + (f - 1 + need / 2) * fdur; break end
+  end
+  local b; run = 0
+  for f = mf, nframes do
+    if quiet(f) then run = run + 1 else run = 0 end
+    if run >= need then b = t0 + (f - need / 2) * fdur; break end
+  end
+  return a or t0, b or (t0 + nframes * fdur)
+end
+
+-- select the phrase around the current CLIPPING marker and normalize only it
+local function fixClip(list, S)
+  if #list == 0 then return true end
+  local track = reaper.GetSelectedTrack(0, 0)
+  if not track then return false end
+  local t = currentClip(list)
+  local a, b = phraseAround(track, t, S)
+  if not a then return true end
+  reaper.GetSet_LoopTimeRange(true, false, a, b, false)  -- time selection
+  local only = {}
+  for k, v in pairs(S) do only[k] = v end
+  only.tsel = 1                                          -- just this time selection
+  return run(only)
+end
+
 local function frame()
   presetRow()
   settings()
@@ -941,13 +1016,18 @@ local function frame()
   -- [Next clipping (n)] on the left, only usable when there are CLIPPING markers
   local clips = clipMarkers()
   ImGui.BeginDisabled(ctx, #clips == 0)
-  if ImGui.Button(ctx, #clips > 0 and ("Next clipping (" .. #clips .. ")") or "No clipping") then
+  if ImGui.Button(ctx, #clips > 0 and ("Find clipping (" .. #clips .. ")") or "No clipping") then
     gotoNextClip(clips)
   end
-  ImGui.EndDisabled(ctx)
-  if #clips > 0 and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenDisabled) then
-    ImGui.SetTooltip(ctx, "Go to the next CLIPPING marker after the edit cursor and zoom in on it")
+  if ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, "Find clipping markers") end
+  ImGui.SameLine(ctx)
+  if ImGui.Button(ctx, "Fix") then
+    warn = not fixClip(clips, S)
   end
+  if ImGui.IsItemHovered(ctx) then
+    ImGui.SetTooltip(ctx, "Select the phrase around this clipping marker\nand normalize only that time selection")
+  end
+  ImGui.EndDisabled(ctx)
   ImGui.SameLine(ctx)
   if warn then
     ImGui.AlignTextToFramePadding(ctx)

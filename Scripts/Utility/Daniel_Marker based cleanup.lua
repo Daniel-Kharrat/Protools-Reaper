@@ -22,6 +22,7 @@
 --     Esc = clear selection (close the window with its close button)
 --     Cmd/Ctrl+X = cut the selection only (marker stays, doesn't move on)
 --     Cmd/Ctrl+C = remove the current marker only (nothing is cut)
+--     R / T = zoom out / in
 
 ---------------------------------------------------------------- SETTINGS
 local NUDGE    = 0.02  -- how much A/S/D/F move an edge (seconds)
@@ -437,6 +438,15 @@ local function move_cursor(amount)
   reaper.SetEditCurPos(math.max(0, pos + amount), true, true)
 end
 
+-- horizontal zoom: uses Daniel_Zoom out / in horizontal.lua (same as R / T in REAPER)
+-- if they're installed, otherwise REAPER's own zoom out / in
+local function zoom(dir)
+  local id = reaper.NamedCommandLookup(dir < 0 and "_RS0b6ff327ab8a0206af48a21071f8a3c312ed549d"
+                                                or "_RSa53dfc916138493adc5714520c1cbd03c4da5d15")
+  if not id or id == 0 then id = dir < 0 and 1011 or 1012 end -- View: Zoom out / in horizontal
+  reaper.Main_OnCommand(id, 0)
+end
+
 local function toggle_loop()
   reaper.Main_OnCommand(1068, 0) -- Transport: Toggle repeat
   say(reaper.GetToggleCommandState(1068) == 1 and "Loop on" or "Loop off")
@@ -533,6 +543,8 @@ local ACTION_FN = {
   back_big      = function() move_cursor(-CURSOR_BIG) end,
   fwd_big       = function() move_cursor( CURSOR_BIG) end,
   loop          = toggle_loop,
+  zoom_out      = function() zoom(-1) end,
+  zoom_in       = function() zoom(1) end,
 }
 
 local ACTION_LABEL = {
@@ -544,6 +556,7 @@ local ACTION_LABEL = {
   back_small = "Cursor back (small)", fwd_small = "Cursor forward (small)",
   back_big = "Cursor back (big)", fwd_big = "Cursor forward (big)", loop = "Loop on / off",
   clear = "Clear selection",
+  zoom_out = "Zoom out", zoom_in = "Zoom in",
   play_mode = "Play from selection / normal",
   prev_marker = "Previous marker", prev_marker2 = "Previous marker (2nd key)",
   next_marker = "Next marker", next_marker2 = "Next marker (2nd key)",
@@ -553,6 +566,8 @@ local DEFAULT_KEYS = {
   cut           = { 13, 0 },   -- Enter
   cut_only      = { 120, 4 },  -- Cmd/Ctrl+X
   remove_marker = { 99, 4 },   -- Cmd/Ctrl+C
+  zoom_out      = { 114, 0 },  -- R
+  zoom_in       = { 116, 0 },  -- T
   play          = { 32, 0 },   -- Space
   start_earlier = { 97, 0 },   -- A
   start_later   = { 100, 0 },  -- D
@@ -1252,6 +1267,7 @@ local function draw()
     { ids = { "loop" }, label = reaper.GetToggleCommandState(1068) == 1 and "Loop: on" or "Loop: off" },
     { ids = { "cut_only" },                  label = "Cut only (keep marker)" },
     { ids = { "remove_marker" },             label = "Remove marker only" },
+    { ids = { "zoom_out", "zoom_in" },       label = "Zoom out / in" },
   }
   local function cap_label(id) return capturing == id and "?" or key_name(KEYMAP[id]) end
   local function item_width(it)

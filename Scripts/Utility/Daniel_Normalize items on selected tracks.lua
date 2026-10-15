@@ -977,7 +977,41 @@ local function phraseAround(track, t, S)
   return a or t0, b or (t0 + nframes * fdur)
 end
 
--- "Find clipping": jump to the next CLIPPING marker, time-select the phrase
+-- visible selections, the same as Marker based cleanup: a razor edit on the
+-- track plus the time selection and loop points
+local function clearRazors()
+  for i = 0, reaper.CountTracks(0) - 1 do
+    reaper.GetSetMediaTrackInfo_String(reaper.GetTrack(0, i), "P_RAZOREDITS", "", true)
+  end
+end
+
+local function getRazor(track)
+  local _, str = reaper.GetSetMediaTrackInfo_String(track, "P_RAZOREDITS", "", false)
+  for a, b, g in str:gmatch('(%S+)%s+(%S+)%s+"([^"]*)"') do
+    if g == "" then return tonumber(a), tonumber(b) end
+  end
+end
+
+local function selectRange(track, a, b)
+  clearRazors()
+  reaper.GetSetMediaTrackInfo_String(track, "P_RAZOREDITS", string.format('%.10f %.10f ""', a, b), true)
+  reaper.GetSet_LoopTimeRange2(0, true, false, a, b, false) -- time selection
+  reaper.GetSet_LoopTimeRange2(0, true, true, a, b, false)  -- loop points
+end
+
+-- the range Fix works on: the razor edit on the first selected track (so
+-- hand adjustments to it count), otherwise the time selection
+local function fixRange()
+  local track = reaper.GetSelectedTrack(0, 0)
+  if track then
+    local a, b = getRazor(track)
+    if a and b > a then return a, b end
+  end
+  local t1, t2 = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
+  if t2 > t1 then return t1, t2 end
+end
+
+-- "Find clipping": jump to the next CLIPPING marker, select the phrase
 -- around it (on the first selected track) and zoom in so it's all in view
 local function findClip(list, S)
   if #list == 0 then return end
@@ -987,7 +1021,7 @@ local function findClip(list, S)
   if not track then return end                         -- no track: just jump there
   local a, b = phraseAround(track, t, S)
   if not a then return end
-  reaper.GetSet_LoopTimeRange(true, false, a, b, false) -- time selection
+  selectRange(track, a, b)
   local pad = math.max(0.3, (b - a) * 0.25)
   local v1, v2 = math.max(0, a - pad), b + pad
   if v2 - v1 < CLIP_VIEW then                          -- keep at least CLIP_VIEW in view
@@ -998,8 +1032,11 @@ local function findClip(list, S)
   reaper.UpdateArrange()
 end
 
--- "Fix": normalize only what's inside the current time selection
+-- "Fix": normalize only what's inside the selection (razor edit or time selection)
 local function fixSelection(S)
+  local a, b = fixRange()
+  if not a then return true end
+  reaper.GetSet_LoopTimeRange2(0, true, false, a, b, false) -- the normalize reads the time selection
   local only = {}
   for k, v in pairs(S) do only[k] = v end
   only.tsel = 1
@@ -1026,14 +1063,13 @@ local function frame()
   if ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, "Find clipping markers") end
   ImGui.EndDisabled(ctx)
   ImGui.SameLine(ctx)
-  -- [Fix] works on the time selection (set by Find clipping, or by hand)
-  local ts1, ts2 = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
-  ImGui.BeginDisabled(ctx, ts2 - ts1 <= 0)
+  -- [Fix] works on the selection (set by Find clipping, or adjusted by hand)
+  ImGui.BeginDisabled(ctx, fixRange() == nil)
   if ImGui.Button(ctx, "Fix") then
     warn = not fixSelection(S)
   end
   if ImGui.IsItemHovered(ctx) then
-    ImGui.SetTooltip(ctx, "Normalize only the time selection")
+    ImGui.SetTooltip(ctx, "Normalize only the selection")
   end
   ImGui.EndDisabled(ctx)
   ImGui.SameLine(ctx)

@@ -20,11 +20,14 @@
 --     B = Space plays from the start of the selection / from the cursor (toggle)
 --     Option/Alt+Z or [ = previous marker   Option/Alt+X or ] = next marker
 --     Esc = clear selection (close the window with its close button)
+--     Cmd/Ctrl+X = cut the selection only (marker stays, doesn't move on)
+--     Cmd/Ctrl+C = remove the current marker only (nothing is cut)
 
 ---------------------------------------------------------------- SETTINGS
 local NUDGE    = 0.02  -- how much A/S/D/F move an edge (seconds)
 local PAD      = 0.02  -- how far the selection stays from the words (seconds)
 local MAX_SEL  = 0.8   -- longest selection allowed (seconds)
+local FALLBACK = 0.05  -- no words found around the marker: select this much on each side (seconds)
 local CURSOR_SMALL = 0.2 -- how far C/V move the edit cursor (seconds)
 local CURSOR_BIG   = 1.0 -- how far Z/X move the edit cursor (seconds)
 
@@ -223,7 +226,7 @@ end
 ---------------------------------------------------------------- SELECT
 local function select_marker(track, m)
   local a, b = find_gap(track, m.pos)
-  if not a then a, b = math.max(0, m.pos - 0.15), m.pos + 0.15 end -- fallback: around the marker
+  if not a then a, b = math.max(0, m.pos - FALLBACK), m.pos + FALLBACK end -- fallback: around the marker
   clear_all_razors()
   set_razor(track, a, b)
   set_current(m)
@@ -382,6 +385,25 @@ local function cut_and_next(track)
   if select_next(track, a) then say("Cut") else say("All clean!") end
 end
 
+-- cut the selected section only: the marker stays, and it doesn't move on to the next one
+local function cut_only(track)
+  local a, b = get_razor(track)
+  if not a then say("Nothing selected"); return end
+  cut_range(track, a, b)
+  clear_all_razors()
+  set_time_and_loop(0, 0)
+  say("Cut (marker kept)")
+end
+
+-- remove the current marker only: the selection and the audio stay as they are
+local function remove_marker_only()
+  local m = get_current()
+  if not m then say("No marker selected"); return end
+  reaper.DeleteProjectMarker(0, m.id, false)
+  set_current(nil)
+  say("Marker removed")
+end
+
 local function nudge(edge, dir)
   return function(track)
     local a, b = get_razor(track)
@@ -474,6 +496,8 @@ local IS_MAC = OS_IS_MAC
 
 local ACTION_FN = {
   cut           = function() with_track(cut_and_next, "Marker cleanup: cut") end,
+  cut_only      = function() with_track(cut_only, "Marker cleanup: cut (keep marker)") end,
+  remove_marker = function() with_track(remove_marker_only, "Marker cleanup: remove marker") end,
   play          = function()
     if reaper.GetPlayState() & 1 == 1 then reaper.OnStopButton(); return end
     -- play from the start of the time selection (if that mode is on and there is one)
@@ -513,6 +537,7 @@ local ACTION_FN = {
 
 local ACTION_LABEL = {
   cut = "Cut & next", play = "Play / stop",
+  cut_only = "Cut only (keep marker)", remove_marker = "Remove marker only",
   start_earlier = "Start earlier", start_later = "Start later",
   end_earlier = "End earlier", end_later = "End later",
   undo = "Undo", redo = "Redo",
@@ -526,6 +551,8 @@ local ACTION_LABEL = {
 
 local DEFAULT_KEYS = {
   cut           = { 13, 0 },   -- Enter
+  cut_only      = { 120, 4 },  -- Cmd/Ctrl+X
+  remove_marker = { 99, 4 },   -- Cmd/Ctrl+C
   play          = { 32, 0 },   -- Space
   start_earlier = { 97, 0 },   -- A
   start_later   = { 100, 0 },  -- D
@@ -1223,6 +1250,8 @@ local function draw()
     { ids = { "next_marker", "next_marker2" }, label = "Next marker" },
     { ids = { "play_mode" }, label = play_from_sel and "Play from: selection" or "Play from: cursor" },
     { ids = { "loop" }, label = reaper.GetToggleCommandState(1068) == 1 and "Loop: on" or "Loop: off" },
+    { ids = { "cut_only" },                  label = "Cut only (keep marker)" },
+    { ids = { "remove_marker" },             label = "Remove marker only" },
   }
   local function cap_label(id) return capturing == id and "?" or key_name(KEYMAP[id]) end
   local function item_width(it)

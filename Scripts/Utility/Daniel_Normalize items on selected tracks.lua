@@ -23,8 +23,8 @@
 -- "CLIPPING" marker is added instead. "Find clipping" jumps to the next one
 -- after the edit cursor, time-selects the phrase around it (between the
 -- pauses on either side) and zooms in. Adjust the selection by hand if
--- needed; "Fix" then runs the normalize on just the time selection, so that
--- phrase gets its own, lower gain.
+-- needed; "Fix" then runs the normalize on just that selection and turns
+-- down anything in it that would still clip (loudest peak at -1 dBFS).
 --
 -- Window: settings plus a preset list (save / delete), like an FX window.
 -- Presets are saved in REAPER's presets folder, next to the FX presets:
@@ -1032,7 +1032,10 @@ local function findClip(list, S)
   reaper.UpdateArrange()
 end
 
--- "Fix": normalize only what's inside the selection (razor edit or time selection)
+local FIX_CEIL_DB = -1.0 -- after Fix, the loudest peak in the selection sits here (dBFS)
+
+-- "Fix": normalize only what's inside the selection (razor edit or time
+-- selection), then turn down whatever there would still clip
 local function fixSelection(S)
   local a, b = fixRange()
   if not a then return true end
@@ -1040,7 +1043,39 @@ local function fixSelection(S)
   local only = {}
   for k, v in pairs(S) do only[k] = v end
   only.tsel = 1
-  return run(only)
+
+  reaper.Undo_BeginBlock()
+  -- 1. normalize just the selection, like Apply
+  if not run(only) then reaper.Undo_EndBlock("Fix clipping", -1); return false end
+
+  -- 2. then turn down anything in the selection that would still clip, so its
+  --    loudest peak sits at FIX_CEIL_DB
+  reaper.PreventUIRefresh(1)
+  for ti = 0, reaper.CountSelectedTracks(0) - 1 do
+    local track = reaper.GetSelectedTrack(0, ti)
+    for ii = 0, reaper.CountTrackMediaItems(track) - 1 do
+      local item = reaper.GetTrackMediaItem(track, ii)
+      local p1 = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+      local p2 = p1 + reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+      local take = reaper.GetActiveTake(item)
+      -- only the pieces inside the selection (the run cut the items at its edges)
+      if p1 >= a - 2 * XFADE and p2 <= b + 2 * XFADE and take and not reaper.TakeIsMIDI(take) then
+        local src, s0, e0 = sourceRange(item, take)
+        local maxGain = reaper.CalculateNormalization(src, 2, FIX_CEIL_DB, s0, e0) -- 2 = peak
+        local vol = reaper.GetMediaItemInfo_Value(item, "D_VOL")
+                  * math.abs(reaper.GetMediaItemTakeInfo_Value(take, "D_VOL"))
+        if not bad(maxGain) and vol > maxGain then
+          reaper.SetMediaItemInfo_Value(item, "D_VOL",
+            reaper.GetMediaItemInfo_Value(item, "D_VOL") * maxGain / vol)
+        end
+      end
+    end
+  end
+  removeClipMarkers(a, b) -- nothing in the selection clips any more
+  reaper.PreventUIRefresh(-1)
+  reaper.UpdateArrange()
+  reaper.Undo_EndBlock("Fix clipping", -1)
+  return true
 end
 
 local function frame()

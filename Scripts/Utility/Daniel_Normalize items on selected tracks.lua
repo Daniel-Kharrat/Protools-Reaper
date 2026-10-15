@@ -20,7 +20,8 @@
 -- Gain is written to the item volume knob (so the knob shows it); the
 -- take volume is reset to 0 dB.
 -- No peak limiting is applied; where the result would clip, a magenta
--- "CLIPPING" marker is added instead.
+-- "CLIPPING" marker is added instead. The "Next clipping" button in the
+-- window jumps to the next one after the edit cursor and zooms in on it.
 --
 -- Window: settings plus a preset list (save / delete), like an FX window.
 -- Presets are saved in REAPER's presets folder, next to the FX presets:
@@ -895,6 +896,37 @@ local function keepReaperFocus()
   setFocus(reaper.GetMainHwnd())
 end
 
+-- ---------------------------------------------------------------- go to clipping
+-- CLIPPING markers in the project, in time order
+local function clipMarkers()
+  local t, i = {}, 0
+  while true do
+    local rv, isrgn, pos, _, name = reaper.EnumProjectMarkers(i)
+    if rv == 0 then break end
+    if not isrgn and name == CLIP_NAME then t[#t + 1] = pos end
+    i = i + 1
+  end
+  table.sort(t)
+  return t
+end
+
+local CLIP_VIEW = 2.0 -- seconds shown around a CLIPPING marker after jumping to it
+
+-- moves the edit cursor to the next CLIPPING marker after it (wrapping to the
+-- first one) and zooms the arrange view in around it
+local function gotoNextClip(list)
+  if #list == 0 then return end
+  local cur = reaper.GetCursorPosition()
+  local pos = list[1]
+  for _, p in ipairs(list) do
+    if p > cur + 0.001 then pos = p; break end
+  end
+  reaper.SetEditCurPos(pos, false, false)
+  local a = math.max(0, pos - CLIP_VIEW / 2)
+  reaper.GetSet_ArrangeView2(0, true, 0, 0, a, a + CLIP_VIEW)
+  reaper.UpdateArrange()
+end
+
 local function frame()
   presetRow()
   settings()
@@ -906,6 +938,17 @@ local function frame()
   -- same width as the number boxes, lined up under them
   local BTN_W = VALUE_W - 2 * (ImGui.GetFrameHeight(ctx)
     + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
+  -- [Next clipping (n)] on the left, only usable when there are CLIPPING markers
+  local clips = clipMarkers()
+  ImGui.BeginDisabled(ctx, #clips == 0)
+  if ImGui.Button(ctx, #clips > 0 and ("Next clipping (" .. #clips .. ")") or "No clipping") then
+    gotoNextClip(clips)
+  end
+  ImGui.EndDisabled(ctx)
+  if #clips > 0 and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenDisabled) then
+    ImGui.SetTooltip(ctx, "Go to the next CLIPPING marker after the edit cursor and zoom in on it")
+  end
+  ImGui.SameLine(ctx)
   if warn then
     ImGui.AlignTextToFramePadding(ctx)
     ImGui.TextDisabled(ctx, "Select a track first")

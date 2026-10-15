@@ -438,13 +438,25 @@ local function move_cursor(amount)
   reaper.SetEditCurPos(math.max(0, pos + amount), true, true)
 end
 
--- horizontal zoom: uses Daniel_Zoom out / in horizontal.lua (same as R / T in REAPER)
--- if they're installed, otherwise REAPER's own zoom out / in
+-- horizontal zoom, two steps per press (same as Daniel_Zoom in / out horizontal.lua):
+-- zoom in around the edit cursor when it's on screen, otherwise around the middle of the view;
+-- zoom out always around the middle of the view. The edit cursor never moves.
 local function zoom(dir)
-  local id = reaper.NamedCommandLookup(dir < 0 and "_RS0b6ff327ab8a0206af48a21071f8a3c312ed549d"
-                                                or "_RSa53dfc916138493adc5714520c1cbd03c4da5d15")
-  if not id or id == 0 then id = dir < 0 and 1011 or 1012 end -- View: Zoom out / in horizontal
-  reaper.Main_OnCommand(id, 0)
+  local cmd = dir < 0 and 1011 or 1012                   -- View: Zoom out / in horizontal
+  local cur = reaper.GetCursorPosition()
+  local vs, ve = reaper.GetSet_ArrangeView2(0, false, 0, 0)
+  if dir > 0 and cur > vs and cur < ve then
+    reaper.Main_OnCommand(cmd, 0)
+    reaper.Main_OnCommand(cmd, 0)
+    return
+  end
+  reaper.PreventUIRefresh(1)
+  reaper.SetEditCurPos(vs + (ve - vs) / 2, false, false) -- zoom around the middle of the view
+  reaper.Main_OnCommand(cmd, 0)
+  reaper.Main_OnCommand(cmd, 0)
+  reaper.SetEditCurPos(cur, false, false)                -- put the edit cursor back
+  reaper.PreventUIRefresh(-1)
+  reaper.UpdateArrange()
 end
 
 local function toggle_loop()

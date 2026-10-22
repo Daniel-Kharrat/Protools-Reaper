@@ -1,8 +1,14 @@
-local target_range = 36
+local pixels_per_second = 31
 
 -- Get arrange view start and end
 local view_start, view_end = reaper.GetSet_ArrangeView2(0, false, 0, 0)
 local view_center = (view_start + view_end) / 2
+
+-- Arrange view width in pixels, derived from current zoom
+local view_width_px = (view_end - view_start) * reaper.GetHZoomLevel()
+
+-- Time range that gives the wanted pixels per second at this width
+local target_range = view_width_px / pixels_per_second
 
 -- Calculate new start and end
 local new_start = view_center - (target_range / 2)

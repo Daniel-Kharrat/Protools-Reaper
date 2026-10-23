@@ -214,32 +214,44 @@
     </reapack>
 
     <reapack name="Daniel_Horizontal zoom preset 1.lua" type="script" desc="Daniel_Horizontal zoom preset 1.lua">
-      <version name="1.5" author="Daniel" time="2026-10">
+      <version name="1.6" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%201.lua</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Horizontal zoom preset 2.lua" type="script" desc="Daniel_Horizontal zoom preset 2.lua">
-      <version name="1.5" author="Daniel" time="2026-10">
+      <version name="1.6" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%202.lua</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Horizontal zoom preset 3.lua" type="script" desc="Daniel_Horizontal zoom preset 3.lua">
-      <version name="1.5" author="Daniel" time="2026-10">
+      <version name="1.6" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%203.lua</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Horizontal zoom preset 4.lua" type="script" desc="Daniel_Horizontal zoom preset 4.lua">
-      <version name="1.5" author="Daniel" time="2026-10">
+      <version name="1.6" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%204.lua</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Horizontal zoom preset 5.lua" type="script" desc="Daniel_Horizontal zoom preset 5.lua">
-      <version name="1.5" author="Daniel" time="2026-10">
+      <version name="1.6" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20preset%205.lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Horizontal zoom presets manager (toolbar toggle).lua" type="script" desc="Daniel_Horizontal zoom presets manager (toolbar toggle).lua">
+      <version name="1.0" author="Daniel" time="2026-10">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20presets%20manager%20(toolbar%20toggle).lua</source>
+      </version>
+    </reapack>
+
+    <reapack name="Daniel_Horizontal zoom presets manager.lua" type="script" desc="Daniel_Horizontal zoom presets manager.lua">
+      <version name="1.0" author="Daniel" time="2026-10">
+        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Horizontal%20zoom%20presets%20manager.lua</source>
       </version>
     </reapack>
 

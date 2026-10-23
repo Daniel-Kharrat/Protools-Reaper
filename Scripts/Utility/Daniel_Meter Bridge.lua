@@ -1082,7 +1082,13 @@ local function draw_strip(tr, x, y0, w, h, now)
 
   local hm = hit('##meter', x1, ct + CLIP_H + 2, x2, mb + 2)
   strip_click(hm, tr)
-  if hm.rclick and not is_master then D.meter_menu_tr = tr end   -- REAPER's meter menu (see the window)
+  -- right-click in the middle half of the meter: the meter mode menu (see the window); the top and
+  -- bottom quarters open the options menu, like empty space
+  if hm.rclick and not is_master then
+    local _, my = ImGui.GetMousePos(ctx)
+    local q = (mb - mt) / 4
+    if my >= mt + q and my <= mb - q then D.meter_menu_tr = tr end
+  end
   DnD.strip(hm, tr, x1, x2, y0, y0 + h)
 
   -- clip light on top (latched: REAPER's peak hold went above 0 dBFS). Click: reset

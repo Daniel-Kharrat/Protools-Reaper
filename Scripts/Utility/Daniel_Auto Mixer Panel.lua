@@ -1,9 +1,9 @@
 -- @description Daniel_Auto Mixer Panel
 -- @author Daniel Kharrat
--- @version 2.13
+-- @version 2.15
 -- @changelog
---   Adding a hardware input lists only the inputs no strip is using yet (like tracks);
---   removing a strip, or changing its input, brings that input back.
+--   Hardware-input strips have a segmented input meter, so they're easy to tell from track strips.
+--   Inputs already in use are shown in soft red in the input lists.
 --   2.12:
 --   Every strip has an input selector (left), output selector (middle) and group (right).
 --   Input: No input or a hardware input. Output: Main mix, a hardware output, or None.
@@ -183,6 +183,7 @@ local COL = {
   note    = 0xF2C46D,
   clip    = 0xF2555A,
   in_ok   = 0x4CC38A,
+  in_use  = 0xE08A8E,   -- soft red: input already used by a strip (menus)
 }
 local BLUE = 0x5B9BF0
 local ACCENT = BLUE        -- the panel's accent; inside a channel strip it's that channel's group colour
@@ -694,7 +695,9 @@ end
 -- Pieces of a strip
 ---------------------------------------------------------------------
 -- meters: gain share (wide) + input (slim), with the dB scale on the left
-local function draw_meters(x, top, bot, d)
+local SEG_PITCH, SEG_GAP = 6, 2   -- segmented meters (hardware-input strips): 4 px lit, 2 px gap
+
+local function draw_meters(x, top, bot, d, segmented)
   local gain_w, in_w = 26, 6
   local gx = x + 24
   local ix = gx + gain_w + 5
@@ -719,6 +722,15 @@ local function draw_meters(x, top, bot, d)
     local col = d.in_db > -1 and COL.clip or d.in_db > -6 and COL.note or COL.in_ok
     local itop = iy(d.in_db)
     rr(ix, itop, in_w, bot - itop, 3, col)
+  end
+  -- hardware input: cut the input meter into segments with gaps in the well colour, from the bottom up
+  if segmented then
+    local wc = rgba(COL.well)
+    local gy0 = math.floor(bot + 0.5) - SEG_PITCH
+    while gy0 > top + 2 do
+      ImGui.DrawList_AddRectFilled(DL, ix, gy0, ix + in_w, gy0 + SEG_GAP, wc)
+      gy0 = gy0 - SEG_PITCH
+    end
   end
   return ix + in_w
 end
@@ -827,8 +839,12 @@ local function input_chip(x, y, tr, created)
     local used = used_inputs()
     for ch = 0, n - 1 do
       local name = reaper.GetInputChannelName(ch) or ""
-      local label = string.format("%2d   %s%s", ch + 1, name, (used[ch] and ch ~= cur) and "   (in use)" or "")
-      if ImGui.MenuItem(ctx, label, nil, ch == cur) and ch ~= cur then set_input(tr, ch, created) end
+      local taken = used[ch] and ch ~= cur
+      local label = string.format("%2d   %s%s", ch + 1, name, taken and "   (in use)" or "")
+      if taken then ImGui.PushStyleColor(ctx, ImGui.Col_Text, rgba(COL.in_use)) end
+      local picked = ImGui.MenuItem(ctx, label, nil, ch == cur)
+      if taken then ImGui.PopStyleColor(ctx) end
+      if picked and ch ~= cur then set_input(tr, ch, created) end
     end
     ImGui.EndPopup(ctx)
   end
@@ -901,17 +917,15 @@ end
 local function input_items(pick)
   local n = reaper.GetNumAudioInputs()
   if n == 0 then ImGui.TextColored(ctx, rgba(COL.muted), "No audio inputs (check Audio device settings)") end
-  -- inputs already used by a strip are left out (like tracks); removing that strip brings them back
   local used = used_inputs()
-  local any = false
   for ch = 0, n - 1 do
-    if not used[ch] then
-      any = true
-      local name = reaper.GetInputChannelName(ch) or ""
-      if ImGui.MenuItem(ctx, string.format("%2d   %s", ch + 1, name)) then pick(assign_input, ch) end
-    end
+    local name = reaper.GetInputChannelName(ch) or ""
+    local label = string.format("%2d   %s%s", ch + 1, name, used[ch] and "   (in use)" or "")
+    if used[ch] then ImGui.PushStyleColor(ctx, ImGui.Col_Text, rgba(COL.in_use)) end
+    local picked = ImGui.MenuItem(ctx, label)
+    if used[ch] then ImGui.PopStyleColor(ctx) end
+    if picked then pick(assign_input, ch) end
   end
-  if n > 0 and not any then ImGui.TextColored(ctx, rgba(COL.muted), "All inputs are in use") end
 end
 
 local function track_items(pick)
@@ -1086,7 +1100,7 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   local wy, wh = y + 68, METER_H
   rr(ix, wy, iw, wh, 8, COL.well)
   local top, bot = wy + 26, wy + wh - 26
-  local meters_end = draw_meters(ix + 6, top, bot, d)
+  local meters_end = draw_meters(ix + 6, top, bot, d, slot.created)   -- segmented = hardware input
   local weight_cx_ = ix + iw - 18
   local fader_cx = math.floor((meters_end + weight_cx_ - 12) / 2 + 0.5)   -- centred in the space left
   local weight_cx = ix + iw - 18

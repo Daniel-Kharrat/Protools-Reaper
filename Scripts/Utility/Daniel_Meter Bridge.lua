@@ -1,7 +1,18 @@
 -- @description Daniel_Meter Bridge
--- @version 1.3
+-- @version 1.4
 -- @changelog
---   Support heart (Ko-fi) at the bottom of the dB column, and "Support (Ko-fi)" in the window menu.
+--   Multichannel meters: one meter per track channel (5.1, 7.1, any count). 2-channel tracks still
+--   show a single meter when armed with a mono input. Multichannel strips get wider: every meter
+--   keeps the width it has in a stereo strip of the chosen strip width.
+--   Input menu: "Input: N channels" for multichannel tracks (multichannel input from a start input).
+--   Drag a strip to move the track (like the Floating Mixer). Track spacers shown as gaps, like the
+--   mixer: drag them to move them; right-click: add / remove spacers before or after the selected
+--   tracks. Several selected tracks can be dragged together. No yellow drop highlight.
+--   LED count follows the meter height (taller window = more LEDs), with a Meter resolution option
+--   (right-click: Low / Medium / High). The color zones and dB labels stay in the same place.
+--   Right-click a meter: meter mode menu (peaks, RMS, LUFS..., the same modes as REAPER's mixer);
+--   the bridge shows the track's chosen mode and keeps running while the menu is open.
+--   Right-click > Meter mode (all tracks in window): one mode for every track in the window.
 -- @author Daniel
 -- @about
 --   # Meter Bridge
@@ -14,7 +25,8 @@
 --     number; click it to change the track's input
 --   - Meter colors: deep green below -18, light green -18 to -6, amber -6 to 0, red = clip
 --   - Record-armed tracks show their input (as REAPER's meters do), names turn red
---   - Armed tracks with a mono input show a single meter
+--   - One meter per track channel (stereo, 5.1, 7.1...); 2-channel tracks armed with a mono input
+--     show a single meter
 --   - Peak hold (off / 1 s / 2 s / 5 s / until reset), latched clip lights
 --   - Clip lights follow REAPER's own peak hold: when REAPER resets its peaks, they reset too
 --   - Strips wrap into rows when there's room; in a short window (e.g. the top docker) they stay in
@@ -30,6 +42,11 @@
 --   - Tracks per window: all, record-armed, follow the selection, or a fixed list (Show selected
 --     tracks / Clear list / Tracks to show), like the Floating Mixer; lists are saved in the project
 --   - Click meter / name / number bar: select track (Cmd/Ctrl: toggle, Shift: range)
+--   - Drag a strip (meter, name or number bar) onto another: move the track in the project, like the
+--     mixer (left half: before it, right half: after it; selected tracks move together)
+--   - Spacers (REAPER's track spacers, the same as the mixer's) show as gaps; drag one onto a strip to
+--     move it. Right-click: add / remove spacers before or after the selected tracks
+--   - Drop a track on a spacer: left half puts it before the spacer, right half after it
 --   - Double-click name: rename the track (Enter: keep, Esc: cancel)
 --   - Double-click number bar: recolor the track with the Daniel_Color Palette script
 --   - Click an input selector: change the track's record input
@@ -37,6 +54,7 @@
 --   - + (top of the dB column, level with the input selectors): open a new bridge window
 --   - Heart (bottom of the dB column, level with the number bars): support the script on Ko-fi
 --   - Right-click the title bar or the dB column: New window, Window color, Dock / Undock, Close window
+--   - Right-click a meter: meter mode (peaks / RMS / LUFS, as in the mixer; selected tracks change together)
 --   - Right-click anywhere else: options (tracks, width, peak hold, release, names, input selector...)
 --   - Running the action again closes the window
 --
@@ -162,15 +180,17 @@ local DEFAULTS = {
   release = 'fast',      -- 'fast' | 'medium' | 'slow'
   names = 1,             -- track names under the meter
   input = 'number',      -- input selector: 'number' (shown) | 'off'
+  res = 'medium',        -- meter resolution: 'low' | 'medium' | 'high' (LEDs follow the height)
 }
 -- view options are per window; window 1 uses the original names (its settings carry over), others '_2'...
-local WIN_KEYS = { filter = true, skip_hidden = true, width = true, names = true, input = true, dock = true }
+local WIN_KEYS = { filter = true, skip_hidden = true, width = true, names = true, input = true, res = true, dock = true }
 local function opt_key(k, n) return (n == 1 or not WIN_KEYS[k]) and k or (k .. '_' .. n) end
 local function load_opt(k, n)
   local v, d = r.GetExtState(EXT, opt_key(k, n)), DEFAULTS[k]
   if v == '' or (k == 'release' and not ({ fast = 1, medium = 1, slow = 1 })[v]) then return d end
   if type(d) == 'number' then return tonumber(v) or d end
   if k == 'filter' and v == 'selected' then return 'follow' end   -- (older name)
+  if k == 'res' then return (v == 'max' and 'high') or (({ low = 1, medium = 1, high = 1 })[v] and v) or d end
   if k == 'input' and v ~= 'off' then return 'number' end        -- (channel names were dropped)
   return v
 end
@@ -186,7 +206,15 @@ local function set_opt(k, v)
   r.SetExtState(EXT, opt_key(k, S._n), tostring(v), true)
 end
 
-local WIDTHS  = { narrow = 24, normal = 36, wide = 48 }
+local WIDTHS  = { narrow = 24, normal = 36, wide = 48 }   -- a stereo strip
+-- strip width for n meters: each meter keeps the width it has in a stereo strip (narrow: 7 px),
+-- so 6 meters make a strip about 3 times as wide as stereo. Mono and stereo stay the base width.
+local function strip_width(n)
+  local base = WIDTHS[S.width] or 24
+  if n <= 2 then return base end
+  local mw = (base - 10) / 2               -- 2 px strip inset + 6 px meter padding + 2 px gap, halved
+  return math.floor(8 + n * mw + (n - 1) * 1 + 0.5)
+end
 -- dB per second. REAPER's own meter decay (Preferences > Track control panels) also applies:
 -- the meter can't fall faster than that.
 local RELEASE = { fast = 120, medium = 60, slow = 30 }
@@ -194,11 +222,8 @@ local RELEASE = { fast = 120, medium = 60, slow = 30 }
 --------------------------------------------------------------------------------
 -- Look
 --------------------------------------------------------------------------------
--- LED segments (dB thresholds, top to bottom): a segment lights when the level reaches it.
--- Evenly spaced like a console bridge; the scale is finer near the top.
+-- The Medium meter's LEDs (dB thresholds, top to bottom): they define the meter scale (see seg_set).
 local SEG = { 0, -1, -2, -3, -4, -6, -8, -10, -12, -15, -18, -21, -24, -27, -30, -35, -40, -45, -50, -60 }
--- shorter meters use fewer, bigger LEDs (same color zones)
-local SEG_SHORT = { 0, -3, -6, -9, -12, -18, -24, -30, -40, -60 }
 -- dB labels by priority: placed in this order wherever they don't overlap a label already placed
 local LABEL_ORDER = { 0, -18, -60, -6, -30, -12, -40, -3, -24 }
 local COL = {
@@ -223,18 +248,87 @@ local function dim(c, k)
   return rgba(ch(24), ch(16), ch(8))
 end
 local function brightness(c) return 0.299 * ((c >> 24) & 255) + 0.587 * ((c >> 16) & 255) + 0.114 * ((c >> 8) & 255) end
--- a segment lights when the level reaches its threshold t; colors by zone:
--- 0 and above = clip (red), -6..0 = amber, -18..-6 = light green, below -18 = deep green
-local function seg_col(t)
-  if t >= 0 then return COL.red elseif t >= -6 then return COL.amber elseif t >= -18 then return COL.green_light end
-  return COL.green_deep
+-- The meter scale is fixed: every color zone keeps the same place and height whatever the resolution
+-- (the Medium meter's layout, 20 units from the top: the red clip LED 0..1, amber 0 to -6 dB 1..6,
+-- light green -6 to -18 dB 6..11, deep green -18 to -60 dB 11..20). A higher resolution splits each
+-- zone into more, smaller LEDs; a lower one into fewer, bigger LEDs. dB <-> units follow the
+-- Medium meter's steps (finer near the top), so the dB labels stay in the same spots too.
+local function db_to_u(t)
+  if t >= SEG[1] then return 1 end
+  for k = 1, #SEG - 1 do
+    if t >= SEG[k + 1] then return k + (SEG[k] - t) / (SEG[k] - SEG[k + 1]) end
+  end
+  return #SEG
 end
-local function seg_set(list)
-  local set = { t = list, lit = {}, unlit = {} }
-  for i, t in ipairs(list) do set.lit[i] = seg_col(t); set.unlit[i] = dim(seg_col(t), 0.16) end
+local function u_to_db(u)
+  local k = math.floor(u)
+  if k < 1 then return SEG[1] elseif k >= #SEG then return SEG[#SEG] end
+  return SEG[k] - (u - k) * (SEG[k] - SEG[k + 1])
+end
+local ZONES = {   -- top / bottom (units) and color of each zone below the red clip LED
+  { 1, 6, COL.amber }, { 6, 11, COL.green_light }, { 11, 20, COL.green_deep },
+}
+-- counts = LEDs in the amber, light green and deep green zones (+1 red clip LED)
+local function seg_set(counts)
+  local set = { t = {}, u0 = {}, u1 = {}, lit = {}, unlit = {} }
+  local function add(t, u0, u1, c)
+    local i = #set.t + 1
+    set.t[i], set.u0[i], set.u1[i], set.lit[i], set.unlit[i] = t, u0, u1, c, dim(c, 0.16)
+  end
+  add(0, 0, 1, COL.red)
+  local min_u = 99
+  for z, zone in ipairs(ZONES) do
+    local n, top, bot = counts[z], zone[1], zone[2]
+    for j = 1, n do
+      local u0, u1 = top + (bot - top) * (j - 1) / n, top + (bot - top) * j / n
+      add(u_to_db(u1), u0, u1, zone[3])        -- lights when the level reaches the LED's bottom edge
+    end
+    min_u = math.min(min_u, (bot - top) / n)
+  end
+  set.min_u = min_u                            -- the smallest LED (the red one aside), for fitting
   return set
 end
-local SET_FULL, SET_SHORT = seg_set(SEG), seg_set(SEG_SHORT)
+-- meter resolution (right-click > Meter resolution): low, medium, high, very high
+-- The number of LEDs follows the meter's height: one LED per this many pixels (gap included), so a
+-- taller window shows more LEDs and a shorter one fewer, bigger LEDs, up to the resolution's maximum
+-- (so the three always differ in a tall window). A resolution that would look the same as the one in
+-- use at the window's current height is grayed out in the menu.
+local RES = {
+  low    = { pitch = 10, max = 20 },
+  medium = { pitch = 7,  max = 40 },
+  high   = { pitch = 5,  max = 60 },
+}
+local RES_MENU = { { 'Low', 'low' }, { 'Medium', 'medium' }, { 'High', 'high' } }
+local MIN_LEDS = 4                                  -- the red LED + one per zone
+local function led_count(res, mh)
+  local o = RES[res] or RES.medium
+  return clamp(math.floor(mh / o.pitch), MIN_LEDS, o.max)
+end
+local set_cache = {}
+-- the LED set for a meter mh pixels tall: N LEDs (1 red + the rest shared out by zone size)
+local function seg_for(mh)
+  local n = led_count(S.res, mh) - 1                -- LEDs below the red one, at least 1 per zone
+  if set_cache[n] then return set_cache[n] end
+  local total, counts, rem, used = 0, {}, {}, 0
+  for _, z in ipairs(ZONES) do total = total + (z[2] - z[1]) end
+  for i, z in ipairs(ZONES) do
+    local exact = n * (z[2] - z[1]) / total
+    counts[i] = math.max(1, math.floor(exact)); rem[i] = exact - math.floor(exact)
+    used = used + counts[i]
+  end
+  while used < n do                                 -- the leftover LEDs go to the biggest remainders
+    local best = 1
+    for i = 2, #ZONES do if rem[i] > rem[best] then best = i end end
+    counts[best], rem[best], used = counts[best] + 1, -1, used + 1
+  end
+  while used > n do                                 -- (only when a zone was raised to its minimum of 1)
+    local big = 1
+    for i = 2, #ZONES do if counts[i] > counts[big] then big = i end end
+    counts[big], used = counts[big] - 1, used - 1
+  end
+  set_cache[n] = seg_set(counts)
+  return set_cache[n]
+end
 
 local function val2db(v)
   if not v or v < 0.0000000298023223876953125 then return -150.0 end
@@ -333,14 +427,44 @@ local function track_info(tr)
   return tostring(n), (name ~= '' and name or ('Track ' .. n)), col
 end
 
--- armed with a mono audio input -> one meter column
-local function n_meters(tr)
+-- the track's channel count (2 if REAPER reports nothing)
+local function n_chan(tr)
+  local nch = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_NCHAN') or 2)
+  return nch >= 1 and nch or 2
+end
+-- one meter per track channel. Only a 2-channel track looks at its input: armed with a mono audio
+-- input -> one meter column
+local function n_peak_meters(tr)
+  local nch = n_chan(tr)
+  if nch ~= 2 then return nch end
   if tr == r.GetMasterTrack(0) then return 2 end
   if r.GetMediaTrackInfo_Value(tr, 'I_RECARM') ~= 1 then return 2 end
   local ri = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_RECINPUT'))
   if ri >= 0 and ri < 4096 and ri & (1024 | 2048) == 0 then return 1 end
   return 2
 end
+-- The track's meter mode, the same setting as REAPER's mixer (right-click a meter > the Meters options,
+-- I_VUMODE): stereo peaks (2 meters, or 1 for a mono input as above), multichannel peaks (one per channel),
+-- stereo RMS, or one combined RMS / LUFS-M / LUFS-S meter. RMS / loudness are read from channels
+-- 1024 / 1025. Disabled: unlit meters. The master keeps peaks (its mode is in REAPER's master VU settings).
+local function vu_mode(tr)
+  if tr == r.GetMasterTrack(0) then return 0, false end
+  local v = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_VUMODE'))
+  return v & 30, (v & 1) ~= 0
+end
+-- the channels a strip's meters show (one meter each)
+local function meter_chans(tr)
+  local mode = vu_mode(tr)
+  if mode == 4 then return { 1024, 1025 } end                  -- stereo RMS
+  if mode ~= 0 and mode ~= 2 then return { 1024 } end          -- combined RMS / LUFS
+  -- stereo peaks: REAPER only meters channels 1-2 then, so at most 2 meters (the master keeps all)
+  local cnt = n_peak_meters(tr)
+  if mode == 0 and cnt > 2 and tr ~= r.GetMasterTrack(0) then cnt = 2 end
+  local t = {}
+  for c = 0, cnt - 1 do t[#t + 1] = c end
+  return t
+end
+local function n_meters(tr) return #meter_chans(tr) end
 
 --------------------------------------------------------------------------------
 -- Record input: labels and names
@@ -518,9 +642,12 @@ local function meter(tr, ch, now)
 end
 
 local function reset_track(tr)
-  r.Track_GetPeakHoldDB(tr, 0, true); r.Track_GetPeakHoldDB(tr, 1, true)
   local g = r.GetTrackGUID(tr)
-  for ch = 0, 1 do local st = meters[g .. ':' .. ch]; if st then st.hold, st.hold_t = st.disp, 0 end end
+  for ch = 0, n_chan(tr) - 1 do
+    r.Track_GetPeakHoldDB(tr, ch, true)
+    local st = meters[g .. ':' .. ch]; if st then st.hold, st.hold_t = st.disp, 0 end
+  end
+  for ch = 1024, 1025 do local st = meters[g .. ':' .. ch]; if st then st.hold, st.hold_t = st.disp, 0 end end
 end
 local function reset_all()
   reset_track(r.GetMasterTrack(0))
@@ -571,7 +698,8 @@ local function hit(id, x1, y1, x2, y2, tip)
   ImGui.InvisibleButton(ctx, id, math.max(1, x2 - x1), math.max(1, y2 - y1))
   local hov = ImGui.IsItemHovered(ctx)
   if tip and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_DelayNormal) then ImGui.SetTooltip(ctx, tip) end
-  return { click = ImGui.IsItemClicked(ctx, ImGui.MouseButton_Left), hov = hov,
+  return { click = ImGui.IsItemClicked(ctx, ImGui.MouseButton_Left), hov = hov, ok = true,
+           act = ImGui.IsItemActive(ctx), released = ImGui.IsItemDeactivated(ctx),
            rclick = ImGui.IsItemClicked(ctx, ImGui.MouseButton_Right),
            dbl = hov and ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) }
 end
@@ -606,7 +734,7 @@ end
 local function strip_layout(h)
   local L = { input = S.input ~= 'off' and h >= ROW_FULL, name = S.names == 1 and h >= 90 }
   local mh = h - 3 - (L.input and INPUT_H + 4 or 0) - CLIP_H - 2 - NUM_H - (L.name and NAME_H or 0) - 3
-  L.seg = (mh >= 4 * #SEG) and SET_FULL or SET_SHORT
+  L.seg, L.mh = seg_for(mh), mh                    -- LEDs follow the height and the resolution
   return L
 end
 local function geom(y0, h)
@@ -616,8 +744,9 @@ local function geom(y0, h)
   return ct, mt, mb
 end
 local function seg_y(i, mt, mb)
-  local sh = (mb - mt) / #D.lay.seg.t
-  return mt + (i - 1) * sh, mt + i * sh, sh
+  local set, k = D.lay.seg, (mb - mt) / #SEG
+  local a, b = mt + set.u0[i] * k, mt + set.u1[i] * k
+  return a, b, b - a
 end
 
 local function draw_scale(x, y0, h, bg, row_h, txt)
@@ -626,15 +755,12 @@ local function draw_scale(x, y0, h, bg, row_h, txt)
   -- so strips scrolled sideways don't show through
   local wx = ImGui.GetWindowPos(ctx)
   rect(math.min(wx, x), y0 - 2, x + SCALE_W, y0 + row_h, bg)
-  local idx = {}
-  for i, t in ipairs(D.lay.seg.t) do idx[t] = i end
   local placed = {}
+  local k = (mb - mt) / #SEG
   ImGui.PushFont(ctx, font_small)
   for _, t in ipairs(LABEL_ORDER) do
-    local i = idx[t]
-    if i then
-      local a, b = seg_y(i, mt, mb)
-      local cy = (a + b) / 2
+    do   -- at the same spot for every resolution (the middle of the Medium meter's LED for t)
+      local cy = mt + (db_to_u(t) - 0.5) * k
       local ok = cy - 5 >= y0 and cy + 5 <= y0 + h
       for _, py in ipairs(placed) do if math.abs(py - cy) < 11 then ok = false; break end end
       if ok then
@@ -744,6 +870,178 @@ local function rename_field(tr, x1, y1, x2, y2)
   end
 end
 
+--------------------------------------------------------------------------------
+-- Moving tracks and spacers (same as the Floating Mixer): drag a strip (meter, name or number bar)
+-- onto another strip to move the track in the project. Left half: before that track, right half:
+-- after it. If the dragged track is selected, all selected tracks move together (REAPER's behavior).
+-- Spacers are REAPER's own track spacers (I_SPACER, shared with the mixer): shown as a gap; drag one
+-- onto a strip to move it.
+--------------------------------------------------------------------------------
+-- click on a strip: select. Pressing on a track that's already selected (no modifier) keeps the
+-- selection until the mouse is released, so several selected tracks can be dragged together; a
+-- click without a drag then selects only that track, like REAPER's mixer
+local function strip_click(h, tr)
+  if h.click then
+    D.dragged = false
+    if r.IsTrackSelected(tr) and mods() == 0 then D.press_tr = tr else D.press_tr = nil; select_click(tr) end
+  end
+  if h.act and ImGui.IsMouseDragging(ctx, ImGui.MouseButton_Left) then D.dragged = true end
+  if h.released and D.press_tr == tr then
+    if not D.dragged then select_click(tr) end
+    D.press_tr = nil
+  end
+end
+
+local DnD = {}
+do
+  DnD.track = function(g)
+    for i = 0, r.CountTracks(0) - 1 do
+      local t = r.GetTrack(0, i)
+      if r.GetTrackGUID(t) == g then return t end
+    end
+  end
+  -- theme "drag and drop preview indicator" color (col_repos), like the Floating Mixer
+  DnD.color = function()
+    if r.GetThemeColor then
+      local c = r.GetThemeColor('col_repos', 0)
+      if c and c >= 0 then local R, G_, B = r.ColorFromNative(c); return rgba(R, G_, B) end
+    end
+    return 0x455C78FF
+  end
+  DnD.move_track = function(src, dst, after)
+    local sel = {}
+    local moving_selection = r.IsTrackSelected(src)
+    if not moving_selection then
+      for i = 0, r.CountSelectedTracks(0) - 1 do sel[#sel + 1] = r.GetSelectedTrack(0, i) end
+    end
+    local idx = math.floor(r.GetMediaTrackInfo_Value(dst, 'IP_TRACKNUMBER')) - 1 + (after and 1 or 0)
+    r.Undo_BeginBlock()
+    r.PreventUIRefresh(1)
+    if not moving_selection then r.SetOnlyTrackSelected(src) end
+    r.ReorderSelectedTracks(idx, 0)
+    if not moving_selection then                       -- put the selection back the way it was
+      for i = 0, r.CountTracks(0) - 1 do r.SetTrackSelected(r.GetTrack(0, i), false) end
+      for _, t in ipairs(sel) do if r.ValidatePtr2(0, t, 'MediaTrack*') then r.SetTrackSelected(t, true) end end
+    end
+    r.PreventUIRefresh(-1)
+    r.Undo_EndBlock('Move tracks', -1)
+  end
+  -- the item just submitted (meter / name / number bar) of strip tr, whose rect is x1..x2, y1..y2:
+  -- drag it to move the track, and drop tracks / spacers on it
+  DnD.strip = function(h, tr, x1, x2, y1, y2)
+    if not h.ok or tr == r.GetMasterTrack(0) then return end
+    if ImGui.BeginDragDropSource(ctx) then
+      ImGui.SetDragDropPayload(ctx, 'DTS_TRACK', r.GetTrackGUID(tr))
+      local num, nm = track_info(tr)
+      ImGui.Text(ctx, 'Move track ' .. num .. ': ' .. nm)
+      ImGui.EndDragDropSource(ctx)
+    end
+    if not ImGui.BeginDragDropTarget(ctx) then return end
+    local mx = ImGui.GetMousePos(ctx)
+    local after = mx > (x1 + x2) / 2
+    local fg = ImGui.GetForegroundDrawList(ctx)
+    local lx = after and x2 or x1
+    -- would dropping here actually change the order? (landing right next to where it already is = no)
+    local function changes(src)
+      if not src or src == tr then return false end
+      local si = r.GetMediaTrackInfo_Value(src, 'IP_TRACKNUMBER')
+      local ins = r.GetMediaTrackInfo_Value(tr, 'IP_TRACKNUMBER') + (after and 1 or 0)
+      return ins ~= si and ins ~= si + 1
+    end
+    -- spacers: left half = spacer before this track, right half = before the next track in the project
+    local function spacer_dest()
+      if not after then return tr end
+      return r.GetTrack(0, math.floor(r.GetMediaTrackInfo_Value(tr, 'IP_TRACKNUMBER')))
+    end
+    local rv, typ, payload = ImGui.GetDragDropPayload(ctx)
+    if rv and typ == 'DTS_TRACK' and changes(DnD.track(payload)) then
+      ImGui.DrawList_AddRectFilled(fg, lx - 2, y1, lx + 2, y2, DnD.color())
+    end
+    if rv and typ == 'DTS_SPACER' then
+      local src, dst = DnD.track(payload), spacer_dest()
+      if src and dst and dst ~= src and r.GetMediaTrackInfo_Value(dst, 'I_SPACER') ~= 1 then
+        ImGui.DrawList_AddRectFilled(fg, lx - 2, y1, lx + 2, y2, DnD.color())
+      end
+    end
+    local oks, sdata = ImGui.AcceptDragDropPayload(ctx, 'DTS_SPACER', ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
+    if oks and sdata then
+      local src, dst = DnD.track(sdata), spacer_dest()
+      if src and dst and dst ~= src and r.GetMediaTrackInfo_Value(dst, 'I_SPACER') ~= 1 then
+        r.Undo_BeginBlock()
+        r.SetMediaTrackInfo_Value(src, 'I_SPACER', 0)
+        r.SetMediaTrackInfo_Value(dst, 'I_SPACER', 1)
+        r.TrackList_AdjustWindows(false)
+        r.Undo_EndBlock('Move spacer', -1)
+      end
+    end
+    local ok, data = ImGui.AcceptDragDropPayload(ctx, 'DTS_TRACK', ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
+    if ok and data then
+      local src = DnD.track(data)
+      if changes(src) then DnD.move_track(src, tr, after) end
+    end
+    ImGui.EndDragDropTarget(ctx)
+  end
+  -- a spacer: the window background as a gap; held = lighter gray, like REAPER's; drag it to move it
+  DnD.spacer = function(tr, x1, y1, x2, y2)
+    local h = hit('##spacer', x1, y1, x2, y2, 'Spacer\nDrag onto a strip: move it\nDrop a track on its left / right half: before / after the spacer')
+    if not h.ok then return end
+    if h.act then rect(x1, y1, x2, y2, 0x525252FF) end
+    if ImGui.BeginDragDropSource(ctx) then
+      ImGui.SetDragDropPayload(ctx, 'DTS_SPACER', r.GetTrackGUID(tr))
+      ImGui.Text(ctx, 'Move spacer')
+      ImGui.EndDragDropSource(ctx)
+    end
+    -- drop a track on the spacer: left half = before the spacer, right half = after it
+    if ImGui.BeginDragDropTarget(ctx) then
+      local mx = ImGui.GetMousePos(ctx)
+      local after = mx > (x1 + x2) / 2
+      local rv, typ = ImGui.GetDragDropPayload(ctx)
+      if rv and typ == 'DTS_TRACK' then
+        local lx = after and x2 or x1
+        ImGui.DrawList_AddRectFilled(ImGui.GetForegroundDrawList(ctx), lx - 2, y1, lx + 2, y2, DnD.color())
+      end
+      local ok, data = ImGui.AcceptDragDropPayload(ctx, 'DTS_TRACK', ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
+      local src = ok and data and DnD.track(data)
+      if src and r.ValidatePtr2(0, tr, 'MediaTrack*') then DnD.move_to_spacer(src, tr, after) end
+      ImGui.EndDragDropTarget(ctx)
+    end
+  end
+  -- move the dragged track (or the selected tracks, if it's one of them) next to the spacer that sits
+  -- before track sp: placed where sp is, then the spacer goes after them (before) or before them (after)
+  DnD.move_to_spacer = function(src, sp, after)
+    local moved = {}
+    if r.IsTrackSelected(src) then
+      for i = 0, r.CountSelectedTracks(0) - 1 do moved[r.GetSelectedTrack(0, i)] = true end
+    else
+      moved[src] = true
+    end
+    -- the first track at or after the spacer that isn't moving: the tracks go in before it
+    local anchor
+    for i = math.floor(r.GetMediaTrackInfo_Value(sp, 'IP_TRACKNUMBER')) - 1, r.CountTracks(0) - 1 do
+      local t = r.GetTrack(0, i)
+      if not moved[t] then anchor = t; break end
+    end
+    r.Undo_BeginBlock()
+    r.PreventUIRefresh(1)
+    r.SetMediaTrackInfo_Value(sp, 'I_SPACER', 0)
+    if anchor then DnD.move_track(src, anchor, false)
+    else DnD.move_track(src, r.GetTrack(0, r.CountTracks(0) - 1), true) end
+    local first                                   -- the first moved track, where it is now
+    for i = 0, r.CountTracks(0) - 1 do
+      local t = r.GetTrack(0, i)
+      if moved[t] then first = t; break end
+    end
+    if after then
+      if first then r.SetMediaTrackInfo_Value(first, 'I_SPACER', 1) end
+    elseif anchor then
+      r.SetMediaTrackInfo_Value(anchor, 'I_SPACER', 1)
+    end
+    r.TrackList_AdjustWindows(false)
+    r.PreventUIRefresh(-1)
+    r.Undo_EndBlock('Move tracks', -1)
+  end
+end
+
 local function draw_strip(tr, x, y0, w, h, now)
   local num, name, tcol = track_info(tr)
   local is_master = tr == r.GetMasterTrack(0)
@@ -757,14 +1055,19 @@ local function draw_strip(tr, x, y0, w, h, now)
 
   -- meters
   local ct, mt, mb = geom(y0, h)
-  local n = n_meters(tr)
+  local chans = meter_chans(tr)
+  local n = #chans
+  local _, vu_off = vu_mode(tr)
   local mx1, mx2 = x1 + 3, x2 - 3
-  local gap = 2
-  local cw = (n == 2) and (mx2 - mx1 - gap) / 2 or (mx2 - mx1)
+  -- gap between meters: 2 px for stereo, 1 px for more channels (the strip is widened for them)
+  local gap = (n <= 2) and 2 or 1
+  local cw = (mx2 - mx1 - gap * (n - 1)) / n
   for c = 0, n - 1 do
-    local disp, hold = meter(tr, c, now)
+    local disp, hold = meter(tr, chans[c + 1], now)
+    if vu_off then disp, hold = -150, -150 end               -- meter disabled in REAPER: unlit
     local cx1 = math.floor(mx1 + c * (cw + gap))
-    local cx2 = math.floor(cx1 + cw)
+    local cx2 = math.floor(mx1 + c * (cw + gap) + cw)
+    if cx2 <= cx1 then cx2 = cx1 + 1 end
     rect(cx1, mt, cx2, mb, COL.meter_bg)
     local set = D.lay.seg
     local hold_i
@@ -778,11 +1081,14 @@ local function draw_strip(tr, x, y0, w, h, now)
   end
 
   local hm = hit('##meter', x1, ct + CLIP_H + 2, x2, mb + 2)
-  if hm.click then select_click(tr) end
+  strip_click(hm, tr)
+  if hm.rclick and not is_master then D.meter_menu_tr = tr end   -- REAPER's meter menu (see the window)
+  DnD.strip(hm, tr, x1, x2, y0, y0 + h)
 
   -- clip light on top (latched: REAPER's peak hold went above 0 dBFS). Click: reset
   local hold_db = -150
-  for c = 0, (n == 1 and 0 or 1) do hold_db = math.max(hold_db, r.Track_GetPeakHoldDB(tr, c, false) * 100) end
+  local pk = n_peak_meters(tr)                               -- the clip light always follows the peaks
+  for c = 0, pk - 1 do hold_db = math.max(hold_db, r.Track_GetPeakHoldDB(tr, c, false) * 100) end
   local clipped = hold_db > 0
   -- REAPER reset its peaks (on record start if it's set to, Cmd/Ctrl-click in its mixer...): drop our
   -- held LEDs for this track too
@@ -791,7 +1097,7 @@ local function draw_strip(tr, x, y0, w, h, now)
     D.rhold = D.rhold or {}
     local prev = D.rhold[g]
     if prev and hold_db < prev - 0.5 then
-      for ch = 0, 1 do local st = meters[g .. ':' .. ch]; if st then st.hold, st.hold_t = st.disp, 0 end end
+      for _, ch in ipairs(chans) do local st = meters[g .. ':' .. ch]; if st then st.hold, st.hold_t = st.disp, 0 end end
     end
     D.rhold[g] = hold_db
   end
@@ -801,6 +1107,7 @@ local function draw_strip(tr, x, y0, w, h, now)
   if hr.click then if is_ctrl() or is_alt() then reset_all() else reset_track(tr) end end
 
   local tip = num .. ': ' .. name .. '\nClick: select (Cmd/Ctrl: toggle, Shift: range)'
+    .. (is_master and '' or '\nDrag: move the track')
 
   -- name, like the mixer: red when armed, the track color when it has one, else light gray
   local by = y0 + h - NUM_H
@@ -820,7 +1127,8 @@ local function draw_strip(tr, x, y0, w, h, now)
       text_in(font_name, x1, ny, x2, by, nc, fit(font_name, name, x2 - x1 - 2))
       ImGui.PopFont(ctx)
       local hn = hit('##name', x1, ny, x2, by, tip .. (is_master and '' or '\nDouble-click: rename'))
-      if hn.click then select_click(tr) end
+      strip_click(hn, tr)
+      DnD.strip(hn, tr, x1, x2, y0, y0 + h)
       if hn.dbl and not is_master then
         local _, cur = r.GetSetMediaTrackInfo_String(tr, 'P_NAME', '', false)
         D.renaming, D.name_buf, D.rename_focus, D.rename_win = tr, cur, true, D.win
@@ -844,7 +1152,8 @@ local function draw_strip(tr, x, y0, w, h, now)
   if sel then ImGui.DrawList_AddCircleFilled(D.dl, (x1 + x2) / 2, by, 2.5, 0xFFFFFFFF) end
   if armed then ImGui.DrawList_AddCircleFilled(D.dl, x2 - 4, by + 4, 2.5, COL.armed) end
   local hb = hit('##bar', x1, by, x2, y0 + h, tip .. (is_master and '' or '\nDouble-click: color palette'))
-  if hb.click then select_click(tr) end
+  strip_click(hb, tr)
+  DnD.strip(hb, tr, x1, x2, y0, y0 + h)
   if hb.dbl and not is_master then recolor(tr) end
 end
 
@@ -1018,6 +1327,20 @@ do
 end
 
 -- the options: right-click anywhere else
+local METER_MODES = {
+  { 'Stereo peaks', 0 }, { 'Multichannel peaks', 2 }, { 'Stereo RMS', 4 }, { 'Combined RMS', 8 },
+  { 'LUFS-M', 12 }, { 'LUFS-S (readout=max)', 16 }, { 'LUFS-S (readout=current)', 20 },
+}
+-- set the meter mode (I_VUMODE mode bits) of every track in a list, as one undo step
+local function set_meter_mode(list, mode)
+  r.Undo_BeginBlock()
+  for _, t in ipairs(list) do
+    local v = math.floor(r.GetMediaTrackInfo_Value(t, 'I_VUMODE'))
+    r.SetMediaTrackInfo_Value(t, 'I_VUMODE', (v & ~30) | mode)
+  end
+  r.Undo_EndBlock('Set meter mode', -1)
+end
+
 local function options_menu(W)
   if not ImGui.BeginPopup(ctx, 'options') then return end
   -- the whole menu stays open while you change things; clicking outside it closes it
@@ -1067,6 +1390,37 @@ local function options_menu(W)
     end
     ImGui.EndMenu(ctx)
   end
+  if submenu('Meter resolution') then
+    for _, o in ipairs(RES_MENU) do
+      -- grayed out when it would look the same as now at this window height
+      local mh = D.lay and D.lay.mh or 0
+      local same = S.res ~= o[2] and led_count(o[2], mh) == led_count(S.res, mh)
+      if same then ImGui.BeginDisabled(ctx) end
+      if item(o[1], S.res == o[2]) then set_opt('res', o[2]) end
+      if same then
+        ImGui.EndDisabled(ctx)
+        if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenDisabled) then
+          ImGui.SetTooltip(ctx, 'No difference at this window height.\nMake the window taller to use it.')
+        end
+      end
+    end
+    ImGui.EndMenu(ctx)
+  end
+  -- the meter mode of every track in this window at once (the master keeps peaks)
+  if submenu('Meter mode (all tracks in window)') then
+    local list, common = {}, nil
+    for _, t in ipairs(bridge_tracks(W)) do
+      if t ~= r.GetMasterTrack(0) then
+        list[#list + 1] = t
+        local m = math.floor(r.GetMediaTrackInfo_Value(t, 'I_VUMODE')) & 30
+        if common == nil then common = m elseif common ~= m then common = false end
+      end
+    end
+    for _, m in ipairs(METER_MODES) do
+      if item(m[1], common == m[2]) and #list > 0 then set_meter_mode(list, m[2]) end
+    end
+    ImGui.EndMenu(ctx)
+  end
   if submenu('Release') then
     for _, k in ipairs({ 'fast', 'medium', 'slow' }) do
       if item(k:sub(1, 1):upper() .. k:sub(2) .. ' (' .. RELEASE[k] .. ' dB/s)', S.release == k) then set_opt('release', k) end
@@ -1076,6 +1430,72 @@ local function options_menu(W)
   if item('Show track names', S.names == 1) then set_opt('names', 1 - S.names) end
   if item('Show input selector', S.input ~= 'off') then set_opt('input', S.input == 'off' and 'number' or 'off') end
   Menu.keep_open_end(keep)
+  -- spacers before / after the selected tracks (REAPER's track spacers, the same as in the mixer).
+  -- Each run of neighbouring selected tracks gets one spacer before it / after it.
+  do
+    local before, after = {}, {}
+    local nt = r.CountTracks(0)
+    for i = 0, nt - 1 do
+      local t = r.GetTrack(0, i)
+      if r.IsTrackSelected(t) then
+        if i == 0 or not r.IsTrackSelected(r.GetTrack(0, i - 1)) then before[#before + 1] = t end
+        local nx = (i + 1 < nt) and r.GetTrack(0, i + 1) or nil
+        if nx and not r.IsTrackSelected(nx) then after[#after + 1] = nx end
+      end
+    end
+    local function spacer_item(what, list)
+      local all = #list > 0
+      for _, t in ipairs(list) do if r.GetMediaTrackInfo_Value(t, 'I_SPACER') ~= 1 then all = false; break end end
+      local label = (all and 'Remove spacer ' or 'Add spacer ') .. what .. ' selected tracks'
+      if ImGui.MenuItem(ctx, label, nil, false, #list > 0) then
+        r.Undo_BeginBlock()
+        for _, t in ipairs(list) do r.SetMediaTrackInfo_Value(t, 'I_SPACER', all and 0 or 1) end
+        r.TrackList_AdjustWindows(false)
+        r.Undo_EndBlock(all and 'Remove spacer' or 'Add spacer', -1)
+      end
+    end
+    ImGui.Separator(ctx)
+    spacer_item('before', before)
+    spacer_item('after', after)
+  end
+  ImGui.EndPopup(ctx)
+end
+
+-- The meter mode menu (right-click a meter): the same modes as REAPER's mixer meter menu, stored in the
+-- track's I_VUMODE, so the mixer and the Floating Mixer follow too. Bits other than the mode and the
+-- LUFS option are left as they are. If the clicked track is selected, all selected tracks change.
+local function meter_menu(W)
+  if not ImGui.BeginPopup(ctx, 'meter_menu') then return end
+  local tr = W.meter_tr
+  if not (tr and r.ValidatePtr2(0, tr, 'MediaTrack*')) then ImGui.CloseCurrentPopup(ctx); ImGui.EndPopup(ctx); return end
+  local cur = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_VUMODE'))
+  local function targets()
+    local t = {}
+    if r.IsTrackSelected(tr) then
+      for i = 0, r.CountSelectedTracks(0) - 1 do t[#t + 1] = r.GetSelectedTrack(0, i) end
+    else
+      t[1] = tr
+    end
+    return t
+  end
+  local function apply(fn, undo)   -- (the LUFS option)
+    r.Undo_BeginBlock()
+    for _, t in ipairs(targets()) do
+      local v = math.floor(r.GetMediaTrackInfo_Value(t, 'I_VUMODE'))
+      r.SetMediaTrackInfo_Value(t, 'I_VUMODE', fn(v))
+    end
+    r.Undo_EndBlock(undo, -1)
+  end
+  for _, m in ipairs(METER_MODES) do
+    if ImGui.MenuItem(ctx, m[1], nil, (cur & 30) == m[2]) then
+      set_meter_mode(targets(), m[2])
+    end
+  end
+  ImGui.Separator(ctx)
+  local lufs12 = (cur & 32) ~= 0
+  if ImGui.MenuItem(ctx, 'LUFS measures first two channels only (ignore sidechain)', nil, lufs12) then
+    apply(function(v) return lufs12 and (v & ~32) or (v | 32) end, 'Set LUFS channels')
+  end
   ImGui.EndPopup(ctx)
 end
 
@@ -1103,6 +1523,15 @@ local function input_menu()
   if ImGui.BeginMenu(ctx, 'Input: Stereo') then
     for i = 0, n - 2 do
       item((i + 1) .. '/' .. (i + 2) .. ': ' .. INP.chan_name(i) .. ' / ' .. INP.chan_name(i + 1) .. '##s' .. i, 1024 + i)
+    end
+    ImGui.EndMenu(ctx)
+  end
+  -- multichannel input (tracks with more than 2 channels): as many inputs as the track has channels,
+  -- starting at the chosen input (REAPER's 2048 flag: multichannel, using the track's channel count)
+  local nch = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_NCHAN'))
+  if nch > 2 and nch <= n and ImGui.BeginMenu(ctx, 'Input: ' .. nch .. ' channels') then
+    for i = 0, n - nch do
+      item((i + 1) .. '-' .. (i + nch) .. ': ' .. INP.chan_name(i) .. ' ... ' .. INP.chan_name(i + nch - 1) .. '##mc' .. i, 2048 + i)
     end
     ImGui.EndMenu(ctx)
   end
@@ -1168,8 +1597,11 @@ local function draw_window(W, now)
   local visible, open = ImGui.Begin(ctx, 'Meter Bridge ' .. W.n .. '###DanielMeterBridge' .. (W.n > 1 and W.n or ''), true, WFLAGS)
   ImGui.PopStyleColor(ctx, 4); ImGui.PopStyleVar(ctx)
   if not visible then return open, false end
+  -- no yellow drag-and-drop highlight rectangle on the strips (the insertion line shows where it lands)
+  ImGui.PushStyleColor(ctx, ImGui.Col_DragDropTarget, 0x00000000)
 
   D.dl = ImGui.GetWindowDrawList(ctx)
+  D.meter_menu_tr = nil
   W.docked = ImGui.IsWindowDocked(ctx)
   if W.docked then
     local id = ImGui.GetWindowDockID(ctx)
@@ -1180,13 +1612,40 @@ local function draw_window(W, now)
   local ox, oy = ImGui.GetCursorScreenPos(ctx)
   local aw, ah = ImGui.GetContentRegionAvail(ctx)
   local n = #tracks
-  -- as many rows as fit at full height (at least one), then enough columns for every strip;
-  -- if they're wider than the window it scrolls sideways
+  -- as many rows as fit at full height (at least one); if the strips are wider than the window it
+  -- scrolls sideways. Each strip is as wide as its meters need (multichannel tracks are wider), so
+  -- the strips are shared out by width, so the rows come out about the same width
   local sbar = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ScrollbarSize)
-  local cols = math.max(1, math.floor((aw - SCALE_W) / SW))
-  local rows = math.max(1, math.min(math.ceil(n / cols), math.floor(ah / ROW_FULL)))
-  cols = math.max(1, math.ceil(n / rows))
-  local content_w = SCALE_W + cols * SW
+  -- track spacers (REAPER's, shared with the mixer): the track with a spacer before it has I_SPACER;
+  -- shown as a gap before that strip, like the mixer (not before the first strip of a row)
+  local SPACER_W = 16                  -- the real mixer's spacer: 16 pt
+  local sw, gap, total = {}, {}, 0
+  local master = r.GetMasterTrack(0)
+  for k, tr in ipairs(tracks) do
+    sw[k] = strip_width(n_meters(tr))
+    local prev = tracks[k - 1]
+    gap[k] = (prev and prev ~= master and tr ~= master and r.GetMediaTrackInfo_Value(tr, 'I_SPACER') == 1)
+             and SPACER_W or 0
+    total = total + sw[k] + gap[k]
+  end
+  local rows = math.max(1, math.min(math.ceil(total / math.max(1, aw - SCALE_W)), math.floor(ah / ROW_FULL)))
+  local row_of, row_x = {}, {}         -- which row each strip is in, and its x offset in that row
+  local widest = 0
+  do
+    local target, row, x = total / rows, 1, 0
+    for k = 1, n do
+      if x > 0 and row < rows and x + gap[k] + sw[k] / 2 > target then
+        widest = math.max(widest, x); row, x = row + 1, 0
+      end
+      if x == 0 then gap[k] = 0 end    -- a row starts here: no gap
+      x = x + gap[k]
+      row_of[k], row_x[k] = row, x
+      x = x + sw[k]
+    end
+    widest = math.max(widest, x)
+    rows = math.max(1, row_of[n] or 1)
+  end
+  local content_w = SCALE_W + widest
   if content_w > aw then ah = ah - sbar end      -- the horizontal scrollbar takes some height
   local rh = math.max(MIN_ROW_H, math.floor(ah / rows))
   D.lay = strip_layout(rh - 4)
@@ -1204,13 +1663,14 @@ local function draw_window(W, now)
     D.clip_x = sx + SCALE_W
     for row = 0, rows - 1 do
       local y0 = oy + row * rh
-      for c = 0, cols - 1 do
-        local k = row * cols + c + 1
-        local tr = tracks[k]
-        if not tr then break end
-        ImGui.PushID(ctx, r.GetTrackGUID(tr))
-        draw_strip(tr, ox + SCALE_W + c * SW, y0, SW, rh - 4, now)
-        ImGui.PopID(ctx)
+      for k, tr in ipairs(tracks) do
+        if row_of[k] == row + 1 then
+          ImGui.PushID(ctx, r.GetTrackGUID(tr))
+          local sx1 = ox + SCALE_W + row_x[k]
+          if gap[k] > 0 then DnD.spacer(tr, sx1 - gap[k], y0, sx1, y0 + rh - 4) end
+          draw_strip(tr, sx1, y0, sw[k], rh - 4, now)
+          ImGui.PopID(ctx)
+        end
       end
       draw_scale(sx, y0, rh - 4, wcol, rh, scale_txt)
     end
@@ -1239,10 +1699,19 @@ local function draw_window(W, now)
   -- right-click: the title bar or the dB column -> window menu; anywhere else -> options
   if ImGui.IsWindowHovered(ctx) and ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Right) then
     local mx, my = ImGui.GetMousePos(ctx)
-    ImGui.OpenPopup(ctx, (my < oy - 1 or mx < sx + SCALE_W) and 'win_menu' or 'options')
+    local wmenu = my < oy - 1 or mx < sx + SCALE_W
+    local mtr = D.meter_menu_tr
+    if not wmenu and mtr and r.ValidatePtr2(0, mtr, 'MediaTrack*') then
+      -- a track's meter: the meter mode menu (the bridge keeps running while it's open)
+      W.meter_tr = mtr
+      ImGui.OpenPopup(ctx, 'meter_menu')
+    else
+      ImGui.OpenPopup(ctx, wmenu and 'win_menu' or 'options')
+    end
   end
   window_menu(W)
   options_menu(W)
+  meter_menu(W)
   if D.open_input then D.open_input = nil; ImGui.OpenPopup(ctx, 'input_menu') end
   input_menu()
 
@@ -1250,6 +1719,7 @@ local function draw_window(W, now)
   if focused and not ImGui.IsAnyItemActive(ctx) and ImGui.IsKeyPressed(ctx, ImGui.Key_Space, false) then
     r.Main_OnCommand(40044, 0)    -- Transport: Play/stop
   end
+  ImGui.PopStyleColor(ctx)
   ImGui.End(ctx)
   return open, focused
 end

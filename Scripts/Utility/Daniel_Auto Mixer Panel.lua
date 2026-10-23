@@ -1,7 +1,17 @@
 -- @description Daniel_Auto Mixer Panel
 -- @author Daniel Kharrat
--- @version 2.10
+-- @version 2.13
 -- @changelog
+--   Adding a hardware input lists only the inputs no strip is using yet (like tracks);
+--   removing a strip, or changing its input, brings that input back.
+--   2.12:
+--   Every strip has an input selector (left), output selector (middle) and group (right).
+--   Input: No input or a hardware input. Output: Main mix, a hardware output, or None.
+--   2.11:
+--   Output selector on hardware-input strips (left of the group chip):
+--   Main mix (as before), a hardware output (0 dB post-fader send, main send off),
+--   or None (main send off, no hardware outputs).
+--   2.10:
 --   Group labels (G1, G2…) are centred in their chips on every OS (they sat low on Windows).
 --   2.9:
 --   Opening or closing the panel from the action list or a shortcut now saves its on/off
@@ -434,10 +444,10 @@ end
 
 local function input_label(tr)
   local inp = reaper.GetMediaTrackInfo_Value(tr, "I_RECINPUT")
-  if inp < 0 then return "No input" end
-  if inp >= 4096 then return "MIDI input" end
+  if inp < 0 then return "In off" end
+  if inp >= 4096 then return "MIDI" end
   local ch = math.floor(inp) & 1023
-  if inp >= 2048 then return "In " .. (ch + 1) .. " (multi)" end
+  if inp >= 2048 then return "In " .. (ch + 1) .. "+" end
   if inp >= 1024 then return "In " .. (ch + 1) .. "/" .. (ch + 2) end
   return "In " .. (ch + 1)
 end
@@ -454,6 +464,51 @@ local function used_inputs()
     end
   end
   return used
+end
+
+-- output of a hardware-input track: "main" (main send on), a hardware output index, or "none".
+-- Read from the track itself, so it's always what REAPER really does.
+local function track_output(tr)
+  if reaper.GetMediaTrackInfo_Value(tr, "B_MAINSEND") == 1 then return "main" end
+  if reaper.GetTrackNumSends(tr, 1) > 0 then
+    return math.floor(reaper.GetTrackSendInfo_Value(tr, 1, 0, "I_DSTCHAN")) & 1023
+  end
+  return "none"
+end
+
+local function set_output(tr, out)
+  reaper.Undo_BeginBlock()
+  reaper.PreventUIRefresh(1)
+  for k = reaper.GetTrackNumSends(tr, 1) - 1, 0, -1 do reaper.RemoveTrackSend(tr, 1, k) end
+  reaper.SetMediaTrackInfo_Value(tr, "B_MAINSEND", (out == "main") and 1 or 0)
+  if type(out) == "number" then
+    -- a mono-input track sends channel 1; anything else sends channels 1/2 mixed to mono
+    local inp = reaper.GetMediaTrackInfo_Value(tr, "I_RECINPUT")
+    local mono_src = inp >= 0 and inp < 1024
+    local s = reaper.CreateTrackSend(tr, nil)                       -- hardware output send
+    if s >= 0 then
+      reaper.SetTrackSendInfo_Value(tr, 1, s, "D_VOL", 1)           -- 0 dB
+      reaper.SetTrackSendInfo_Value(tr, 1, s, "I_SENDMODE", 0)      -- post-fader: gets the auto mixing and the fader
+      reaper.SetTrackSendInfo_Value(tr, 1, s, "I_SRCCHAN", mono_src and 1024 or 0)
+      reaper.SetTrackSendInfo_Value(tr, 1, s, "I_DSTCHAN", 1024 | out) -- mono, to this output
+    end
+  end
+  reaper.PreventUIRefresh(-1)
+  local what = (out == "main") and "Main mix" or (out == "none") and "None" or ("Out " .. (out + 1))
+  reaper.Undo_EndBlock("Auto Mixer: output " .. what, -1)
+end
+
+-- input: -1 = no input, otherwise a mono hardware input.
+-- A panel-made track still called "Mic <old input>" is renamed to follow the new input.
+local function set_input(tr, ch, created)
+  reaper.Undo_BeginBlock()
+  local old = math.floor(reaper.GetMediaTrackInfo_Value(tr, "I_RECINPUT"))
+  reaper.SetMediaTrackInfo_Value(tr, "I_RECINPUT", ch)
+  if created and ch >= 0 and old >= 0 and old < 1024 then
+    local _, name = reaper.GetSetMediaTrackInfo_String(tr, "P_NAME", "", false)
+    if name == "Mic " .. (old + 1) then reaper.GetSetMediaTrackInfo_String(tr, "P_NAME", "Mic " .. (ch + 1), true) end
+  end
+  reaper.Undo_EndBlock("Auto Mixer: input " .. ((ch < 0) and "none" or tostring(ch + 1)), -1)
 end
 
 ---------------------------------------------------------------------
@@ -735,6 +790,85 @@ local function group_chip(x, y, tr, fx, pi, group)
     end
     ImGui.EndPopup(ctx)
   end
+  return w
+end
+
+-- plain selector chip (input / output): same height and rounding as the group chip
+local function chip_width(label) return text_w(font_label, label) + 16 end
+
+local function plain_chip(id, popup, x, y, label, tip, off)
+  local w = chip_width(label)
+  local open = ImGui.IsPopupOpen(ctx, popup)
+  local h = hit(id, x, y, w, 18, tip .. "\nClick to change")
+  rr(x, y, w, 18, 9, (h.hov or open) and COL.keyhov or COL.key)
+  local col = (h.hov or open) and COL.text or off and COL.dim or COL.muted
+  local _, th = text_w(font_label, label)
+  text_at(font_label, label, x + w / 2, y + (18 - th) / 2, col, "center")
+  if h.click then ImGui.OpenPopup(ctx, popup) end
+  return w
+end
+
+-- input chip, left edge at x: No input / a mono hardware input
+local function input_chip(x, y, tr, created)
+  local inp = reaper.GetMediaTrackInfo_Value(tr, "I_RECINPUT")
+  local cur = (inp >= 0 and inp < 1024) and math.floor(inp) or nil
+  local tip
+  if inp < 0 then tip = "Input: none"
+  elseif cur then
+    local name = reaper.GetInputChannelName(cur) or ""
+    tip = "Input: hardware input " .. (cur + 1) .. ((name ~= "") and ("  (" .. name .. ")") or "")
+  else tip = "Input: " .. input_label(tr) end
+  local w = plain_chip("##in", "input", x, y, input_label(tr), tip, inp < 0)
+  if ImGui.BeginPopup(ctx, "input") then
+    if ImGui.MenuItem(ctx, "No input", nil, inp < 0) and inp >= 0 then set_input(tr, -1, created) end
+    ImGui.Separator(ctx)
+    local n = reaper.GetNumAudioInputs()
+    if n == 0 then ImGui.TextColored(ctx, rgba(COL.muted), "No audio inputs (check Audio device settings)") end
+    local used = used_inputs()
+    for ch = 0, n - 1 do
+      local name = reaper.GetInputChannelName(ch) or ""
+      local label = string.format("%2d   %s%s", ch + 1, name, (used[ch] and ch ~= cur) and "   (in use)" or "")
+      if ImGui.MenuItem(ctx, label, nil, ch == cur) and ch ~= cur then set_input(tr, ch, created) end
+    end
+    ImGui.EndPopup(ctx)
+  end
+  return w
+end
+
+local function output_label(out)
+  if out == "main" then return "Main" elseif out == "none" then return "None" end
+  return "Out " .. (out + 1)
+end
+
+-- output chip, centred on cx: Main mix / a hardware output / None
+local function output_chip(cx, y, tr)
+  local out = track_output(tr)
+  local label, tip = output_label(out)
+  if out == "main" then
+    tip = "Output: Main mix"
+  elseif out == "none" then
+    tip = "Output: None (not heard anywhere)"
+  else
+    local name = reaper.GetOutputChannelName(out) or ""
+    tip = "Output: hardware output " .. (out + 1) .. ((name ~= "") and ("  (" .. name .. ")") or "")
+  end
+  plain_chip("##out", "output", math.floor(cx - chip_width(label) / 2 + 0.5), y, label, tip, out == "none")
+  if ImGui.BeginPopup(ctx, "output") then
+    if ImGui.MenuItem(ctx, "Main mix", nil, out == "main") and out ~= "main" then set_output(tr, "main") end
+    if ImGui.BeginMenu(ctx, "Hardware output") then
+      local n = reaper.GetNumAudioOutputs()
+      if n == 0 then ImGui.TextColored(ctx, rgba(COL.muted), "No audio outputs (check Audio device settings)") end
+      for ch = 0, n - 1 do
+        local name = reaper.GetOutputChannelName(ch) or ""
+        if ImGui.MenuItem(ctx, string.format("%2d   %s", ch + 1, name), nil, out == ch) and out ~= ch then
+          set_output(tr, ch)
+        end
+      end
+      ImGui.EndMenu(ctx)
+    end
+    if ImGui.MenuItem(ctx, "None", nil, out == "none") and out ~= "none" then set_output(tr, "none") end
+    ImGui.EndPopup(ctx)
+  end
 end
 
 ---------------------------------------------------------------------
@@ -767,12 +901,17 @@ end
 local function input_items(pick)
   local n = reaper.GetNumAudioInputs()
   if n == 0 then ImGui.TextColored(ctx, rgba(COL.muted), "No audio inputs (check Audio device settings)") end
+  -- inputs already used by a strip are left out (like tracks); removing that strip brings them back
   local used = used_inputs()
+  local any = false
   for ch = 0, n - 1 do
-    local name = reaper.GetInputChannelName(ch) or ""
-    local label = string.format("%2d   %s%s", ch + 1, name, used[ch] and "   (in use)" or "")
-    if ImGui.MenuItem(ctx, label) then pick(assign_input, ch) end
+    if not used[ch] then
+      any = true
+      local name = reaper.GetInputChannelName(ch) or ""
+      if ImGui.MenuItem(ctx, string.format("%2d   %s", ch + 1, name)) then pick(assign_input, ch) end
+    end
   end
+  if n > 0 and not any then ImGui.TextColored(ctx, rgba(COL.muted), "All inputs are in use") end
 end
 
 local function track_items(pick)
@@ -937,8 +1076,11 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   end
 
   -- source and group
-  text_at(font_small, input_label(tr), ix, y + 42, COL.muted)
-  group_chip(ix + iw, y + 41, tr, fx, P.group, group)
+  -- input (left) | output (middle) | group (right); the output sits centred in the space
+  -- between the other two so the gaps on both sides look equal
+  local inw = input_chip(ix, y + 41, tr, slot.created)
+  local gw = group_chip(ix + iw, y + 41, tr, fx, P.group, group)
+  output_chip(((ix + inw) + (ix + iw - gw)) / 2, y + 41, tr)
 
   -- control well: meters | fader | weight
   local wy, wh = y + 68, METER_H

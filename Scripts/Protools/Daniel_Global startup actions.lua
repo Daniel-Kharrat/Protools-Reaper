@@ -29,6 +29,7 @@ if file then
         "Floating_Mixer",
         "Meter_Bridge",
         "Auto_Mixer_Panel",
+        "Horizontal_Zoom_Presets_Manager",
     }
 
     for _, key in ipairs(keys) do
@@ -109,4 +110,13 @@ end
 if toggles["Auto_Mixer_Panel"] == "1" then
     --Script: Daniel_Auto Mixer Panel.lua
     reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS091ceb4b08e5cda888e096fc0c3054bd03cd907b"), 0)
+end
+
+--------------------------------------------------
+--Horizontal Zoom Presets Manager
+--------------------------------------------------
+
+if toggles["Horizontal_Zoom_Presets_Manager"] == "1" then
+    --Script: Daniel_Horizontal zoom presets manager.lua
+    reaper.Main_OnCommand(reaper.NamedCommandLookup("_RSd3f0c65f03b9ea9fd7b289fae07e4e84cdda964e"), 0)
 end

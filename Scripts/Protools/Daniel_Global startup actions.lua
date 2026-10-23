@@ -43,7 +43,6 @@ end
 local default_on = {
     Link_Timeline_and_Edit_Selection = true,
     Always_Recording = true,
-    Horizontal_Zoom_Presets_Manager = true,
 }
 for key in pairs(default_on) do
     if toggles[key] == nil then toggles[key] = "1" end

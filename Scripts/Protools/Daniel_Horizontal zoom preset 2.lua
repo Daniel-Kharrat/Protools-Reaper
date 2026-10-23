@@ -1,4 +1,22 @@
-local pixels_per_second = 160
+-- Daniel_Horizontal zoom preset 2
+-- Version: 1.2
+-- Author: Daniel Kharrat
+-- Description: Zooms the arrange view to a fixed pixels-per-second value, so the zoom
+--   looks the same on any screen size. Uses the zoom saved from
+--   "Daniel_Horizontal zoom presets manager" if there is one, otherwise the default below.
+-- Changelog:
+--   1.2 - The saved zoom is read from reaper-extstate.ini instead of a file in the Data folder
+--   1.1 - Uses the zoom saved from the Daniel_Horizontal zoom presets window
+
+local slot = 2
+local default_pixels_per_second = 160
+
+-- Saved zoom for this slot (falls back to the default)
+local pixels_per_second = default_pixels_per_second
+do
+  local v = tonumber(reaper.GetExtState("Daniel_Horizontal zoom presets", "preset_" .. slot))
+  if v and v > 0 then pixels_per_second = v end
+end
 
 -- Get arrange view start and end
 local view_start, view_end = reaper.GetSet_ArrangeView2(0, false, 0, 0)

@@ -1,7 +1,10 @@
 desc:Daniel_Auto Mixer
 author: Daniel Kharrat
-version: 2.3
+version: 2.4
 changelog:
+  Bypass auto mix: takes this channel out of the gain sharing (the others share as if it
+  weren't there) and passes it at unity. Saved with the project, works without the panel.
+  2.3:
   Last mic hold remembers the gains from while someone was clearly talking (10 dB above
   the hold level) and blends into them as the level falls, so the other mics stay down.
   Level detector averages over 10 ms (RMS) before the attack/release, so steady room noise
@@ -50,6 +53,7 @@ slider3:group_s=1<1,4,1>-Group
 slider4:rel_s=120<20,600,1>-Release (ms)
 slider5:hold_s=1<0,1,1{Off,On}>-Last mic hold
 slider6:holdthr_s=-55<-80,-20,1>-Hold below (dBFS)
+slider7:bypass_s=0<0,1,1{Off,On}>-Bypass auto mix
 slider10:slot_s=-1<-1,63,1>-Slot (auto)
 
 @init
@@ -142,7 +146,7 @@ slot_s >= 0 && slot_s < MAXSLOT ? (
 
 slot_s >= 0 ? (
   b = BASE + slot_s * STRIDE;
-  excl = gmem[b + F_EXCL];
+  excl = gmem[b + F_EXCL] || bypass_s;    // muted (panel) or bypassed: out of the sharing
   active = excl == 0 ? 1 : 0;
 
   // publish own state
@@ -191,7 +195,7 @@ slot_s >= 0 ? (
   holding = 0;
 
   excl > 0 ? (
-    gt = 1;                                   // taken out of the sharing by the panel (track muted)
+    gt = 1;                                   // out of the sharing (track muted / bypassed): unity
   ) : (
     wp = env * wlin;
     total_raw = wp + others_cur - n_others * EPS;

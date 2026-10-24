@@ -610,7 +610,7 @@
     </reapack>
 
     <reapack name="Daniel_Auto Mixer Panel.lua" type="script" desc="Daniel_Auto Mixer Panel.lua">
-      <version name="1.5" author="Daniel" time="2026-10">
+      <version name="1.6" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Auto%20Mixer%20Panel.lua</source>
       </version>
     </reapack>
@@ -748,7 +748,7 @@
     </reapack>
 
     <reapack name="Daniel_Auto Mixer" type="effect" desc="Daniel_Auto Mixer">
-      <version name="1.0" author="Daniel" time="2026-10">
+      <version name="1.1" author="Daniel" time="2026-10">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Auto%20Mixer</source>
       </version>
     </reapack>

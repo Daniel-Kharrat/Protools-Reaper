@@ -1,5 +1,5 @@
 -- Daniel_Horizontal zoom presets manager
--- Version: 1.0
+-- Version: 1.6
 -- Author: Daniel Kharrat
 -- Description: Window with five buttons for the horizontal zoom presets
 --   (Daniel_Horizontal zoom preset 1 to 5). A zoom is stored as pixels per second,
@@ -10,12 +10,19 @@
 --   (overwrites what is there; the button lights up when it is saved).
 --   Right click: reset the preset to its default.
 --   A number is coloured while its preset holds a custom zoom.
---   Resize by dragging the left or right edge, the bottom edge or the bottom corners
---   (the window keeps its proportions; the top edge is locked). Right-click the
---   title bar to dock or undock it (when docked, right-click an empty area).
+--   The window can be resized freely by any edge or corner; the five buttons stretch
+--   with it. Right-click the title bar to dock or undock it (when docked, right-click
+--   an empty area).
 --   Running the script again closes the window. The toolbar toggle script
 --   "Daniel_Horizontal zoom presets manager (toolbar toggle)" lights up while it is open.
 -- Requires: ReaImGui, SWS (js_ReaScriptAPI optional: returns focus to REAPER after clicks)
+-- Changelog:
+--   1.1 - Free resizing: the buttons stretch with the window (no fixed proportions)
+--   1.2 - Fixed 4 px gap between buttons and 4 px margin to the window edge at any size
+--   1.3 - Minimum window size so the buttons never get smaller than their numbers
+--   1.4 - Docked: when the docker squeezes the window, the numbers shrink with the buttons
+--   1.5 - At the minimum window size the buttons are square (stretching beyond is free)
+--   1.6 - Hover highlight, instant pressed look on left/right click, tooltip after 0.7 s
 
 if not reaper.ImGui_CreateContext then
   reaper.MB("This script needs the ReaImGui extension (install it with ReaPack).", "Horizontal zoom presets manager", 0)
@@ -75,6 +82,7 @@ end)
 
 local SECTION = "Daniel_Horizontal zoom presets" -- ExtState section shared with the preset scripts
 local DEFAULTS = { 500, 160, 93, 46, 31 } -- same as the defaults inside the preset scripts
+local TIP_DELAY = 0.7 -- seconds of hovering before the tooltip appears
 local LONG_PRESS = 0.5 -- seconds a button is held to save
 
 ---------------------------------------------------------------------------
@@ -144,7 +152,7 @@ end
 
 -- A few font sizes so the text can follow the window size
 local F_BIG, F_NORM = {}, {}
-for _, s in ipairs({ 12, 16, 20, 26, 34, 44, 56 }) do F_BIG[#F_BIG + 1] = make_font(s, true) end
+for _, s in ipairs({ 6, 8, 10, 12, 16, 20, 26, 34, 44, 56 }) do F_BIG[#F_BIG + 1] = make_font(s, true) end
 for _, s in ipairs({ 12, 14, 17 }) do F_NORM[#F_NORM + 1] = make_font(s, false) end
 
 local function pick_font(list, limit)
@@ -179,24 +187,22 @@ local KEY = {
   pressed = { outline = 0x2A2A2AFF, edge = { 0x585858FF, 0x474747FF, 0x373737FF } },
 }
 
--- Proportions: button = 1 unit, gap = GAP units; one row of five buttons
-local PAD = 8
-local GAP = 0.22
-local W_U, H_U = 5 + 4 * GAP, 1
-local INIT_W, MIN_W = 230, 130
-local GRIP = 6 -- width of the draggable edge zones, in px
+-- Layout: one row of five buttons that fill the window. The gap between the buttons and
+-- the margin around them stay the same at any window size.
+local PAD = 4 -- margin between the buttons and the window edge, in px
+local GAP = 4 -- gap between the buttons, in px
+local INIT_W, INIT_H = 230, 74
+-- Smallest floating window: each button stays at least 24 px so the numbers fit (docked, the docker decides the size and the numbers shrink instead)
+local MIN_BTN = 24
+local MIN_W = 5 * MIN_BTN + 4 * GAP + 2 * PAD
 
 local dock_request = nil
 local hovered_slot = nil -- the button under the mouse this frame
 local press = nil        -- the left press in progress: { i, t0, done }
+local rdown = nil          -- the button where a right press started
+local hover_since = {}     -- per button: when the mouse started hovering (for the tooltip)
 local lit_until = {}     -- per button: keep the pressed look until this time
 local DL
-
--- Height of the window (title bar + padding) that is not content
-local function chrome_h() return reaper.ImGui_GetFrameHeight(ctx) + 2 * PAD end
--- Window height that matches a given window width, and the other way round
-local function h_for(w) return (w - 2 * PAD) * H_U / W_U + chrome_h() end
-local function w_for(h) return (h - chrome_h()) * W_U / H_U + 2 * PAD end
 
 local function measure(ft, s)
   push_font(ft)
@@ -217,19 +223,30 @@ end
 
 -- One button. The outline and the inner edge are drawn as rounded rectangles, then the
 -- three bands are cut out of them with clip strips, so the corners stay round.
-local function draw_key(x, y, w, h, pressed)
+-- Shift the R, G, B of a 0xRRGGBBAA colour by d (positive = lighter, negative = darker)
+local function shade(c, d)
+  local function ch(v) return math.max(0, math.min(255, v + d)) end
+  local r, g, b, a = (c >> 24) & 255, (c >> 16) & 255, (c >> 8) & 255, c & 255
+  return (ch(r) << 24) | (ch(g) << 16) | (ch(b) << 8) | a
+end
+
+-- state: nil (normal), "hover" (lighter) or "down" (back to the normal colour)
+local function draw_key(x, y, w, h, pressed, state)
   local pal = pressed and KEY.pressed or KEY.normal
-  local o = math.max(2, math.floor(h / 14 + 0.5)) -- outline thickness
-  local rad = math.max(3, h * 0.16) -- corner radius
+  local d = (state == "hover" and 18) or 0
+  local outline = pal.outline
+  local m = math.min(w, h)
+  local o = math.max(2, math.floor(m / 14 + 0.5)) -- outline thickness
+  local rad = math.max(3, m * 0.16) -- corner radius
   local fy, fh = y + o, h - 2 * o
   local b1 = math.floor(fy + fh * 5 / 14 + 0.5) -- light band: 5 of 14 rows
   local b2 = math.floor(fy + fh * 9 / 14 + 0.5) -- medium band: 4 rows, dark band: 5 rows
   local strips = { { y - 2, b1 }, { b1, b2 }, { b2, y + h + 2 } }
 
-  reaper.ImGui_DrawList_AddRectFilled(DL, x, y, x + w, y + h, pal.outline, rad)
+  reaper.ImGui_DrawList_AddRectFilled(DL, x, y, x + w, y + h, outline, rad)
   for i = 1, 3 do
     reaper.ImGui_DrawList_PushClipRect(DL, x - 2, strips[i][1], x + w + 2, strips[i][2], true)
-    reaper.ImGui_DrawList_AddRectFilled(DL, x + o, y + o, x + w - o, y + h - o, KEY.fill[i], math.max(0, rad - o))
+    reaper.ImGui_DrawList_AddRectFilled(DL, x + o, y + o, x + w - o, y + h - o, shade(KEY.fill[i], d), math.max(0, rad - o))
     reaper.ImGui_DrawList_PopClipRect(DL)
   end
 end
@@ -239,22 +256,34 @@ local function draw()
   local x0, y0 = reaper.ImGui_GetCursorScreenPos(ctx)
   local aw, ah = reaper.ImGui_GetContentRegionAvail(ctx)
 
-  -- Whole-pixel sizes keep the button edges crisp
-  local u = math.max(8, math.min(aw / W_U, ah / H_U))
-  local s = math.max(8, math.floor(u))
-  local gap = math.max(2, math.floor(GAP * s + 0.5))
-  local gx = math.floor(x0 + math.max(0, (aw - (5 * s + 4 * gap)) / 2) + 0.5)
-  local gy = math.floor(y0 + math.max(0, (ah - s) / 2) + 0.5)
-  local f_num = pick_font(F_BIG, s * 0.5)
+  -- Whole-pixel sizes keep the button edges crisp; the buttons stretch to fill the window
+  -- edge to edge (the few leftover pixels are shared out one by one)
+  local bh = math.max(4, math.floor(ah))
+  local avail_w = math.floor(aw) - 4 * GAP
+  local base_w = math.max(4, math.floor(avail_w / 5))
+  local extra = math.max(0, avail_w - 5 * base_w)
+  local gx = math.floor(x0 + 0.5)
+  local gy = math.floor(y0 + 0.5)
+  local f_num = pick_font(F_BIG, math.min(base_w, bh) * 0.5)
   local now = reaper.time_precise()
 
   hovered_slot = nil
   for i = 1, 5 do
-    local x = gx + (i - 1) * (s + gap)
+    local bw = base_w + ((i <= extra) and 1 or 0)
+    local x = gx
     reaper.ImGui_SetCursorScreenPos(ctx, x, gy)
-    reaper.ImGui_InvisibleButton(ctx, "slot" .. i, s, s)
+    reaper.ImGui_InvisibleButton(ctx, "slot" .. i, bw, bh)
     local hov = reaper.ImGui_IsItemHovered(ctx)
     if hov then hovered_slot = i end
+    if hov then
+      hover_since[i] = hover_since[i] or now
+      if now - hover_since[i] >= TIP_DELAY and not reaper.ImGui_IsMouseDown(ctx, 0)
+        and not reaper.ImGui_IsMouseDown(ctx, 1) then
+        reaper.ImGui_SetTooltip(ctx, "Click to load\nLong press to save\nRight click to reset")
+      end
+    else
+      hover_since[i] = nil
+    end
 
     -- Left button: a short click loads, holding saves
     if reaper.ImGui_IsItemActivated(ctx) then press = { i = i, t0 = now, done = false } end
@@ -267,7 +296,9 @@ local function draw()
           lit_until[i] = now + 0.3
         end
       else
-        if not press.done and hov then apply_zoom(saved[i] or DEFAULTS[i]) end
+        if not press.done and hov then
+          apply_zoom(saved[i] or DEFAULTS[i])
+        end
         press = nil
       end
     end
@@ -279,109 +310,31 @@ local function draw()
       return_focus()
     end
 
+    -- Right press: look pressed while the right button is held on this button
+    if hov and reaper.ImGui_IsMouseClicked(ctx, 1) then rdown = i end
+    if rdown == i and not reaper.ImGui_IsMouseDown(ctx, 1) then
+      rdown = nil
+    end
+    local left_down = press and press.i == i and reaper.ImGui_IsItemActive(ctx)
+
     local lit = (press and press.i == i and press.done) or (lit_until[i] and now < lit_until[i])
-    draw_key(x, gy, s, s, lit)
+    local state = nil
+    if left_down or rdown == i then
+      state = "down"
+    elseif hov then
+      state = "hover"
+    end
+    draw_key(x, gy, bw, bh, lit, state)
+    local push = (state == "down") and 1 or 0
 
     -- The number, with a small shadow below it
     local num = tostring(i)
     local nw, nh = measure(f_num, num)
-    local tx = math.floor(x + (s - nw) / 2 + 0.5)
-    local ty = math.floor(gy + (s - nh) / 2 + 0.5)
-    put(f_num, tx, ty + 1, C_NUM_SHADE, num)
-    put(f_num, tx, ty, saved[i] and C_NUM_ON or C_NUM, num)
-  end
-end
-
----------------------------------------------------------------------------
--- Resizing
--- The window is resized by this script (not by ImGui): the left and right edges,
--- the bottom edge and the two bottom corners can be dragged, the top edge does
--- nothing. The new size is worked out from the mouse during a frame and applied at
--- the start of the NEXT frame, so the window never changes size in the middle of a
--- frame. The top-left corner stays put, except when dragging from the left, where
--- the right edge stays put. Width and height are always linked.
----------------------------------------------------------------------------
-local rs = nil      -- the drag in progress
-local pending = nil -- window size/position to apply at the start of the next frame
-
--- Mouse position for resizing, read from the operating system instead of from ImGui.
--- ImGui works its mouse position out from the window's position, and that position
--- changes on every frame while the left edge is dragged, which made that drag jerky.
-local function mouse_pos()
-  return reaper.ImGui_GetMousePos(ctx)
-end
-
--- While dragging, only the OS mouse position is used (it never depends on where the window
--- is), so moving the window for a left-edge drag cannot feed back into the measurement.
--- kx / ky convert OS pixels to window units (ky also carries the sign: macOS counts y upwards).
-local function native_scale(nx, ny)
-  if not reaper.ImGui_PointConvertNative then return 1, 1 end
-  local ax, ay = reaper.ImGui_PointConvertNative(ctx, nx, ny, false)
-  local bx, by = reaper.ImGui_PointConvertNative(ctx, nx + 100, ny + 100, false)
-  return (bx - ax) / 100, (by - ay) / 100
-end
-
-local function handle_resize()
-  if reaper.ImGui_IsWindowDocked(ctx) then
-    rs = nil
-    return
-  end
-  local wx, wy = reaper.ImGui_GetWindowPos(ctx)
-  local ww, wh = reaper.ImGui_GetWindowSize(ctx)
-  local mx, my = mouse_pos()
-
-  if rs then
-    if reaper.ImGui_IsMouseDown(ctx, 0) then
-      reaper.ImGui_SetMouseCursor(ctx, rs.cursor)
-      -- the width each dragged side asks for; a corner uses the average of both
-      local nx, ny = reaper.GetMousePosition()
-      local dx, dy = (nx - rs.nx) * rs.kx, (ny - rs.ny) * rs.ky
-      local w_x, w_y
-      if rs.l then
-        w_x = rs.w0 - dx
-      elseif rs.r then
-        w_x = rs.w0 + dx
-      end
-      if rs.b then w_y = w_for(rs.h0 + dy) end
-      local w = (w_x and w_y) and (w_x + w_y) / 2 or w_x or w_y
-      -- whole pixels only: fractional sizes make the window edge flicker between two pixels
-      w = math.floor(math.max(w, MIN_W) + 0.5)
-      local right = math.floor(rs.right + 0.5)
-      pending = { w = w, h = math.floor(h_for(w) + 0.5), x = rs.l and (right - w) or math.floor(rs.x + 0.5), y = math.floor(rs.y + 0.5) }
-    else
-      rs = nil
-      return_focus()
-    end
-    return
-  end
-
-  -- Not dragging: keep the window in shape (for example after undocking)
-  local w = math.max(ww, MIN_W)
-  if math.abs(wh - h_for(w)) > 2 or ww < MIN_W - 2 then pending = { w = w, h = h_for(w) } end
-
-  -- Edge zones (never the top edge, and never the title bar)
-  if reaper.ImGui_IsPopupOpen(ctx, "window_menu") or not reaper.ImGui_IsWindowHovered(ctx) then return end
-  local below_title = my > wy + reaper.ImGui_GetFrameHeight(ctx)
-  local l = below_title and mx < wx + GRIP
-  local r = below_title and mx > wx + ww - GRIP
-  local b = my > wy + wh - GRIP
-  if not (l or r or b) then return end
-
-  local cursor
-  if b and (l or r) then
-    cursor = l and reaper.ImGui_MouseCursor_ResizeNESW() or reaper.ImGui_MouseCursor_ResizeNWSE()
-  elseif b then
-    cursor = reaper.ImGui_MouseCursor_ResizeNS()
-  else
-    cursor = reaper.ImGui_MouseCursor_ResizeEW()
-  end
-  reaper.ImGui_SetMouseCursor(ctx, cursor)
-
-  if reaper.ImGui_IsMouseClicked(ctx, 0) then
-    local nx, ny = reaper.GetMousePosition()
-    local kx, ky = native_scale(nx, ny)
-    rs = { l = l, r = r, b = b, cursor = cursor, x = wx, y = wy, right = wx + ww,
-      w0 = ww, h0 = wh, nx = nx, ny = ny, kx = kx, ky = ky }
+    local tx = math.floor(x + (bw - nw) / 2 + 0.5)
+    local ty = math.floor(gy + (bh - nh) / 2 + 0.5)
+    put(f_num, tx, ty + 1 + push, C_NUM_SHADE, num)
+    put(f_num, tx, ty + push, saved[i] and C_NUM_ON or C_NUM, num)
+    gx = gx + bw + GAP
   end
 end
 
@@ -438,13 +391,10 @@ local function loop()
     reaper.ImGui_SetNextWindowDockID(ctx, dock_request, reaper.ImGui_Cond_Always())
     dock_request = nil
   end
-  if pending then
-    reaper.ImGui_SetNextWindowSize(ctx, pending.w, pending.h, reaper.ImGui_Cond_Always())
-    if pending.x then reaper.ImGui_SetNextWindowPos(ctx, pending.x, pending.y, reaper.ImGui_Cond_Always()) end
-    pending = nil
-  else
-    reaper.ImGui_SetNextWindowSize(ctx, INIT_W, h_for(INIT_W), reaper.ImGui_Cond_FirstUseEver())
-  end
+  reaper.ImGui_SetNextWindowSize(ctx, INIT_W, INIT_H, reaper.ImGui_Cond_FirstUseEver())
+  -- Minimum height = square buttons (MIN_BTN) + margins + the title bar
+  local min_h = math.ceil(MIN_BTN + 2 * PAD + reaper.ImGui_GetFrameHeight(ctx))
+  reaper.ImGui_SetNextWindowSizeConstraints(ctx, MIN_W, min_h, 16384, 16384)
 
   reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_WindowBg(), C_BG)
   reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_TitleBg(), C_TITLE)
@@ -453,14 +403,17 @@ local function loop()
   reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(), C_TEXT)
   reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_PopupBg(), C_TITLE)
   reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Border(), C_BORDER)
+  -- no visible resize grip in the corner (the corner can still be dragged)
+  reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ResizeGrip(), 0x00000000)
+  reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ResizeGripHovered(), 0x00000000)
+  reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_ResizeGripActive(), 0x00000000)
   reaper.ImGui_PushStyleVar(ctx, reaper.ImGui_StyleVar_WindowPadding(), PAD, PAD)
 
   local flags = reaper.ImGui_WindowFlags_NoCollapse() | reaper.ImGui_WindowFlags_NoScrollbar()
-    | reaper.ImGui_WindowFlags_NoScrollWithMouse() | reaper.ImGui_WindowFlags_NoResize()
+    | reaper.ImGui_WindowFlags_NoScrollWithMouse()
   local visible, open = reaper.ImGui_Begin(ctx, "Horizontal zoom presets manager", true, flags)
   if visible then
     draw()
-    handle_resize()
     window_menu()
     -- Give keyboard focus back to REAPER after every click so shortcuts keep working
     if reaper.ImGui_IsMouseReleased(ctx, 0) and reaper.ImGui_IsWindowHovered(ctx) then return_focus() end
@@ -468,7 +421,7 @@ local function loop()
   end
 
   reaper.ImGui_PopStyleVar(ctx, 1)
-  reaper.ImGui_PopStyleColor(ctx, 7)
+  reaper.ImGui_PopStyleColor(ctx, 10)
 
   if open then
     reaper.defer(loop)

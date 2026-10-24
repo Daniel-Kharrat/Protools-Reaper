@@ -1,8 +1,20 @@
 -- @description Daniel_Floating Mixer
--- @version 3.2
+-- @version 4.1
 -- @changelog
---   A small heart at the start of the top row (in place of the window number) links to Ko-fi
---   to support the script.
+--   Mute button: right-click shows the mute menu (unmute all, exclusive mute, mute all others, ignore
+--   selection), and its modifier clicks work on the button (Cmd: unmute all, Option+Cmd: exclusive,
+--   Option: mute all others, Shift: ignore selection).
+--   Solo button: right-click shows only the solo menu; the menu's modifier clicks work on the button
+--   (Option: ignore routing, Cmd: unsolo all, Option+Cmd: exclusive, Shift+Cmd: solo defeat, Shift: ignore
+--   selection). No tooltips on mute / solo.
+--   Right-clicking the solo button opens the solo menu, like the mixer: solo in place, solo (ignore
+--   routing), unsolo all, exclusive solo, solo defeat, ignore selection. Solo defeat shows the theme's image.
+--   Themes that aren't based on Default 7 (Default 6, fully custom themes): the mixer is drawn with
+--   REAPER's own Default 7 theme instead, so the strips don't break.
+--   Dragging an FX slot to another slot (same or another track) outlines the slot it will land in.
+--   Dragging an FX from the FX browser over the mixer shows REAPER's own "add FX" cursor.
+--   Drag an FX from REAPER's FX browser onto a strip to add it to that track (onto an FX slot:
+--   it goes into that slot), like the native mixer. Needs js_ReaScriptAPI.
 -- @author Daniel
 -- @about
 --   # Floating Mixer
@@ -17,12 +29,15 @@
 --     with REAPER's own right-click menus where REAPER offers them
 --   - Fader background colored by automation mode, folder tracks indented like the mixer, and
 --     folders collapse / expand in sync with REAPER's mixer
+--   - Drag an FX from REAPER's FX browser onto a strip (or onto one of its FX slots) to add it
 --   - Running the action again closes the windows (works as a toolbar toggle)
 --
 --   Requirements: REAPER 7, ReaImGui 0.9.3 or newer (ReaPack).
 --   Recommended: SWS (opens the SWS Snapshots window for mix snapshots) and js_ReaScriptAPI
---   (keeps your keyboard shortcuts working while you use the window).
---   Made for the Default 7 theme and themes based on it; other themes may not lay out correctly.
+--   (keeps your keyboard shortcuts working while you use the window, and lets you drag FX in from
+--   REAPER's FX browser).
+--   Made for the Default 7 theme and themes based on it. With any other theme (Default 6, custom themes)
+--   the mixer is drawn with REAPER's Default 7 theme instead.
 --
 --   Support: ko-fi.com/danielkharrat
 
@@ -121,6 +136,7 @@ set_visual_state(true)
 write_ini_flag(true)
 DFM_closed_by_user = false   -- (global) set when the last window is closed with its X (see loop)
 r.atexit(function()
+  if DFM_release_fxb then DFM_release_fxb() end   -- (global) FX browser drag: give REAPER its mouse moves back
   set_visual_state(false)
   if DFM_closed_by_user then
     write_ini_flag(false)                        -- closed with X: stays closed
@@ -476,7 +492,7 @@ local function parse_colors(ini)
   return c
 end
 local function theme_col(key, fallback)
-  if r.GetThemeColor then
+  if r.GetThemeColor and not Theme.fallback then   -- not Default 7-based: the Default 7 colors (below) instead
     local c = r.GetThemeColor(key, 0)
     if c and c >= 0 then
       local R, G, B = r.ColorFromNative(c)
@@ -603,16 +619,62 @@ local function read_params()
   Theme.P = P
 end
 
+-- REAPER's own Default 7 theme file (shipped with REAPER), for themes that aren't based on it
+local function default7_zip()
+  local rp, ep = r.GetResourcePath(), r.GetExePath()
+  local dirs = { rp .. '/ColorThemes', ep .. '/ColorThemes', ep .. '/../Resources/ColorThemes',
+                 ep .. '/REAPER.app/Contents/Resources/ColorThemes', '/Applications/REAPER.app/Contents/Resources/ColorThemes',
+                 ep .. '/REAPER64.app/Contents/Resources/ColorThemes' }
+  local best
+  for _, d in ipairs(dirs) do
+    r.EnumerateFiles(d, -1)
+    local i = 0
+    while true do
+      local f = r.EnumerateFiles(d, i)
+      if not f then break end
+      local lf = f:lower()
+      if lf:match('^default_7') and lf:match('%.reaperthemezip$') then
+        if lf == 'default_7.0.reaperthemezip' then return d .. '/' .. f end
+        best = best or (d .. '/' .. f)
+      end
+      i = i + 1
+    end
+  end
+  return best
+end
+
+-- Is the active theme Default 7 or based on it? Its parameters (Theme adjuster) or its rtconfig give it away.
+local function is_default7(dir)
+  local P = Theme.P or {}
+  if P.customColorDepthParam ~= nil or P.mcpBgColR ~= nil then return true end
+  local d = dir and read_all(dir .. '/rtconfig.txt') or ''
+  return d:find('customColorDepthParam', 1, true) ~= nil or d:find('mcpBgColR', 1, true) ~= nil
+end
+
 local function theme_check()
   local now = r.time_precise()
   if now < Theme.next_check then return end
   Theme.next_check = now + 1.5
   read_params()
   local tf = r.GetLastColorThemeFile()
-  if tf == Theme.file then return end
+  if tf == Theme.file then
+    if Theme.fallback then Theme.P = {} end       -- the other theme's parameters don't apply
+    return
+  end
   for _, a in pairs(Theme.imgs) do if a and a.img then pcall(ImGui.Detach, ctx, a.img) end end
   Theme.imgs, Theme.file = {}, tf
   Theme.dir, Theme.ini = resolve_theme_dir(tf)
+  -- not Default 7-based (or REAPER's built-in theme, which has no files): draw with REAPER's Default 7
+  local d7 = is_default7(Theme.dir)
+  Theme.fallback = not d7
+  if Theme.fallback then Theme.P = {} end
+  if not d7 or not Theme.dir then
+    local z = default7_zip()
+    if z then
+      local dir, ini = resolve_theme_dir(z)
+      if dir then Theme.dir, Theme.ini = dir, ini end
+    end
+  end
   Theme.layouts = parse_layouts(Theme.dir)
   Theme.colors = parse_colors(Theme.ini)
   -- list font: the theme's lb_font (a Windows LOGFONT stored as hex). Height is at 100%, x2 for design units.
@@ -1110,6 +1172,18 @@ end
 -- dest = chain index of the FX in the target slot (nil if empty); slot = the target slot
 local function fx_drop_target(tr, dest, slot, nfx, slots_ok)
   if ImGui.BeginDragDropTarget(ctx) then
+    -- while dragging over this slot: outline it (same color as the FX browser drop), unless it's where it already is
+    local rv, typ, payload = ImGui.GetDragDropPayload(ctx)
+    if rv and typ == 'DTS_FX' then
+      local g, s = (payload or ''):match('^(.-)|(%d+)$')
+      local self = g == r.GetTrackGUID(tr) and tonumber(s) == dest and not is_ctrl()
+      if not self then
+        local x1, y1 = ImGui.GetItemRectMin(ctx)
+        local x2, y2 = ImGui.GetItemRectMax(ctx)
+        ImGui.DrawList_AddRect(ImGui.GetForegroundDrawList(ctx), x1 + 1, y1 + 1, x2 - 1, y2 - 1,
+          theme_col('col_repos', 0x455C78FF), 0, 0, 2)
+      end
+    end
     local ok, data = ImGui.AcceptDragDropPayload(ctx, 'DTS_FX', ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
     if ok and data then
       local guid, src = data:match('^(.-)|(%d+)$')
@@ -1195,6 +1269,7 @@ local function draw_fx_area(tr, y0, y1)
     local slot = row + state.fx_scroll
     local i = by_slot[slot]
     local sy = y0 + 4 + row * SLOT_P
+    if state.fx_rows then state.fx_rows[#state.fx_rows + 1] = { X(x1), X(x2), Y(sy), Y(sy + SLOT_H), tr, slot } end
     if i then
       local en, off = r.TrackFX_GetEnabled(tr, i), r.TrackFX_GetOffline(tr, i)
       local chain_on = r.GetMediaTrackInfo_Value(tr, 'I_FXEN') == 1
@@ -1999,6 +2074,192 @@ local function draw_fader(tr, gt, gb)
   return db
 end
 
+-- Drag an FX from REAPER's FX browser onto a strip (needs js_ReaScriptAPI). REAPER doesn't tell scripts
+-- about its own drags, so: when the mouse goes down in the FX browser's plugin list and comes up over one
+-- of the strips, the FX selected in that list is added to that track (onto an FX slot: into that slot).
+-- (kept on state: the main chunk is close to Lua's 200-local limit)
+do
+  local TITLES = { 'fx browser', 'browse fx', 'add fx to' }
+  local TYPES = { vst = 'VST', vsti = 'VSTi', vst3 = 'VST3', vst3i = 'VST3i', au = 'AU', aui = 'AUi',
+                  js = 'JS', clap = 'CLAP', clapi = 'CLAPi', lv2 = 'LV2', lv2i = 'LV2i', dx = 'DX', dxi = 'DXi' }
+  -- the FX browser window this control belongs to (floating or docked)
+  local function browser_dialog(h)
+    local n = 0
+    while h and n < 8 do
+      local t = (r.JS_Window_GetTitle(h) or ''):lower()
+      for _, p in ipairs(TITLES) do if t:find(p, 1, true) then return h end end
+      h = r.JS_Window_GetParent(h); n = n + 1
+    end
+  end
+  -- released over the floating FX browser itself (it's in front while you drag from it): no drop
+  local function over_browser(d, x, y)
+    local root = r.JS_Window_GetAncestor and r.JS_Window_GetAncestor(d.dlg, 'ROOT') or d.dlg
+    if not root or root == r.GetMainHwnd() then return false end      -- docked in the main window
+    local ok, L, T, R, B = r.JS_Window_GetRect(root)
+    if not ok then return false end
+    if T > B then T, B = B, T end                                     -- macOS: y goes up
+    return x >= L and x < R and y >= T and y < B
+  end
+  -- names to try for a list row: as shown, with its type prefix (from the Type column), as an FX chain
+  local function candidates(list, idx)
+    local name = r.JS_ListView_GetItemText(list, idx, 0) or ''
+    local c = {}
+    if name == '' then return c end
+    c[1] = name
+    for col = 1, 4 do
+      local t = (r.JS_ListView_GetItemText(list, idx, col) or ''):gsub('%s', ''):lower()
+      if TYPES[t] then c[#c + 1] = TYPES[t] .. ': ' .. name end
+    end
+    c[#c + 1] = name .. '.RfxChain'
+    return c
+  end
+
+  -- the FX slot (or else the strip) under a point, in ImGui coordinates
+  state.fxb_hit = function(fx_rows, strip_rects, mx, my)
+    for _, list in ipairs({ fx_rows or {}, strip_rects or {} }) do
+      for _, q in ipairs(list) do
+        if mx >= q[1] and mx < q[2] and my >= q[3] and my < q[4] then return q end
+      end
+    end
+  end
+
+  state.fxb_drop = function(d, x, y)
+    if over_browser(d, x, y) then return end
+    local mx, my = ImGui.PointConvertNative(ctx, x, y, false)
+    local q
+    for _, W in ipairs(state.wins or {}) do
+      q = state.fxb_hit(W.fx_rows, W.strip_rects, mx, my)
+      if q then break end
+    end
+    local tr, slot = q and q[5], q and q[6]
+    if not tr or not r.ValidatePtr2(0, tr, 'MediaTrack*') then return end
+    local n, items = r.JS_ListView_ListAllSelItems(d.list)
+    if not n or n < 1 then return end
+    r.Undo_BeginBlock()
+    r.PreventUIRefresh(1)
+    local added = {}
+    for idx in (items or ''):gmatch('%d+') do
+      local before = r.TrackFX_GetCount(tr)
+      for _, nm in ipairs(candidates(d.list, tonumber(idx))) do
+        if r.TrackFX_AddByName(tr, nm, false, -1) >= 0 then break end
+      end
+      for i = before, r.TrackFX_GetCount(tr) - 1 do added[#added + 1] = r.TrackFX_GetFXGUID(tr, i) end
+    end
+    if slot and #added > 0 then                       -- dropped on an FX slot: put it (them) there
+      local nfx = r.TrackFX_GetCount(tr)
+      local _, _, slots_ok = fx_slot_map(tr, nfx)
+      for k, g in ipairs(added) do
+        if slots_ok then
+          place_fx(tr, g, slot + k - 1)
+        else
+          local cur, dest = find_fx(tr, g), math.min(slot + k - 1, nfx - 1)
+          if cur and cur ~= dest then r.TrackFX_CopyToTrack(tr, cur, tr, dest, true) end
+        end
+      end
+    end
+    r.PreventUIRefresh(-1)
+    r.Undo_EndBlock('Add FX', -1)
+  end
+
+  -- While an FX browser drag is over the mixer, REAPER would show its "can't drop here" cursor (it sets the
+  -- cursor on every mouse move of the drag). So while over the mixer, the drag's mouse-move messages are held
+  -- back from the FX browser and a normal arrow is shown instead; they're given back as soon as the mouse
+  -- leaves the mixer or the button is released. (Release itself is never held back.)
+  local hooked = {}
+  local function release_moves()
+    for h in pairs(hooked) do pcall(r.JS_WindowMessage_Release, h, 'WM_MOUSEMOVE') end
+    hooked = {}
+  end
+  DFM_release_fxb = release_moves                    -- (global) also called when the script ends
+  local function hold_moves(d)
+    if not r.JS_WindowMessage_Intercept or next(hooked) then return end
+    for _, h in ipairs({ d.list, d.dlg }) do         -- the list or its dialog holds the drag's mouse capture
+      if h and not hooked[h] and r.JS_WindowMessage_Intercept(h, 'WM_MOUSEMOVE', false) == 1 then hooked[h] = true end
+    end
+  end
+  -- REAPER's "add FX" cursor (fx_dd). Scripts can't ask for it by name, so it's picked up the first time a
+  -- drag passes over a track in REAPER (where REAPER shows it), and its number is looked up and saved, so
+  -- from then on it's there from the start. Until then: the theme's fx_dd.cur if it has one, else an arrow.
+  local add_cursor
+  local function find_cursor_id(handle)
+    for n = 100, 1000 do
+      local c = r.JS_Mouse_LoadCursor(n)
+      if c and c == handle then return n end
+    end
+  end
+  local function get_add_cursor()
+    if add_cursor then return add_cursor end
+    local id = tonumber(r.GetExtState(EXT, 'fx_dd_cursor'))
+    if id then add_cursor = r.JS_Mouse_LoadCursor(id) end
+    if not add_cursor and r.JS_Mouse_LoadCursorFromFile then
+      for _, f in ipairs({ r.GetResourcePath() .. '/Cursors/fx_dd.cur', Theme.dir and (Theme.dir .. '/fx_dd.cur') }) do
+        if f and file_exists(f) then add_cursor = r.JS_Mouse_LoadCursorFromFile(f); if add_cursor then break end end
+      end
+    end
+    state.fxb_arrow = state.fxb_arrow or r.JS_Mouse_LoadCursor(32512)
+    return add_cursor or state.fxb_arrow
+  end
+  -- during a drag over a REAPER track (two frames in a row, so REAPER has set its cursor): learn it
+  local function learn_cursor(d, x, y)
+    if add_cursor and d.learned then return end
+    local over = r.GetTrackFromPoint(x, y) ~= nil
+    if over and d.on_track and r.JS_Mouse_GetCursor then
+      local c = r.JS_Mouse_GetCursor()
+      if c then
+        add_cursor, d.learned = c, true
+        if not r.GetExtState(EXT, 'fx_dd_cursor'):match('%d') then
+          local id = find_cursor_id(c)
+          if id then r.SetExtState(EXT, 'fx_dd_cursor', tostring(id), true) end
+        end
+      end
+    end
+    d.on_track = over
+  end
+
+  local function over_mixer(mx, my)
+    for _, W in ipairs(state.wins or {}) do
+      if state.fxb_hit(nil, W.strip_rects, mx, my) then return true end
+    end
+  end
+
+  -- once per frame: follows the left mouse button anywhere on screen
+  state.fxb_update = function()
+    if not (r.JS_Mouse_GetState and r.JS_Window_FromPoint and r.JS_ListView_ListAllSelItems) then return end
+    local down = (r.JS_Mouse_GetState(1) & 1) == 1
+    local x, y = r.GetMousePosition()
+    if down and not state.fxb_was_down then          -- pressed: in the FX browser's list?
+      release_moves()
+      state.fxb = nil
+      local h = r.JS_Window_FromPoint(x, y)
+      local cls = h and (r.JS_Window_GetClassName(h) or ''):lower() or ''
+      local dlg = cls:find('listview', 1, true) and browser_dialog(h)
+      if dlg then state.fxb = { list = h, dlg = dlg, x0 = x, y0 = y } end
+    elseif down and state.fxb then                   -- dragging
+      if math.abs(x - state.fxb.x0) + math.abs(y - state.fxb.y0) > 6 then state.fxb.moving = true end
+      state.fxb.mx, state.fxb.my = ImGui.PointConvertNative(ctx, x, y, false)
+      if state.fxb.moving and over_mixer(state.fxb.mx, state.fxb.my) and not over_browser(state.fxb, x, y) then
+        hold_moves(state.fxb)
+        state.fxb.on_track = false
+        if r.JS_Mouse_SetCursor and r.JS_Mouse_LoadCursor then
+          local c = get_add_cursor()
+          if c then r.JS_Mouse_SetCursor(c) end
+        end
+      else
+        release_moves()
+        if state.fxb.moving and r.JS_Mouse_LoadCursor then learn_cursor(state.fxb, x, y) end
+      end
+    elseif not down and state.fxb then               -- released
+      release_moves()
+      local d = state.fxb
+      state.fxb = nil
+      if d.moving then state.fxb_drop(d, x, y) end
+    elseif not down then
+      release_moves()
+    end
+    state.fxb_was_down = down
+  end
+end
+
 -- track under the mouse: one of this window's strips, or anywhere in REAPER (TCP/MCP)
 route_target = function()
   local mx, my = ImGui.GetMousePos(ctx)
@@ -2011,6 +2272,63 @@ route_target = function()
 end
 
 local ENV_SUFFIX = { [0] = '', '_read', '_touch', '_write', '_latch', '_preview' }
+
+-- Solo button actions, as in REAPER's solo menu (I_SOLO: 1 = solo ignoring routing, 2 = solo in place,
+-- 5 / 6 = the same, solo-safe). Also used by the button's modifier clicks.
+state.solo_do = function(tr, what)
+  local sv = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_SOLO'))
+  if what == 'inplace' then
+    undo_wrap('Solo in place', function() r.SetMediaTrackInfo_Value(tr, 'I_SOLO', (sv == 2 or sv == 6) and 0 or 2) end)
+  elseif what == 'ignore_routing' then
+    undo_wrap('Solo (ignore routing)', function() r.SetMediaTrackInfo_Value(tr, 'I_SOLO', (sv == 1 or sv == 5) and 0 or 1) end)
+  elseif what == 'unsolo_all' then
+    r.Main_OnCommand(40340, 0)
+  elseif what == 'exclusive' then
+    r.PreventUIRefresh(1); r.Main_OnCommand(40340, 0); r.SetTrackUISolo(tr, 1, IGN); r.PreventUIRefresh(-1)
+  elseif what == 'defeat' then
+    local d = r.GetMediaTrackInfo_Value(tr, 'B_SOLO_DEFEAT') == 1
+    undo_wrap('Toggle solo defeat', function() r.SetMediaTrackInfo_Value(tr, 'B_SOLO_DEFEAT', d and 0 or 1) end)
+  elseif what == 'ignore_sel' then
+    r.SetTrackUISolo(tr, -1, IGN | 2)
+  else
+    r.SetTrackUISolo(tr, -1, IGN)
+  end
+end
+-- Mute button actions, as in REAPER's mute menu. Also used by the button's modifier clicks.
+state.mute_do = function(tr, what)
+  local master = r.GetMasterTrack(0)
+  if what == 'unmute_all' then
+    r.Main_OnCommand(40339, 0)                              -- Track: Unmute all tracks
+  elseif what == 'exclusive' or what == 'others' then
+    undo_wrap(what == 'exclusive' and 'Exclusive mute' or 'Mute all others', function()
+      r.PreventUIRefresh(1)
+      for i = 0, r.CountTracks(0) - 1 do
+        local t = r.GetTrack(0, i)
+        if t ~= tr then r.SetMediaTrackInfo_Value(t, 'B_MUTE', what == 'others' and 1 or 0) end
+      end
+      if tr ~= master then r.SetMediaTrackInfo_Value(master, 'B_MUTE', 0) end
+      r.SetMediaTrackInfo_Value(tr, 'B_MUTE', what == 'exclusive' and 1 or 0)
+      r.PreventUIRefresh(-1)
+    end)
+  elseif what == 'ignore_sel' then
+    r.SetTrackUIMute(tr, -1, IGN | 2)
+  else
+    r.SetTrackUIMute(tr, -1, IGN)
+  end
+end
+state.mute_click = function(tr)                             -- REAPER's mute modifiers
+  local sh, ct, al = is_fine(), is_ctrl(), is_alt()
+  if al and ct and not sh then state.mute_do(tr, 'exclusive')
+  elseif ct and not al and not sh then state.mute_do(tr, 'unmute_all')
+  elseif al and not ct and not sh then state.mute_do(tr, 'others')
+  elseif sh and not ct and not al then state.mute_do(tr, 'ignore_sel')
+  else state.mute_do(tr, 'toggle') end
+end
+-- modifier names for the menu (Cmd / Option on macOS, Ctrl / Alt elsewhere)
+do
+  local mac = (r.GetOS() or ''):find('OSX') or (r.GetOS() or ''):find('mac')
+  state.MOD = { cmd = mac and 'Cmd' or 'Ctrl', opt = mac and 'Option' or 'Alt' }
+end
 
 local function draw_lower(tr, is_master, LT, MT, MB)
   -- volume / peak readouts (theme text, not images)
@@ -2035,18 +2353,28 @@ local function draw_lower(tr, is_master, LT, MT, MB)
   -- mute / solo
   local _, muted = r.GetTrackUIMute(tr)
   h = theme_button('##mute', bimg(muted and 'mcp_mute_on' or 'mcp_mute_off', muted and 'track_mute_on' or 'track_mute_off'),
-    BX, LT + 14, 'Mute', 'M', 40, 40, muted and COL.mute_on)
-  if h.click then r.SetTrackUIMute(tr, -1, IGN) end
+    BX, LT + 14, nil, 'M', 40, 40, muted and COL.mute_on)
+  if h.click then state.mute_click(tr) end
+  if h.rclick then ImGui.OpenPopup(ctx, 'mute_menu'); state.rclick_used = true end
 
   if not is_master then
     local soloed = r.GetMediaTrackInfo_Value(tr, 'I_SOLO') > 0
-    h = theme_button('##solo', bimg(soloed and 'mcp_solo_on' or 'mcp_solo_off', soloed and 'track_solo_on' or 'track_solo_off'),
-      BX, LT + 58, 'Solo  |  Ctrl/Cmd-click: exclusive', 'S', 40, 40, soloed and COL.solo_on)
-    if h.click then
-      if is_ctrl() then
-        r.PreventUIRefresh(1); r.Main_OnCommand(40340, 0); r.SetTrackUISolo(tr, 1, IGN); r.PreventUIRefresh(-1)
-      else r.SetTrackUISolo(tr, -1, IGN) end
+    local defeat = r.GetMediaTrackInfo_Value(tr, 'B_SOLO_DEFEAT') == 1
+    -- solo defeat (not soloed): the theme's mcp_solodefeat_on image (the lock), like the mixer
+    local sbi = (defeat and not soloed) and bimg('mcp_solodefeat_on', 'tcp_solodefeat_on')
+      or bimg(soloed and 'mcp_solo_on' or 'mcp_solo_off', soloed and 'track_solo_on' or 'track_solo_off')
+    h = theme_button('##solo', sbi, BX, LT + 58, nil,
+      (defeat and not soloed) and 'D' or 'S', 40, 40, soloed and COL.solo_on)
+    if h.click then                                  -- REAPER's solo modifiers
+      local sh, ct, al = is_fine(), is_ctrl(), is_alt()
+      if sh and ct and not al then state.solo_do(tr, 'defeat')
+      elseif al and ct and not sh then state.solo_do(tr, 'exclusive')
+      elseif ct and not al and not sh then state.solo_do(tr, 'unsolo_all')
+      elseif al and not ct and not sh then state.solo_do(tr, 'ignore_routing')
+      elseif sh and not ct and not al then state.solo_do(tr, 'ignore_sel')
+      else state.solo_do(tr, 'toggle') end
     end
+    if h.rclick then ImGui.OpenPopup(ctx, 'solo_menu'); state.rclick_used = true end
   end
 
   -- ROUTE (image changes with sends / receives / master send off)
@@ -2710,6 +3038,35 @@ local function draw_popups(tr)
       undo_wrap('Rename FX', function() r.TrackFX_SetNamedConfigParm(tr, i, 'renamed_name', buf) end)
     end
   end)
+  -- the solo button's right-click menu, like REAPER's (it isn't available to scripts, so it's rebuilt here).
+  -- I_SOLO: 1 = solo (ignore routing), 2 = solo in place, 5 / 6 = the same, solo-safe
+  if ImGui.BeginPopup(ctx, 'mute_menu') then
+    local C, O = state.MOD.cmd, state.MOD.opt
+    local _, muted = r.GetTrackUIMute(tr)
+    if ImGui.MenuItem(ctx, 'Mute', nil, muted) then state.mute_do(tr, 'toggle') end
+    if ImGui.MenuItem(ctx, 'Unmute all', C .. '+click') then state.mute_do(tr, 'unmute_all') end
+    if ImGui.MenuItem(ctx, 'Exclusive mute', O .. '+' .. C .. '+click') then state.mute_do(tr, 'exclusive') end
+    if ImGui.MenuItem(ctx, 'Mute all others', O .. '+click') then state.mute_do(tr, 'others') end
+    ImGui.Separator(ctx)
+    local ganged = r.IsTrackSelected(tr) and r.CountSelectedTracks(0) > 1
+    if ImGui.MenuItem(ctx, 'Ignore selection', 'Shift+click', false, ganged) then state.mute_do(tr, 'ignore_sel') end
+    ImGui.EndPopup(ctx)
+  end
+  if ImGui.BeginPopup(ctx, 'solo_menu') then
+    local sv = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_SOLO'))
+    local C, O = state.MOD.cmd, state.MOD.opt
+    if ImGui.MenuItem(ctx, 'Solo in place', nil, sv == 2 or sv == 6) then state.solo_do(tr, 'inplace') end
+    if ImGui.MenuItem(ctx, 'Solo (ignore routing)', O .. '+click', sv == 1 or sv == 5) then state.solo_do(tr, 'ignore_routing') end
+    if ImGui.MenuItem(ctx, 'Unsolo all', C .. '+click') then state.solo_do(tr, 'unsolo_all') end
+    if ImGui.MenuItem(ctx, 'Exclusive solo', O .. '+' .. C .. '+click') then state.solo_do(tr, 'exclusive') end
+    ImGui.Separator(ctx)
+    local defeat = r.GetMediaTrackInfo_Value(tr, 'B_SOLO_DEFEAT') == 1
+    if ImGui.MenuItem(ctx, 'Solo defeat', 'Shift+' .. C .. '+click', defeat) then state.solo_do(tr, 'defeat') end
+    -- solo on this track only, not the other selected tracks (only offered when that matters)
+    local ganged = r.IsTrackSelected(tr) and r.CountSelectedTracks(0) > 1
+    if ImGui.MenuItem(ctx, 'Ignore selection', 'Shift+click', false, ganged) then state.solo_do(tr, 'ignore_sel') end
+    ImGui.EndPopup(ctx)
+  end
   if ImGui.BeginPopup(ctx, 'automode_menu') then
     local am = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_AUTOMODE'))
     for i = 0, #AUTO do
@@ -3017,11 +3374,12 @@ local function draw_master(tr, P, D)
 
   local _, muted = r.GetTrackUIMute(tr)
   local h2 = theme_button('##mute', bimg(muted and 'mcp_mute_on' or 'mcp_mute_off', muted and 'track_mute_on' or 'track_mute_off'),
-    BX, P + 84, 'Mute', 'M', 40, 40, muted and COL.mute_on)
-  if h2.click then r.SetTrackUIMute(tr, -1, IGN) end
+    BX, P + 84, nil, 'M', 40, 40, muted and COL.mute_on)
+  if h2.click then state.mute_click(tr) end
+  if h2.rclick then ImGui.OpenPopup(ctx, 'mute_menu') end
   local soloed = r.GetMediaTrackInfo_Value(tr, 'I_SOLO') > 0
   h2 = theme_button('##solo', bimg(soloed and 'mcp_solo_on' or 'mcp_solo_off', soloed and 'track_solo_on' or 'track_solo_off'),
-    BX, P + 124, 'Solo', 'S', 40, 40, soloed and COL.solo_on)
+    BX, P + 124, nil, 'S', 40, 40, soloed and COL.solo_on)
   if h2.click then r.SetTrackUISolo(tr, -1, IGN) end
 
   local sends = r.GetTrackNumSends(tr, 0) + r.GetTrackNumSends(tr, 1) > 0
@@ -3150,7 +3508,8 @@ local function draw_strip(tr, wx, wy, W, H)
   end
   draw_lower(tr, is_master, LT, MT, MB)
   local hlb = window_drag_area('##lowerbg', 0, LT, DESIGN_W, MB + BOTROW)
-  if hlb.rclick then
+  local rc_used = state.rclick_used; state.rclick_used = false
+  if hlb.rclick and not rc_used then
     local mx, my = ImGui.GetMousePos(ctx)
     local m = G.meter_rect
     local on_meter = m and mx >= m[1] and mx <= m[3] and my >= m[2] and my <= m[4]
@@ -3207,7 +3566,7 @@ end
 -- per-window state: swapped into `state` while that window is drawn
 -- (kept in a do-block on `state`: the main chunk is close to Lua's 200-local limit)
 do
-  local WIN_FIELDS = { 'mode', 'list', 'proj', 'docked', 'dock_req', 'cur_tracks', 'strip_rects' }
+  local WIN_FIELDS = { 'mode', 'list', 'proj', 'docked', 'dock_req', 'cur_tracks', 'strip_rects', 'fx_rows' }
   state.win_in = function(W)
     CUR_WIN = W.n
     for _, f in ipairs(WIN_FIELDS) do state[f] = W[f] end
@@ -3444,6 +3803,7 @@ state.draw_mixer_window = function(W)
     local H = select(2, ImGui.GetWindowSize(ctx)) - (wy - select(2, ImGui.GetWindowPos(ctx)))
     state.cur_tracks = tracks
     state.strip_rects = {}
+    state.fx_rows = {}
     do
       local x = wx
       for k, tr in ipairs(tracks) do
@@ -3485,6 +3845,13 @@ state.draw_mixer_window = function(W)
       ImGui.PopStyleColor(ctx)
       ImGui.PopTextWrapPos(ctx)
     end
+    -- dragging an FX in from REAPER's FX browser: outline the slot (or strip) it would land on
+    if state.fxb and state.fxb.moving and state.fxb.mx then
+      local q = state.fxb_hit(state.fx_rows, state.strip_rects, state.fxb.mx, state.fxb.my)
+      if q then
+        ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), q[1] + 1, q[3] + 1, q[2] - 1, q[4] - 1, dnd_color(), 0, 0, 2)
+      end
+    end
     if ImGui.IsWindowFocused(ctx) and not ImGui.IsAnyItemActive(ctx)
        and ImGui.IsKeyPressed(ctx, ImGui.Key_Space, false) then
       r.Main_OnCommand(40044, 0)
@@ -3499,6 +3866,7 @@ end
 local function loop()
   theme_check()
   update_reaper_touch()
+  state.fxb_update()
   -- the windows open in this project come back (a new project: just window 1). Switching project tabs
   -- switches to that project's windows.
   local proj = r.EnumProjects(-1)
@@ -3567,8 +3935,9 @@ end
 -- label font: the theme's lb_font face, created before drawing starts so it can be attached
 do
   local face = 'Calibri'
-  local ok, _, ini = pcall(resolve_theme_dir, r.GetLastColorThemeFile())
-  local d = ok and ini and read_all(ini)
+  pcall(theme_check)                         -- (picks REAPER's Default 7 if the theme isn't based on it)
+  local ini = Theme.ini
+  local d = ini and read_all(ini)
   local hx = d and d:match('\nlb_font=(%x+)')
   if hx and #hx >= 92 then
     local chars = {}

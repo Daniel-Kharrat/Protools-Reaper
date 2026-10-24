@@ -1,7 +1,11 @@
 -- @description Daniel_Auto Mixer Panel
 -- @author Daniel Kharrat
--- @version 2.15
+-- @version 2.16
 -- @changelog
+--   Dragging one of several selected strips moves all the selected strips together.
+--   Fixed: Cmd-click (Ctrl-click on Windows/Linux) didn't toggle a strip's selection.
+--   Fixed: switching from one hardware output to another kept the first output.
+--   2.15:
 --   Hardware-input strips have a segmented input meter, so they're easy to tell from track strips.
 --   Inputs already in use are shown in soft red in the input lists.
 --   2.12:
@@ -480,21 +484,29 @@ end
 local function set_output(tr, out)
   reaper.Undo_BeginBlock()
   reaper.PreventUIRefresh(1)
-  for k = reaper.GetTrackNumSends(tr, 1) - 1, 0, -1 do reaper.RemoveTrackSend(tr, 1, k) end
   reaper.SetMediaTrackInfo_Value(tr, "B_MAINSEND", (out == "main") and 1 or 0)
   if type(out) == "number" then
-    -- a mono-input track sends channel 1; anything else sends channels 1/2 mixed to mono
-    local inp = reaper.GetMediaTrackInfo_Value(tr, "I_RECINPUT")
-    local mono_src = inp >= 0 and inp < 1024
-    local s = reaper.CreateTrackSend(tr, nil)                       -- hardware output send
-    if s >= 0 then
-      reaper.SetTrackSendInfo_Value(tr, 1, s, "D_VOL", 1)           -- 0 dB
-      reaper.SetTrackSendInfo_Value(tr, 1, s, "I_SENDMODE", 0)      -- post-fader: gets the auto mixing and the fader
-      reaper.SetTrackSendInfo_Value(tr, 1, s, "I_SRCCHAN", mono_src and 1024 or 0)
-      reaper.SetTrackSendInfo_Value(tr, 1, s, "I_DSTCHAN", 1024 | out) -- mono, to this output
+    out = math.floor(out)
+    -- keep one hardware send and point it at the new output (instead of deleting and
+    -- re-creating it, which left the first output in place); create it if there's none
+    local s = 0
+    if reaper.GetTrackNumSends(tr, 1) == 0 then s = reaper.CreateTrackSend(tr, nil) end
+    -- remove any other hardware sends, last first so the indexes stay valid
+    for k = reaper.GetTrackNumSends(tr, 1) - 1, 1, -1 do reaper.RemoveTrackSend(tr, 1, k) end
+    if s >= 0 and reaper.GetTrackNumSends(tr, 1) > 0 then
+      -- a mono-input track sends channel 1; anything else sends channels 1/2 mixed to mono
+      local inp = reaper.GetMediaTrackInfo_Value(tr, "I_RECINPUT")
+      local mono_src = inp >= 0 and inp < 1024
+      reaper.SetTrackSendInfo_Value(tr, 1, 0, "D_VOL", 1)            -- 0 dB
+      reaper.SetTrackSendInfo_Value(tr, 1, 0, "I_SENDMODE", 0)       -- post-fader: gets the auto mixing and the fader
+      reaper.SetTrackSendInfo_Value(tr, 1, 0, "I_SRCCHAN", mono_src and 1024 or 0)
+      reaper.SetTrackSendInfo_Value(tr, 1, 0, "I_DSTCHAN", 1024 | out) -- mono, to this output
     end
+  else
+    for k = reaper.GetTrackNumSends(tr, 1) - 1, 0, -1 do reaper.RemoveTrackSend(tr, 1, k) end
   end
   reaper.PreventUIRefresh(-1)
+  reaper.TrackList_AdjustWindows(false)   -- refresh the routing / I/O buttons
   local what = (out == "main") and "Main mix" or (out == "none") and "None" or ("Out " .. (out + 1))
   reaper.Undo_EndBlock("Auto Mixer: output " .. what, -1)
 end
@@ -570,7 +582,17 @@ end
 local function mods() return ImGui.GetKeyMods(ctx) end
 local function is_fine() return (mods() & ImGui.Mod_Shift) ~= 0 end
 local function is_alt()  return (mods() & ImGui.Mod_Alt) ~= 0 end
-local function is_ctrl() return (mods() & ImGui.Mod_Ctrl) ~= 0 end   -- Cmd on macOS
+-- Cmd on macOS, Ctrl on Windows/Linux. ImGui alone missed Cmd on macOS (it can report it as
+-- Super, or not at all when the panel isn't the focused window), so also ask the OS via js_ReaScriptAPI.
+local function is_ctrl()
+  local m = mods()
+  if (m & ImGui.Mod_Ctrl) ~= 0 then return true end
+  if reaper.GetOS():match("^OSX") or reaper.GetOS():match("^macOS") then
+    if (m & ImGui.Mod_Super) ~= 0 then return true end
+  end
+  if reaper.JS_Mouse_GetState then return (reaper.JS_Mouse_GetState(4) & 4) ~= 0 end   -- 4 = Cmd / Ctrl
+  return false
+end
 
 -- invisible hit area at screen position
 local function hit(id, x, y, w, h, tip)
@@ -891,17 +913,35 @@ end
 -- Reordering: drag a strip onto another; an accent bar shows where it lands
 ---------------------------------------------------------------------
 local DND_TYPE = "DANIEL_AUTOMIXER_SLOT"
+
+-- the strips that move with strip `from`: all strips whose track is selected when the dragged
+-- strip is one of them, otherwise just the dragged strip. Returns a set and a count.
+local function moving_set(from)
+  local function sel(k)
+    local s = S.slots[k]
+    local t = s and s.guid and track_by_guid(s.guid)
+    return t and reaper.IsTrackSelected(t)
+  end
+  local set, n = {}, 0
+  if sel(from) then
+    for k = 1, #S.slots do if sel(k) then set[k] = true n = n + 1 end end
+  end
+  if n == 0 then set[from] = true n = 1 end
+  return set, n
+end
+
 local function card_dnd(i, x, y, label)
   if ImGui.BeginDragDropSource(ctx) then
     ImGui.SetDragDropPayload(ctx, DND_TYPE, tostring(i))
-    ImGui.Text(ctx, "Move  " .. label)
+    local _, n = moving_set(i)
+    ImGui.Text(ctx, (n > 1) and ("Move  " .. n .. " strips") or ("Move  " .. label))
     ImGui.EndDragDropSource(ctx)
   end
   if ImGui.BeginDragDropTarget(ctx) then
     local ok, payload = ImGui.AcceptDragDropPayload(ctx, DND_TYPE, nil,
       ImGui.DragDropFlags_AcceptBeforeDelivery | ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
     local from = ok and tonumber(payload)
-    if from and from ~= i then
+    if from and not moving_set(from)[i] then   -- can't drop onto a strip that's moving itself
       local bx = (from < i) and (x + SW + GAP / 2 - 1.5) or (x - GAP / 2 - 1.5)
       rr(bx, y + 6, 3, SH - 12, 1.5, ACCENT)
       if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then S.pending_move = { from, i } end
@@ -1378,9 +1418,22 @@ local function strips(now, dt)
     local from, to = S.pending_move[1], S.pending_move[2]
     S.pending_move = nil
     if S.slots[from] and S.slots[to] then
-      local moved = table.remove(S.slots, from)
-      table.insert(S.slots, to, moved)
-      save_state()
+      -- move the dragged strip, plus every other selected strip with it, as one block in their
+      -- current order: after the target when dragging right, before it when dragging left
+      local set = moving_set(from)
+      if not set[to] then
+        local target = S.slots[to]
+        local block, rest = {}, {}
+        for k, s in ipairs(S.slots) do
+          if set[k] then block[#block + 1] = s else rest[#rest + 1] = s end
+        end
+        local at
+        for k, s in ipairs(rest) do if s == target then at = k break end end
+        if from < to then at = at + 1 end
+        for k, s in ipairs(block) do table.insert(rest, at + k - 1, s) end
+        S.slots = rest
+        save_state()
+      end
     end
   end
 

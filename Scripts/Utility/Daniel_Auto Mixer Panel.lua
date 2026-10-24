@@ -1,7 +1,13 @@
 -- @description Daniel_Auto Mixer Panel
 -- @author Daniel Kharrat
--- @version 2.16
+-- @version 2.17
 -- @changelog
+--   Bypass button on each strip (power key at the start of the header, replacing the strip
+--   number): takes the channel out of the auto mix without removing it; it passes at unity and
+--   the others share without it. A bypassed strip shows "Bypassed" in place of the dB readout and
+--   its power icon turns soft red.
+--   Needs Daniel_Auto Mixer 2.4.
+--   2.16:
 --   Dragging one of several selected strips moves all the selected strips together.
 --   Fixed: Cmd-click (Ctrl-click on Windows/Linux) didn't toggle a strip's selection.
 --   Fixed: switching from one hardware output to another kept the first output.
@@ -274,7 +280,8 @@ local function db(v) return (v and v > 0) and 20 * math.log(v, 10) or -150 end
 
 -- the plugin's parameters, found by name so slider order doesn't matter
 local PARAM_KEYS = { mode = "Mode", weight = "Weight", group = "Group", rel = "Release",
-                     hold = "Last mic hold", thr = "Hold below", slot = "Slot" }
+                     hold = "Last mic hold", thr = "Hold below", slot = "Slot",
+                     bypass = "Bypass auto mix" }
 local function params_of(tr, fx)
   local P = {}
   for p = 0, reaper.TrackFX_GetNumParams(tr, fx) - 1 do
@@ -656,6 +663,49 @@ local function close_x(id, x, y)
   ImGui.DrawList_AddLine(DL, x + 1, y + 1, x + 9, y + 9, c, 1.5)
   ImGui.DrawList_AddLine(DL, x + 9, y + 1, x + 1, y + 9, c, 1.5)
   return h.click
+end
+
+-- bypass chip (power icon), left edge at x, same shape as the input / output / group chips.
+-- Icon lit in the group colour while the channel is in the auto mix, dim when bypassed.
+-- Drawn from whole shapes on whole pixels (a filled ring, a background-coloured notch, a
+-- rounded stem) instead of a stroked arc, so it renders the same on macOS, Windows and Linux.
+local BYPASS_W = 22
+local BYPASS_COL = 0xF2788A   -- soft red, the Ko-fi heart's colour (yellow is a group colour)
+
+-- drawn as a keycap (22 x 20, corner 5, 1 px darker edge below) at the start of the header
+local function draw_bypass_chip(x, y, bypassed, hov)
+  local w, hgt = BYPASS_W, 20
+  local bg = hov and COL.keyhov or COL.key
+  rr(x, y + 1, w, hgt + 1, 5, COL.keyedge)
+  rr(x, y, w, hgt, 5, bg)
+  local c = rgba(bypassed and BYPASS_COL or (hov and COL.text or ACCENT))
+  -- modern power symbol: an even-weight ring with a wide opening at the top and rounded
+  -- ends, and a rounded stem standing in the opening
+  local cx, cy = math.floor(x + w / 2) + 0.5, math.floor(y + hgt / 2) + 1
+  local R, T = 5.6, 1.6                  -- ring outer radius, stroke weight
+  local rm = R - T / 2                   -- middle of the stroke
+  local GAP = math.rad(42)               -- half the opening, from straight up
+  ImGui.DrawList_AddCircleFilled(DL, cx, cy, R, c, 40)
+  ImGui.DrawList_AddCircleFilled(DL, cx, cy, R - T, rgba(bg), 40)
+  -- cut the opening with a wedge in the chip colour
+  local L = R + 2
+  ImGui.DrawList_AddTriangleFilled(DL, cx, cy,
+    cx - L * math.sin(GAP), cy - L * math.cos(GAP),
+    cx + L * math.sin(GAP), cy - L * math.cos(GAP), rgba(bg))
+  -- rounded ends of the ring
+  for _, sgn in ipairs({ -1, 1 }) do
+    ImGui.DrawList_AddCircleFilled(DL, cx + sgn * rm * math.sin(GAP), cy - rm * math.cos(GAP), T / 2, c, 12)
+  end
+  -- stem, rounded at both ends
+  ImGui.DrawList_AddRectFilled(DL, cx - T / 2, cy - R - 1, cx + T / 2, cy - 1, c, T / 2)
+end
+
+local function bypass_chip(x, y, bypassed)
+  local h = hit("##bypass", x, y, BYPASS_W, 21,
+    bypassed and "Bypassed: not in the auto mix (passes at unity)\nClick: back into the auto mix"
+              or "In the auto mix\nClick: bypass (take it out without removing it)")
+  draw_bypass_chip(x, y, bypassed, h.hov)
+  return h.click, h.hov
 end
 
 local function key_button(id, x, y, w, h, label)
@@ -1050,6 +1100,7 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   end
   ACCENT = GROUP_COL[group]   -- this strip in its group's colour (put back to blue after the strip)
   local weight = reaper.TrackFX_GetParam(tr, fx, P.weight)
+  local bypassed = P.bypass and reaper.TrackFX_GetParam(tr, fx, P.bypass) > 0.5
 
   -- muted tracks leave the gain sharing
   if base and online then reaper.gmem_write(base + 7, muted and 1 or 0) end
@@ -1059,7 +1110,7 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   if not d then d = { in_db = -150, gain_db = -150 } S.disp[slot.guid] = d end
   if online and enabled then
     d.in_db = math.max(db(reaper.gmem_read(base + 6)), d.in_db - 24 * dt)
-    local g = db(reaper.gmem_read(base + 5))
+    local g = bypassed and -150 or db(reaper.gmem_read(base + 5))   -- bypassed: no gain sharing to show
     -- display only (the audio isn't affected): rises in ~80 ms, falls in ~350 ms, so it reads calmly
     local tc = (g > d.gain_db) and 0.08 or 0.35
     d.gain_db = d.gain_db + (g - d.gain_db) * math.min(1, dt / tc)
@@ -1076,9 +1127,16 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   end
   local ix, iw = x + 12, SW - 24
 
-  -- header: number, name, close
-  local kw = keycap(ix, y + 12, tostring(i), selected)
-  local name_x = ix + kw + 8
+  -- header: bypass, name, close
+  if P.bypass then
+    if bypass_chip(ix, y + 12, bypassed) then
+      reaper.Undo_BeginBlock()
+      reaper.TrackFX_SetParam(tr, fx, P.bypass, bypassed and 0 or 1)
+      reaper.Undo_EndBlock(bypassed and "Auto Mixer: back into the auto mix" or "Auto Mixer: bypass", -1)
+      bypassed = not bypassed
+    end
+  end
+  local name_x = ix + BYPASS_W + 8
   local name_w = x + SW - 26 - name_x
   if S.renaming == slot.guid then
     -- typing the new name right in place (like the Floating Mixer): Enter or click away keeps it, Esc cancels
@@ -1154,18 +1212,31 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
 
   -- big gain-share readout
   local ry = wy + wh + 12
-  local num = (online and enabled and d.gain_db > -99) and string.format("%.1f", d.gain_db) or "--"
-  local nw = text_w(font_big, num)
-  local uw = text_w(font_small, " dB")
-  local rx = x + (SW - nw - uw) / 2
-  text_at(font_big, num, rx, ry, COL.text)
-  text_at(font_small, " dB", rx + nw, ry + 11, COL.muted)
+  if bypassed then
+    -- bypassed: the word in place of the number, in the bypass colour
+    -- the largest font whose text stays within the status line below it (fonts differ per OS)
+    local f = font_small
+    for _, cand in ipairs({ font_title, font }) do
+      if text_w(cand, "Bypassed") <= STATUS_W then f = cand break end
+    end
+    local bw, bh = text_w(f, "Bypassed")
+    local _, nh = text_w(font_big, "0")
+    text_at(f, "Bypassed", x + SW / 2, ry + (nh - bh) / 2, BYPASS_COL, "center")
+  else
+    local num = (online and enabled and d.gain_db > -99) and string.format("%.1f", d.gain_db) or "--"
+    local nw = text_w(font_big, num)
+    local uw = text_w(font_small, " dB")
+    local rx = x + (SW - nw - uw) / 2
+    text_at(font_big, num, rx, ry, COL.text)
+    text_at(font_small, " dB", rx + nw, ry + 11, COL.muted)
+  end
 
   -- status
   -- status line: blue = open, desaturated blue = ducked (in between while sharing), red = muted
   -- (a muted track may stop processing, so "muted" is checked before "offline")
   local bar, tip
   if muted then bar, tip = COL.clip, "Track muted"
+  elseif bypassed then bar, tip = COL.key, "Bypassed (not in the auto mix)"
   elseif not enabled then bar, tip = COL.key, "Plugin bypassed"
   elseif not online then bar, tip = COL.key, "Offline (plugin not running)"
   else

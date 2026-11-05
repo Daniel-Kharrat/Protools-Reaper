@@ -1,7 +1,17 @@
 -- @description Daniel_Auto Mixer Panel
 -- @author Daniel Kharrat
--- @version 2.17
+-- @version 2.17.1
 -- @changelog
+--   Hierarchical ESC: rename first, nested popup menus next, then the panel.
+--   Leave REAPER global keyboard shortcuts available while the panel is idle
+--   using ReaImGui SetNextFrameWantCaptureKeyboard(false). Capture shortcuts
+--   only while renaming, using menus or manipulating an active control.
+--   Pilot: REAPER main-window-only shortcuts may still require Arrange focus.
+--   2.17.1:
+--   ESC closes the focused Auto Mixer Panel, after dismissing open popup menus.
+--   ESC while renaming a track cancels the edit without closing the panel.
+--   Keyboard focus stays with the panel so ESC remains available after clicks.
+--   2.17:
 --   Bypass button on each strip (power key at the start of the header, replacing the strip
 --   number): takes the channel out of the auto mix without removing it; it passes at unity and
 --   the others share without it. A bypassed strip shows "Bypassed" in place of the dB readout and
@@ -250,6 +260,7 @@ local S = {
   close_req   = false,
   name_buf    = "",
   rename_focus = false,
+  popup_was_open = false, -- prevent ESC from closing the panel as a popup disappears
 }
 
 ---------------------------------------------------------------------
@@ -1569,6 +1580,7 @@ local function loop()
   end
   local visible, open = ImGui.Begin(ctx, SCRIPT_NAME, true, ImGui.WindowFlags_NoCollapse)
   if visible then
+    local was_renaming = S.renaming ~= nil  -- ESC cancels inline rename; it must not close the panel too
     local docked = ImGui.IsWindowDocked(ctx)
     if docked ~= S.docked then reaper.SetExtState(EXT, "docked", docked and "1" or "0", true) end
     S.docked = docked
@@ -1594,14 +1606,31 @@ local function loop()
       if ImGui.MenuItem(ctx, "Close window") then S.close_req = true end
       ImGui.EndPopup(ctx)
     end
-    -- give keyboard focus back to REAPER after a click (unless typing)
-    if reaper.JS_Window_SetFocus and ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_ChildWindows)
-       and ImGui.IsMouseReleased(ctx, 0) and not ImGui.IsAnyItemActive(ctx) and not S.renaming
-       and not ImGui.IsPopupOpen(ctx, "", ImGui.PopupFlags_AnyPopupId) then
-      reaper.JS_Window_SetFocus(reaper.GetMainHwnd())
+    -- ESC hierarchy: InputText handles cancellation, ImGui dismisses one
+    -- popup/submenu level, and only an otherwise idle panel closes itself.
+    -- Check ALL popup-stack levels (including a hardware-output submenu).
+    -- Remember the previous frame because ImGui can dismiss a popup before
+    -- this callback observes the ESC key in the very same frame.
+    local popup_open = ImGui.IsPopupOpen(ctx, "", ImGui.PopupFlags_AnyPopup)
+    local item_active = ImGui.IsAnyItemActive(ctx)
+    local focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows)
+    local esc_pressed = focused and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false)
+    if esc_pressed and not was_renaming and not S.renaming
+       and not S.popup_was_open and not popup_open and not item_active then
+      S.close_req = true
     end
-    ImGui.End(ctx)
+    S.popup_was_open = popup_open
+
+    -- Do not steal REAPER's GLOBAL shortcuts when the panel is idle.
+    -- This does not forward main-window-only actions: compatibility with
+    -- those depends on REAPER focus and must be verified in the DAW.
+    -- ReaImGui keeps focus locally for ESC, with no JS_VKeys polling/hooks.
+    ImGui.SetNextFrameWantCaptureKeyboard(ctx, S.renaming ~= nil or popup_open or item_active)
+  else
+    S.popup_was_open = false
+    ImGui.SetNextFrameWantCaptureKeyboard(ctx, false)
   end
+  ImGui.End(ctx) -- must balance Begin even when the docked window isn't visible
   ImGui.PopFont(ctx)
   ImGui.PopStyleVar(ctx, nvar)
   ImGui.PopStyleColor(ctx, ncol)

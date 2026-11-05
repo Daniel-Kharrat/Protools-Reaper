@@ -1,6 +1,8 @@
 -- @description Daniel_Meter Bridge
--- @version 1.4
+-- @version 1.4.1
 -- @changelog
+--   Esc closes the focused Meter Bridge window. If a menu is open, Esc closes the menu first;
+--   during track renaming, Esc cancels the rename.
 --   Multichannel meters: one meter per track channel (5.1, 7.1, any count). 2-channel tracks still
 --   show a single meter when armed with a mono input. Multichannel strips get wider: every meter
 --   keeps the width it has in a stereo strip of the chosen strip width.
@@ -36,7 +38,7 @@
 --   - Several bridge windows at once (the + button, or New window), like the Floating Mixer: each has its
 --     own color (title bar, and the dB-scale column) and its own view options; each project remembers
 --     its windows. Closing the last window closes the script
---   - Keyboard focus goes straight back to REAPER after a click (Space still plays)
+--   - Keyboard focus stays with the bridge so Esc can close its focused window (Space still plays)
 --
 --   Mouse:
 --   - Tracks per window: all, record-armed, follow the selection, or a fixed list (Show selected
@@ -56,6 +58,7 @@
 --   - Right-click the title bar or the dB column: New window, Window color, Dock / Undock, Close window
 --   - Right-click a meter: meter mode (peaks / RMS / LUFS, as in the mixer; selected tracks change together)
 --   - Right-click anywhere else: options (tracks, width, peak hold, release, names, input selector...)
+--   - Esc closes the focused window (or cancels rename / closes a popup first)
 --   - Running the action again closes the window
 --
 --   Toolbar / startup (same as the Floating Mixer):
@@ -1603,6 +1606,22 @@ local function draw_window(W, now)
   local visible, open = ImGui.Begin(ctx, 'Meter Bridge ' .. W.n .. '###DanielMeterBridge' .. (W.n > 1 and W.n or ''), true, WFLAGS)
   ImGui.PopStyleColor(ctx, 4); ImGui.PopStyleVar(ctx)
   if not visible then return open, false end
+
+  -- Esc closes only the focused bridge window. Menus close first; renaming cancels first.
+  -- The popup state from the previous frame prevents the Esc that dismisses a popup
+  -- from also closing the window when ImGui has already dismissed that popup.
+  local esc_pressed =
+    ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows)
+    and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false)
+
+  if esc_pressed
+    and not (D.renaming and D.rename_win == W.n)
+    and not W.popup_was_open
+    and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId)
+  then
+    W.close_req = true
+  end
+
   -- no yellow drag-and-drop highlight rectangle on the strips (the insertion line shows where it lands)
   ImGui.PushStyleColor(ctx, ImGui.Col_DragDropTarget, 0x00000000)
 
@@ -1721,6 +1740,12 @@ local function draw_window(W, now)
   if D.open_input then D.open_input = nil; ImGui.OpenPopup(ctx, 'input_menu') end
   input_menu()
 
+  W.popup_was_open = ImGui.IsPopupOpen(
+    ctx,
+    '',
+    ImGui.PopupFlags_AnyPopupId
+  )
+
   local focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows)
   if focused and not ImGui.IsAnyItemActive(ctx) and ImGui.IsKeyPressed(ctx, ImGui.Key_Space, false) then
     r.Main_OnCommand(40044, 0)    -- Transport: Play/stop
@@ -1745,7 +1770,8 @@ local function loop()
     any_focus = any_focus or focused
   end
   ImGui.PopFont(ctx)
-  keep_reaper_focus(any_focus)
+  -- Keep keyboard focus with the bridge so it can receive Esc after mouse clicks.
+  -- keep_reaper_focus(any_focus)
 
   -- closing windows: the last one closing ends the script (and isn't reopened at the next startup)
   if next(closed) then

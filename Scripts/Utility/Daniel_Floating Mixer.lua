@@ -1,6 +1,8 @@
 -- @description Daniel_Floating Mixer
--- @version 4.1
+-- @version 4.1.1
 -- @changelog
+--   ESC closes the focused Floating Mixer or Snapshots window. Open menus and confirmations handle
+--   ESC first; track and snapshot renaming still cancel with ESC. Multiple mixer windows stay independent.
 --   Mute button: right-click shows the mute menu (unmute all, exclusive mute, mute all others, ignore
 --   selection), and its modifier clicks work on the button (Cmd: unmute all, Option+Cmd: exclusive,
 --   Option: mute all others, Shift: ignore selection).
@@ -31,11 +33,12 @@
 --     folders collapse / expand in sync with REAPER's mixer
 --   - Drag an FX from REAPER's FX browser onto a strip (or onto one of its FX slots) to add it
 --   - Running the action again closes the windows (works as a toolbar toggle)
+--   - ESC closes the focused mixer or Snapshots window (but cancels rename / dismisses dialogs first)
 --
 --   Requirements: REAPER 7, ReaImGui 0.9.3 or newer (ReaPack).
 --   Recommended: SWS (opens the SWS Snapshots window for mix snapshots) and js_ReaScriptAPI
---   (keeps your keyboard shortcuts working while you use the window, and lets you drag FX in from
---   REAPER's FX browser).
+--   (lets you drag FX in from REAPER's FX browser). While the mixer has keyboard focus,
+--   ESC closes its window and REAPER's other shortcuts aren't automatically forwarded.
 --   Made for the Default 7 theme and themes based on it. With any other theme (Default 6, custom themes)
 --   the mixer is drawn with REAPER's Default 7 theme instead.
 --
@@ -2673,6 +2676,8 @@ do
     if not state.snap_win then return end
     ImGui.SetNextWindowSize(ctx, 300, 420, ImGui.Cond_FirstUseEver)
     local title = 'Snapshots (Mixer ' .. CUR_WIN .. ')###DFM_snapshots'
+    -- Preserve ESC for ongoing snapshot edits and confirmations even if they close in this frame.
+    local snap_was_editing, snap_was_asking = state.snap_edit ~= nil, state.snap_ask ~= nil
     local wcol = state.win_color(CUR_WIN)            -- the color of the mixer window it belongs to
     ImGui.PushStyleColor(ctx, ImGui.Col_TitleBgActive, wcol)
     ImGui.PushStyleColor(ctx, ImGui.Col_TitleBg, state.dim_color(wcol, 0.55))
@@ -2885,9 +2890,20 @@ do
         end
       end
       ::snap_done::
+      local focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows)
+      local popup_open = ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId)
+      if focused and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false)
+         and not snap_was_editing and not state.snap_edit
+         and not snap_was_asking and not state.snap_ask
+         and not popup_open and not state.snap_popup_was_open then
+        open = false
+      end
+      state.snap_popup_was_open = popup_open
       ImGui.End(ctx)
     end
-    if not open then state.snap_win, state.snap_edit = false, nil end
+    if not open then
+      state.snap_win, state.snap_edit, state.snap_popup_was_open = false, nil, false
+    end
   end
 end
 
@@ -3689,6 +3705,8 @@ state.draw_mixer_window = function(W)
   if state.dock_req then ImGui.SetNextWindowDockID(ctx, state.dock_req); state.dock_req = nil end
   local visible, open = ImGui.Begin(ctx, title .. '###DanielFloatingMixer' .. (W.n > 1 and W.n or ''), true, WFLAGS)
   ImGui.PopStyleColor(ctx, 4); ImGui.PopStyleVar(ctx)
+  -- Capture rename before rendering: ESC may cancel it inside draw_name() in this same frame.
+  local was_renaming = state.renaming ~= nil
   if visible then ImGui.PushStyleColor(ctx, ImGui.Col_DragDropTarget, 0x00000000) end
   state.docked = visible and ImGui.IsWindowDocked(ctx) or false
   if visible then
@@ -3852,7 +3870,18 @@ state.draw_mixer_window = function(W)
         ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), q[1] + 1, q[3] + 1, q[2] - 1, q[4] - 1, dnd_color(), 0, 0, 2)
       end
     end
-    if ImGui.IsWindowFocused(ctx) and not ImGui.IsAnyItemActive(ctx)
+    local focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows)
+    local popup_open = ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId)
+    -- The first ESC closes a popup. ESC during rename cancels editing, never the window.
+    -- Otherwise close only this focused mixer, using the existing deferred cleanup path.
+    if focused and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false)
+       and not was_renaming and not state.renaming
+       and not state.snap_edit and not state.snap_typing
+       and not popup_open and not W.popup_was_open then
+      W.close_req = true
+    end
+    W.popup_was_open = popup_open
+    if focused and not ImGui.IsAnyItemActive(ctx)
        and ImGui.IsKeyPressed(ctx, ImGui.Key_Space, false) then
       r.Main_OnCommand(40044, 0)
     end
@@ -3914,7 +3943,9 @@ local function loop()
     state.snap_for, state.snap_win = nil, false
     state.snapshot_window()                       -- (just resets its typing state)
   end
-  keep_reaper_focus()
+  -- Keep the keyboard on the Floating Mixer after clicks so ImGui can receive ESC.
+  -- Returning focus to REAPER here would prevent reliable ESC detection.
+  -- keep_reaper_focus()
   ImGui.PopFont(ctx)
 
   -- closing windows: the last one closing ends the script (and is reopened next time)

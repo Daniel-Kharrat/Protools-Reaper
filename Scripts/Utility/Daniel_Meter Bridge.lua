@@ -1,18 +1,11 @@
 -- @description Daniel_Meter Bridge
--- @version 1.4
+-- @version 1.5
 -- @changelog
---   Multichannel meters: one meter per track channel (5.1, 7.1, any count). 2-channel tracks still
---   show a single meter when armed with a mono input. Multichannel strips get wider: every meter
---   keeps the width it has in a stereo strip of the chosen strip width.
---   Input menu: "Input: N channels" for multichannel tracks (multichannel input from a start input).
---   Drag a strip to move the track (like the Floating Mixer). Track spacers shown as gaps, like the
---   mixer: drag them to move them; right-click: add / remove spacers before or after the selected
---   tracks. Several selected tracks can be dragged together. No yellow drop highlight.
---   LED count follows the meter height (taller window = more LEDs), with a Meter resolution option
---   (right-click: Low / Medium / High). The color zones and dB labels stay in the same place.
---   Right-click a meter: meter mode menu (peaks, RMS, LUFS..., the same modes as REAPER's mixer);
---   the bridge shows the track's chosen mode and keeps running while the menu is open.
---   Right-click > Meter mode (all tracks in window): one mode for every track in the window.
+--   VCA meters: a VCA lead track (track grouping: VCA lead) shows a meter of all the tracks that follow
+--   it, summed as if their audio went through it (an estimate from their peak meters; nested VCAs included). Followers' meters are
+--   post-fader, so the VCA meter moves with the VCA. Tracks whose folder parent also follows the VCA
+--   aren't counted twice. The VCA's clip light lights when any of its tracks clips; clicking it
+--   resets them.
 -- @author Daniel
 -- @about
 --   # Meter Bridge
@@ -27,6 +20,8 @@
 --   - Record-armed tracks show their input (as REAPER's meters do), names turn red
 --   - One meter per track channel (stereo, 5.1, 7.1...); 2-channel tracks armed with a mono input
 --     show a single meter
+--   - VCA lead tracks show the summed level of the tracks that follow them (REAPER shows no meter
+--     for a VCA): an estimate from their peak meters (as there's no real bus)
 --   - Peak hold (off / 1 s / 2 s / 5 s / until reset), latched clip lights
 --   - Clip lights follow REAPER's own peak hold: when REAPER resets its peaks, they reset too
 --   - Strips wrap into rows when there's room; in a short window (e.g. the top docker) they stay in
@@ -452,8 +447,132 @@ local function vu_mode(tr)
   local v = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_VUMODE'))
   return v & 30, (v & 1) ~= 0
 end
+--------------------------------------------------------------------------------
+-- VCA meters. A VCA lead track (Track grouping: VCA lead) has no audio of its own, and REAPER shows
+-- no meter for it. Here it meters the tracks that follow it, as if their audio went through it:
+-- every follower (and the followers of a nested VCA that follows it) is added up. The script only
+-- sees the tracks' peak meters, not their audio, so the sum is an estimate between a power sum
+-- (right for unrelated tracks; real buses usually read higher) and the peaks added up (right for
+-- tracks in phase; real buses read lower), set by VCA.BLEND below. The followers' meters are
+-- post-fader, so moving the VCA moves its meter. A follower whose folder parent also follows the VCA
+-- isn't counted twice (its audio is already in the parent).
+--------------------------------------------------------------------------------
+local VCA = { map = {}, stamp = -1, t = 0, cache = {} }   -- map[lead track] = its contributing tracks
+-- where the estimate sits between the power sum (0) and the peaks added up (1), in dB:
+-- 0.35 -> two equal tracks read +4 dB, four +8 dB, ten +13.5 dB. Lower = quieter VCA meters
+VCA.BLEND = 0.15
+-- the group bits (1-128 on REAPER 7, 1-64 before) of a track for one group setting
+function VCA.groups(tr, name)
+  local out = {}
+  local words = {}
+  if r.GetSetTrackGroupMembershipEx then
+    for w = 0, 3 do words[w + 1] = r.GetSetTrackGroupMembershipEx(tr, name, w * 32, 0, 0) end
+  else
+    words[1] = r.GetSetTrackGroupMembership(tr, name, 0, 0)
+    words[2] = r.GetSetTrackGroupMembershipHigh(tr, name, 0, 0)
+  end
+  for w, m in ipairs(words) do
+    m = math.floor(m or 0) & 0xFFFFFFFF
+    if m ~= 0 then for b = 0, 31 do if m & (1 << b) ~= 0 then out[#out + 1] = (w - 1) * 32 + b end end end
+  end
+  return out
+end
+-- rebuilt when the project changes (group settings included), and once a second anyway
+function VCA.refresh(now)
+  local proj = r.EnumProjects(-1)
+  local sc = r.GetProjectStateChangeCount(proj)
+  if proj == VCA.proj and sc == VCA.stamp and now - VCA.t < 1 then return end
+  VCA.proj, VCA.stamp, VCA.t = proj, sc, now
+  local lead, followers = {}, {}             -- lead[track] = its VCA groups; followers[group] = tracks
+  for i = 0, r.CountTracks(0) - 1 do
+    local tr = r.GetTrack(0, i)
+    if not hidden_track(tr) then
+      local lg = VCA.groups(tr, 'VOLUME_VCA_LEAD')
+      if #lg > 0 then lead[tr] = lg end
+      for _, g in ipairs(VCA.groups(tr, 'VOLUME_VCA_FOLLOW')) do
+        followers[g] = followers[g] or {}
+        followers[g][#followers[g] + 1] = tr
+      end
+    end
+  end
+  local function collect(L, out, seen)
+    for _, g in ipairs(lead[L]) do
+      for _, f in ipairs(followers[g] or {}) do
+        if not seen[f] then
+          seen[f] = true; out[#out + 1] = f
+          if lead[f] then collect(f, out, seen) end        -- a nested VCA: its followers count too
+        end
+      end
+    end
+  end
+  VCA.map = {}
+  for L in pairs(lead) do
+    local out, seen = {}, { [L] = true }
+    collect(L, out, seen)
+    local list = {}
+    for _, f in ipairs(out) do                 -- skip tracks already inside a counted folder parent
+      local inside, cur = false, f
+      while r.GetMediaTrackInfo_Value(cur, 'B_MAINSEND') == 1 do
+        local p = r.GetParentTrack(cur)
+        if not p then break end
+        if seen[p] and p ~= L then inside = true; break end
+        cur = p
+      end
+      if not inside then list[#list + 1] = f end
+    end
+    VCA.map[L] = list
+  end
+  VCA.cache = {}
+end
+-- a follower's peak channels (as its own meter shows them)
+function VCA.peak_chans(f)
+  local k = n_peak_meters(f)
+  if vu_mode(f) ~= 2 and k > 2 then k = 2 end
+  return k
+end
+-- the summed level (dB) for each of the VCA's n meters. A mono follower feeds every meter; the
+-- channels of a wider follower go round the meters (1 -> L, 2 -> R, 3 -> L...)
+function VCA.sum(tr, n, now)
+  local c = VCA.cache[tr]
+  if c and c.now == now and c.n == n then return c.db end
+  local amp, pw = {}, {}                  -- per meter: the peaks added up, and their squares added up
+  for i = 1, n do amp[i], pw[i] = 0, 0 end
+  local function add(i, v) amp[i] = amp[i] + v; pw[i] = pw[i] + v * v end
+  for _, f in ipairs(VCA.map[tr] or {}) do
+    local k = VCA.peak_chans(f)
+    for ch = 0, k - 1 do
+      local v = r.Track_GetPeakInfo(f, ch) or 0
+      if k == 1 then for i = 1, n do add(i, v) end
+      else add(ch % n + 1, v) end
+    end
+  end
+  -- between the power sum and the added peaks, VCA.BLEND of the way (in dB) toward the added peaks
+  local db, w = {}, VCA.BLEND
+  for i = 1, n do
+    local rms = math.sqrt(pw[i])
+    db[i] = (rms > 0) and val2db((amp[i] ^ w) * (rms ^ (1 - w))) or -150.0
+  end
+  VCA.cache[tr] = { now = now, n = n, db = db }
+  return db
+end
+-- the highest peak hold (dB) of the VCA's tracks, for its clip light
+function VCA.hold(tr)
+  local h = -150
+  for _, f in ipairs(VCA.map[tr] or {}) do
+    for ch = 0, VCA.peak_chans(f) - 1 do h = math.max(h, r.Track_GetPeakHoldDB(f, ch, false) * 100) end
+  end
+  return h
+end
+
 -- the channels a strip's meters show (one meter each)
 local function meter_chans(tr)
+  -- a VCA: peaks, stereo (or one per channel in multichannel peaks mode)
+  if VCA.map[tr] then
+    local cnt = (vu_mode(tr) == 2) and n_chan(tr) or math.min(2, n_chan(tr))
+    local t = {}
+    for c = 0, cnt - 1 do t[#t + 1] = c end
+    return t
+  end
   local mode = vu_mode(tr)
   if mode == 4 then return { 1024, 1025 } end                  -- stereo RMS
   if mode ~= 0 and mode ~= 2 then return { 1024 } end          -- combined RMS / LUFS
@@ -623,9 +742,10 @@ end
 -- Meter ballistics: instant rise, release at the chosen rate, peak hold
 --------------------------------------------------------------------------------
 local meters = {}
-local function meter(tr, ch, now)
+-- raw_db: a level given by the caller (a VCA's sum) instead of the track's own meter
+local function meter(tr, ch, now, raw_db)
   local key = r.GetTrackGUID(tr) .. ':' .. ch
-  local raw = val2db(r.Track_GetPeakInfo(tr, ch))
+  local raw = raw_db or val2db(r.Track_GetPeakInfo(tr, ch))
   local st = meters[key]
   if not st then st = { disp = raw, hold = raw, hold_t = now, t = now }; meters[key] = st end
   local dt, rel = now - st.t, RELEASE[S.release] or 20
@@ -641,7 +761,9 @@ local function meter(tr, ch, now)
   return st.disp, st.hold
 end
 
-local function reset_track(tr)
+local function reset_track(tr, no_vca)
+  -- a VCA's clip light comes from its tracks: reset them too
+  if not no_vca and VCA.map[tr] then for _, f in ipairs(VCA.map[tr]) do reset_track(f, true) end end
   local g = r.GetTrackGUID(tr)
   for ch = 0, n_chan(tr) - 1 do
     r.Track_GetPeakHoldDB(tr, ch, true)
@@ -1062,9 +1184,11 @@ local function draw_strip(tr, x, y0, w, h, now)
   -- gap between meters: 2 px for stereo, 1 px for more channels (the strip is widened for them)
   local gap = (n <= 2) and 2 or 1
   local cw = (mx2 - mx1 - gap * (n - 1)) / n
+  local vca = VCA.map[tr]
+  local vsum = vca and VCA.sum(tr, n, now)                   -- a VCA: its followers, summed
   for c = 0, n - 1 do
-    local disp, hold = meter(tr, chans[c + 1], now)
-    if vu_off then disp, hold = -150, -150 end               -- meter disabled in REAPER: unlit
+    local disp, hold = meter(tr, chans[c + 1], now, vsum and vsum[c + 1])
+    if vu_off and not vca then disp, hold = -150, -150 end   -- meter disabled in REAPER: unlit
     local cx1 = math.floor(mx1 + c * (cw + gap))
     local cx2 = math.floor(mx1 + c * (cw + gap) + cw)
     if cx2 <= cx1 then cx2 = cx1 + 1 end
@@ -1093,8 +1217,12 @@ local function draw_strip(tr, x, y0, w, h, now)
 
   -- clip light on top (latched: REAPER's peak hold went above 0 dBFS). Click: reset
   local hold_db = -150
-  local pk = n_peak_meters(tr)                               -- the clip light always follows the peaks
-  for c = 0, pk - 1 do hold_db = math.max(hold_db, r.Track_GetPeakHoldDB(tr, c, false) * 100) end
+  if vca then
+    hold_db = VCA.hold(tr)                                   -- a VCA: any of its tracks clipped
+  else
+    local pk = n_peak_meters(tr)                             -- the clip light always follows the peaks
+    for c = 0, pk - 1 do hold_db = math.max(hold_db, r.Track_GetPeakHoldDB(tr, c, false) * 100) end
+  end
   local clipped = hold_db > 0
   -- REAPER reset its peaks (on record start if it's set to, Cmd/Ctrl-click in its mixer...): drop our
   -- held LEDs for this track too
@@ -1113,6 +1241,7 @@ local function draw_strip(tr, x, y0, w, h, now)
   if hr.click then if is_ctrl() or is_alt() then reset_all() else reset_track(tr) end end
 
   local tip = num .. ': ' .. name .. '\nClick: select (Cmd/Ctrl: toggle, Shift: range)'
+    .. (vca and ('\nVCA: meter = the sum of its ' .. #vca .. ' track' .. (#vca == 1 and '' or 's')) or '')
     .. (is_master and '' or '\nDrag: move the track')
 
   -- name, like the mixer: red when armed, the track color when it has one, else light gray
@@ -1735,6 +1864,7 @@ local function loop()
   Theme.check()
 
   Win.load()
+  VCA.refresh(now)
   if Win.new_req then Win.new_req = nil; Win.add() end
 
   ImGui.PushFont(ctx, font_ui)

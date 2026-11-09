@@ -628,7 +628,7 @@
     </reapack>
 
     <reapack name="Daniel_Insert Notes.lua" type="script" desc="Daniel_Insert Notes.lua">
-      <version name="1.0" author="Daniel" time="2026-11">
+      <version name="1.2" author="Daniel" time="2026-11">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Insert%20Notes.lua</source>
       </version>
     </reapack>

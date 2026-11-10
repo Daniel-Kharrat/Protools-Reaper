@@ -692,7 +692,11 @@ end
 ------------------------------------------------------------
 
 local function show_dialog(info, on_ok, on_cancel)
-    local WIN_W, WIN_H = 560, 560
+    -- The layout is designed at 560 x 560. SIZE makes the whole window (text,
+    -- buttons, spacing) bigger or smaller in one place.
+    local SIZE = 1.25
+    local DESIGN = 560
+    local WIN_W, WIN_H = math.floor(DESIGN * SIZE), math.floor(DESIGN * SIZE)
     local mode = "merge"
     local SHORTCUT_OPTIONS = {
         { id = "merge",
@@ -1293,7 +1297,7 @@ local function show_dialog(info, on_ok, on_cancel)
                 return
             end
             design_w, design_h = gfx.w, gfx.h
-            base_scale = gfx.w / WIN_W
+            base_scale = gfx.w / DESIGN   -- includes SIZE
         end
 
         for _ = 1, 4 do

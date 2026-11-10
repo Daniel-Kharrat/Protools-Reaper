@@ -1102,23 +1102,47 @@ local function show_dialog(info, on_ok, on_cancel)
         color(C.text)
         draw_line(TITLE, title_x, hy + icon / 2)
 
-        local cap_text
+        -- Plain ASCII text only: an arrow or a dot character is missing from some
+        -- Linux fonts (shows as an empty box), so the arrow is drawn instead.
+        local cap_text, cap_from
         if info.same_version then
-            cap_text = "Up to date \194\183 v" .. info.latest
+            cap_text = "Up to date: v" .. info.latest
         elseif info.installed then
-            cap_text = "v" .. info.installed .. "  \226\134\146  v" .. info.latest
+            cap_from, cap_text = "v" .. info.installed, "v" .. info.latest
         else
             cap_text = "Latest: v" .. info.latest
         end
         set_font("small")
+        local arrow_w = cap_from and S(28) or 0
+        local from_w = cap_from and gfx.measurestr(cap_from) or 0
         local cap_h = S(28)
-        local cap_w = math.floor(gfx.measurestr(cap_text) + S(26))
+        local cap_w = math.floor(from_w + arrow_w + gfx.measurestr(cap_text) + S(26))
         local cap_x = W - M - cap_w
         local cap_y = hy + (icon - cap_h) / 2
+        local cap_mid = cap_y + cap_h / 2
         fill_round(cap_x, cap_y + math.max(1, S(1)), cap_w, cap_h, cap_h / 2, C.black, 0.25)
         area(cap_x, cap_y, cap_w, cap_h, cap_h / 2, C.capsule, C.edge)
         color(info.same_version and C.green or C.muted)
-        draw_line(cap_text, cap_x, cap_y + cap_h / 2, "center", cap_w)
+        if cap_from then
+            local tx = cap_x + S(13)
+            draw_line(cap_from, tx, cap_mid)
+            -- arrow: shaft + two-line head, centred on the capitals
+            local box = cap_box()
+            local mid = box and (text_top_for(cap_mid) + (box[1] + box[2]) / 2) or cap_mid
+            local ax1 = tx + from_w + S(8)
+            local ax2 = ax1 + arrow_w - S(16)
+            local thick = math.max(1, S(1.5))
+            local head = math.max(3, S(4))
+            gfx.rect(math.floor(ax1), math.floor(mid - thick / 2 + 0.5), math.floor(ax2 - ax1), thick, 1)
+            for o = 0, thick - 1 do
+                local oy = o - (thick - 1) / 2
+                gfx.line(ax2 - head, mid - head + oy, ax2, mid + oy, 1)
+                gfx.line(ax2 - head, mid + head + oy, ax2, mid + oy, 1)
+            end
+            draw_line(cap_text, ax1 + arrow_w - S(8), cap_mid)
+        else
+            draw_line(cap_text, cap_x, cap_mid, "center", cap_w)
+        end
 
         local cy = hy + icon + S(6)
         color(C.muted)
@@ -1237,8 +1261,9 @@ local function show_dialog(info, on_ok, on_cancel)
             return true
         end
 
-        -- popover above the (i) button
-        if popover then
+        -- popover above the (i) button: shown while the mouse is on the button,
+        -- or kept open by clicking it (click again, click elsewhere or Esc to close)
+        if popover or info_hot then
             local names = {}
             for _, name in ipairs(info.leave) do
                 names[#names + 1] = KEEP_LABELS[name] or name

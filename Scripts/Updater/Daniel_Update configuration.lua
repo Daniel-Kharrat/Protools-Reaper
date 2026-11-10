@@ -4,7 +4,7 @@
 --
 --   1. Downloads Configurations/latest.txt from GitHub. Line 1 names the newest
 --      .ReaperConfigZip; an optional line 2 holds its SHA-256.
---   2. Asks (OK / Cancel) what to do with the keyboard shortcuts: replace all of
+--   2. Asks (Update / Cancel) what to do with the keyboard shortcuts: replace all of
 --      them, merge mine into theirs (the default), or leave them alone entirely.
 --   3. Downloads and unpacks the archive into Data/Daniel Kharrat/Update (staging).
 --   4. Prepares merged files, backs up the important settings files (see
@@ -679,15 +679,20 @@ end
 -- Dialog
 --
 -- Uses REAPER's built-in gfx window, so nothing extra has to be installed.
--- Three radio buttons for the keyboard shortcuts (reaper-kb.ini):
+-- Look: Daniel's house style (macOS Finder vibe, dark): plain window colour,
+-- soft grey rounded areas with a hairline edge, capsule buttons, a small (i)
+-- button with a popover for the secondary notes. Every rounded shape is filled
+-- row by row with gfx.rect (gfx.circle draws a different size on each OS).
+--
+-- Three choices for the keyboard shortcuts (reaper-kb.ini):
 --   merge = merge keyboard shortcuts (default), replace = full install,
 --   skip    = don't import reaper-kb.ini at all.
--- OK proceeds, Cancel (or Esc, or closing the window) does nothing.
--- Enter = OK, Up/Down arrows = change the choice.
+-- Update proceeds, Cancel (or Esc, or closing the window) does nothing.
+-- Enter = Update, Up/Down arrows = change the choice, Esc closes the popover first.
 ------------------------------------------------------------
 
 local function show_dialog(info, on_ok, on_cancel)
-    local WIN_W, WIN_H = 580, 700
+    local WIN_W, WIN_H = 560, 560
     local mode = "merge"
     local SHORTCUT_OPTIONS = {
         { id = "merge",
@@ -705,6 +710,46 @@ local function show_dialog(info, on_ok, on_cancel)
     local mouse_was_down = false
     local press_target = nil
     local rects = {}
+    local popover = false
+
+    -- colours (dark appearance)
+    local function hex(v)
+        return { ((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255 }
+    end
+    local C = {
+        bg        = hex(0x1E1E20),   -- window
+        card      = hex(0x262629),   -- soft grey area
+        hover     = hex(0x2D2D31),   -- row under the mouse
+        edge      = hex(0x303033),   -- hairline (8% white over the window)
+        sep       = hex(0x37373A),   -- separator inside an area
+        text      = hex(0xF2F2F5),
+        muted     = hex(0x9D9DA4),
+        accent    = hex(0x2F6FD0),
+        accent_hi = hex(0x3B7BDC),
+        fill      = hex(0x37373A),   -- secondary button
+        fill_hi   = hex(0x434347),
+        capsule   = hex(0x363639),
+        ring      = hex(0x5C5C62),
+        well      = hex(0x2E2E31),
+        green     = hex(0x30D158),
+        pop       = hex(0x2C2C2F),   -- popover
+        pop_edge  = hex(0x3F3F43),
+        white     = { 1, 1, 1 },
+        black     = { 0, 0, 0 },
+        icon_top  = hex(0x5A9BFF),
+        icon_bot  = hex(0x1F5FD6),
+    }
+
+    local FONT = IS_WIN and "Segoe UI" or (IS_MAC and "Helvetica Neue" or "DejaVu Sans")
+    local FONTS = {             -- slot, size, bold, line height
+        title = { 1, 18, true,  22 },
+        bold  = { 2, 14, true,  19 },
+        body  = { 3, 14, false, 19 },
+        small = { 4, 13, false, 18 },
+        label = { 5, 12, true,  16 },
+        glyph = { 6, 13, true,  16 },
+    }
+    local font_now = "body"
 
     local function finish(accepted)
         if decided then
@@ -742,13 +787,132 @@ local function show_dialog(info, on_ok, on_cancel)
     local base_scale, zoom = 1, 1
     local design_w, design_h = nil, nil
 
-    local function set_font(bold)
-        gfx.setfont(bold and 2 or 1, "Arial", math.floor(15 * scale), bold and string.byte("b") or 0)
+    local function S(v)
+        return math.floor(v * scale + 0.5)
     end
 
-    local function color(red, green, blue)
-        gfx.set(red, green, blue, 1)
+    local function set_font(kind)
+        local f = FONTS[kind]
+        font_now = kind
+        gfx.setfont(f[1], FONT, math.max(1, math.floor(f[2] * scale + 0.5)), f[3] and string.byte("b") or 0)
     end
+
+    local function line_h()
+        return S(FONTS[font_now][4])
+    end
+
+    local function color(c, a)
+        gfx.set(c[1], c[2], c[3], a or 1)
+    end
+
+    local function inside(rect, px, py)
+        return rect and px >= rect.x and px < rect.x + rect.w and py >= rect.y and py < rect.y + rect.h
+    end
+
+    --------------------------------------------------------
+    -- shapes (anti-aliased, filled row by row)
+    --------------------------------------------------------
+
+    -- Rounded rectangle. c2 = optional bottom colour (vertical gradient).
+    -- clip_top / clip_bottom = optional pixel rows to limit the drawing to.
+    local function fill_round(rx, ry, rw, rh, radius, c, a, c2, clip_top, clip_bottom)
+        rx, ry = math.floor(rx + 0.5), math.floor(ry + 0.5)
+        rw, rh = math.floor(rw + 0.5), math.floor(rh + 0.5)
+        if rw <= 0 or rh <= 0 then
+            return
+        end
+        a = a or 1
+        local rad = math.floor(math.min(radius, rw / 2, rh / 2) + 0.5)
+        local row_from = math.max(0, (clip_top or ry) - ry)
+        local row_to = math.min(rh - 1, (clip_bottom or (ry + rh)) - ry - 1)
+        local function set_row(j)
+            if c2 then
+                local k = (rh > 1) and (j / (rh - 1)) or 0
+                gfx.set(c[1] + (c2[1] - c[1]) * k, c[2] + (c2[2] - c[2]) * k, c[3] + (c2[3] - c[3]) * k, a)
+            else
+                gfx.set(c[1], c[2], c[3], a)
+            end
+        end
+        -- straight middle band in one go (no gradient), else row by row
+        local band_from = math.max(row_from, rad)
+        local band_to = math.min(row_to, rh - rad - 1)
+        if not c2 and band_to >= band_from then
+            set_row(0)
+            gfx.rect(rx, ry + band_from, rw, band_to - band_from + 1, 1)
+        end
+        for j = row_from, row_to do
+            local in_band = (j >= rad and j <= rh - rad - 1)
+            if in_band then
+                if c2 then
+                    set_row(j)
+                    gfx.rect(rx, ry + j, rw, 1, 1)
+                end
+            else
+                -- distance of this row from the corner circle's centre row
+                local jj = (j < rad) and j or (rh - 1 - j)
+                local e = {}
+                local emin, emax = math.huge, -math.huge
+                for s = 0, 3 do
+                    local dy = rad - (jj + (s + 0.5) / 4)
+                    local inset = rad - math.sqrt(math.max(0, rad * rad - dy * dy))
+                    e[#e + 1] = inset
+                    if inset < emin then emin = inset end
+                    if inset > emax then emax = inset end
+                end
+                local full_from = math.ceil(emax)
+                -- edge pixels with partial coverage
+                for px = math.floor(emin), full_from - 1 do
+                    local cover = 0
+                    for s = 1, 4 do
+                        cover = cover + math.max(0, math.min(1, px + 1 - e[s]))
+                    end
+                    cover = cover / 4
+                    if cover > 0 then
+                        set_row(j)
+                        gfx.a = a * cover
+                        gfx.rect(rx + px, ry + j, 1, 1, 1)
+                        gfx.rect(rx + rw - 1 - px, ry + j, 1, 1, 1)
+                    end
+                end
+                if rw - 2 * full_from > 0 then
+                    set_row(j)
+                    gfx.rect(rx + full_from, ry + j, rw - 2 * full_from, 1, 1)
+                end
+            end
+        end
+    end
+
+    local function fill_circle(cx, cy, radius, c, a)
+        fill_round(cx - radius, cy - radius, radius * 2, radius * 2, radius, c, a)
+    end
+
+    -- area with a hairline edge
+    local function area(rx, ry, rw, rh, radius, fill, edge)
+        local px = math.max(1, math.floor(scale / 2 + 0.5))   -- 0.5 pt hairline
+        fill_round(rx, ry, rw, rh, radius, edge)
+        fill_round(rx + px, ry + px, rw - 2 * px, rh - 2 * px, radius - px, fill)
+    end
+
+    -- triangle, flat side on top (pointing down) or bottom (pointing up)
+    local function fill_triangle(cx, ty, half_w, th, c, a, up)
+        a = a or 1
+        for j = 0, th - 1 do
+            local k = (j + 0.5) / th
+            local hw = half_w * (up and k or (1 - k))
+            local x1, x2 = cx - hw, cx + hw
+            local f1, f2 = math.ceil(x1), math.floor(x2)
+            color(c, a)
+            if f2 > f1 then gfx.rect(f1, ty + j, f2 - f1, 1, 1) end
+            gfx.a = a * (f1 - x1)
+            gfx.rect(f1 - 1, ty + j, 1, 1, 1)
+            gfx.a = a * (x2 - f2)
+            gfx.rect(f2, ty + j, 1, 1, 1)
+        end
+    end
+
+    --------------------------------------------------------
+    -- text
+    --------------------------------------------------------
 
     local function wrap(text, max_w)
         local lines = {}
@@ -772,150 +936,339 @@ local function show_dialog(info, on_ok, on_cancel)
         return lines
     end
 
-    -- draws wrapped text, returns the y below it and the number of lines
-    local function draw_text(text, tx, ty, max_w, bold)
-        set_font(bold)
-        local line_h = math.floor(21 * scale)
-        local lines = wrap(text, max_w)
-        for _, line in ipairs(lines) do
+    -- Where the capital letters sit inside a text line (top and bottom of "H",
+    -- measured from gfx.y). Fonts differ per OS, so this is measured once per
+    -- font and size by drawing into an off-screen buffer. Used to centre text
+    -- optically in buttons and next to icons. false = could not measure.
+    local cap_cache = {}
+    local function cap_box()
+        local key = font_now .. ":" .. scale
+        local hit = cap_cache[key]
+        if hit ~= nil then
+            return hit
+        end
+        local result = false
+        if gfx.setimgdim and gfx.getpixel then
+            local tw, th = gfx.measurestr("H")
+            local bw, bh = math.ceil(tw) + 4, math.ceil(th) + 4
+            local old_dest = gfx.dest
+            gfx.setimgdim(127, bw, bh)
+            gfx.dest = 127
+            gfx.set(0, 0, 0, 1)
+            gfx.rect(0, 0, bw, bh, 1)
+            gfx.set(1, 1, 1, 1)
+            gfx.x, gfx.y = 2, 2
+            gfx.drawstr("H")
+            local first, last
+            for py = 0, bh - 1 do
+                for px = 0, bw - 1 do
+                    gfx.x, gfx.y = px, py
+                    local red = gfx.getpixel()
+                    if red and red > 0.35 then
+                        first = first or py
+                        last = py
+                        break
+                    end
+                end
+            end
+            gfx.dest = old_dest or -1
+            if first then
+                result = { first - 2, last - 2 + 1 }
+            end
+        end
+        cap_cache[key] = result
+        return result
+    end
+
+    -- y (gfx.y) that puts a text line's capitals centred on mid_y
+    local function text_top_for(mid_y)
+        local box = cap_box()
+        if box then
+            return math.floor(mid_y - (box[1] + box[2]) / 2 + 0.5)
+        end
+        local _, th = gfx.measurestr("H")
+        return math.floor(mid_y - th / 2 + 0.5)
+    end
+
+    -- one line, centred vertically on mid_y; align = "left" / "center" / "right"
+    local function draw_line(text, lx, mid_y, align, box_w)
+        local tw = gfx.measurestr(text)
+        if align == "center" then
+            lx = lx + (box_w - tw) / 2
+        elseif align == "right" then
+            lx = lx - tw
+        end
+        gfx.x, gfx.y = math.floor(lx + 0.5), text_top_for(mid_y)
+        gfx.drawstr(text)
+        return tw
+    end
+
+    -- wrapped text; returns the y below it
+    local function draw_text(text, tx, ty, max_w, kind)
+        set_font(kind)
+        local lh = line_h()
+        for _, line in ipairs(wrap(text, max_w)) do
             gfx.x, gfx.y = tx, ty
             gfx.drawstr(line)
-            ty = ty + line_h
+            ty = ty + lh
         end
         return ty
     end
 
-    local function inside(rect, px, py)
-        return rect and px >= rect.x and px <= rect.x + rect.w and py >= rect.y and py <= rect.y + rect.h
+    local function text_height(text, max_w, kind)
+        set_font(kind)
+        return #wrap(text, max_w) * line_h()
     end
 
-    local function draw_button(rect, label, primary)
-        local hover = inside(rect, gfx.mouse_x, gfx.mouse_y)
-        if primary then
-            if hover then color(0.30, 0.60, 0.95) else color(0.22, 0.50, 0.85) end
-        else
-            if hover then color(0.40, 0.40, 0.42) else color(0.32, 0.32, 0.34) end
-        end
-        gfx.rect(rect.x, rect.y, rect.w, rect.h, 1)
-        color(1, 1, 1)
-        set_font(primary)
-        local tw, th = gfx.measurestr(label)
-        gfx.x = rect.x + math.floor((rect.w - tw) / 2)
-        gfx.y = rect.y + math.floor((rect.h - th) / 2)
-        gfx.drawstr(label)
+    --------------------------------------------------------
+    -- pieces
+    --------------------------------------------------------
+
+    -- app icon: blue tile with a white "download into tray" arrow
+    local function draw_icon(ix, iy, size)
+        fill_round(ix, iy + math.max(1, S(1)), size, size, size * 0.24, C.black, 0.30)   -- soft shadow
+        fill_round(ix, iy, size, size, size * 0.24, C.icon_top, 1, C.icon_bot)
+        local cx = ix + size / 2
+        local stem_w = size * 0.15
+        fill_round(cx - stem_w / 2, iy + size * 0.18, stem_w, size * 0.34, stem_w / 2, C.white)
+        fill_triangle(cx, math.floor(iy + size * 0.44), size * 0.25, math.floor(size * 0.24), C.white, 1, false)
+        local tray_h = math.max(2, size * 0.09)
+        fill_round(ix + size * 0.22, iy + size * 0.75, size * 0.56, tray_h, tray_h / 2, C.white)
     end
+
+    -- green circle with a white check mark
+    local function draw_check(cx, cy, radius)
+        fill_circle(cx, cy, radius, C.green)
+        color(C.white)
+        local w = radius * 2
+        local x0, y0 = cx - radius, cy - radius
+        local ax, ay = x0 + w * 0.28, y0 + w * 0.52
+        local bx, by = x0 + w * 0.44, y0 + w * 0.68
+        local ex, ey = x0 + w * 0.73, y0 + w * 0.34
+        local thick = math.max(1, math.floor(radius / 4))
+        for o = 0, thick - 1 do
+            gfx.line(ax, ay + o, bx, by + o, 1)
+            gfx.line(bx, by + o, ex, ey + o, 1)
+        end
+    end
+
+    local function draw_button(rect, label, primary, hover)
+        local radius = rect.h / 2
+        if primary then
+            fill_round(rect.x, rect.y + math.max(1, S(1)), rect.w, rect.h, radius, C.black, 0.25)
+            fill_round(rect.x, rect.y, rect.w, rect.h, radius, hover and C.accent_hi or C.accent)
+            color(C.white)
+        else
+            fill_round(rect.x, rect.y, rect.w, rect.h, radius, hover and C.fill_hi or C.fill)
+            color(C.text)
+        end
+        set_font(primary and "bold" or "body")
+        draw_line(label, rect.x, rect.y + rect.h / 2, "center", rect.w)
+    end
+
+    local function button_width(label, primary)
+        set_font(primary and "bold" or "body")
+        return math.max(S(96), math.floor(gfx.measurestr(label) + S(36)))
+    end
+
+    --------------------------------------------------------
+    -- frame
+    --------------------------------------------------------
 
     local function draw()
         -- The layout is calculated for the window's original size (design_w x
         -- design_h), not its current size, so resizing the window can never move
         -- the text or the buttons.
         scale = base_scale * zoom
-        local margin = math.floor(24 * scale)
-        local text_w = design_w - margin * 2
-        local cy = margin
+        local M = S(24)
+        local W = design_w
+        local mouse_x, mouse_y = gfx.mouse_x, gfx.mouse_y
+        local can_hover = not popover
+        rects = {}
 
-        color(0.16, 0.16, 0.17)
+        color(C.bg)
         gfx.rect(0, 0, gfx.w, gfx.h, 1)
 
-        -- versions
+        -- header: icon + title on the left, version capsule on the right
+        local icon = S(28)
+        local hy = M
+        draw_icon(M, hy, icon)
+        local title_x = M + icon + S(12)
+        set_font("title")
+        color(C.text)
+        draw_line(TITLE, title_x, hy + icon / 2)
+
+        local cap_text
         if info.same_version then
-            color(0.55, 0.80, 1.0)
-            cy = draw_text("You already have this version.", margin, cy, text_w, true)
-            cy = cy + math.floor(8 * scale)
-        end
-        color(0.90, 0.90, 0.90)
-        cy = draw_text("Latest configuration: v" .. info.latest, margin, cy, text_w)
-        cy = draw_text("Installed: " .. (info.installed and ("v" .. info.installed) or "not recorded"),
-            margin, cy, text_w)
-        cy = cy + math.floor(18 * scale)
-
-        -- keyboard shortcuts choice (radio buttons)
-        color(0.90, 0.90, 0.90)
-        cy = draw_text("Keyboard shortcuts and actions:", margin, cy, text_w, true)
-        cy = cy + math.floor(6 * scale)
-
-        local dot = math.floor(20 * scale)
-        local gap = math.floor(10 * scale)
-        local line_h = math.floor(21 * scale)
-        local label_x = margin + dot + gap
-        local label_w = design_w - label_x - margin
-
-        for _, option in ipairs(SHORTCUT_OPTIONS) do
-            local row_top = cy
-            local center_x = margin + dot / 2
-            local center_y = row_top + line_h / 2
-            local radius = dot / 2 - 1
-            if mode == option.id then
-                color(0.22, 0.50, 0.85)
-                gfx.circle(center_x, center_y, radius, 1, 1)
-                color(1, 1, 1)
-                gfx.circle(center_x, center_y, radius * 0.4, 1, 1)
-            else
-                color(0.10, 0.10, 0.11)
-                gfx.circle(center_x, center_y, radius, 1, 1)
-                color(0.55, 0.55, 0.57)
-                gfx.circle(center_x, center_y, radius, 0, 1)
-            end
-            color(0.95, 0.95, 0.95)
-            cy = draw_text(option.label, label_x, row_top, label_w, true)
-            color(0.70, 0.70, 0.72)
-            cy = draw_text(option.text, label_x, cy + math.floor(2 * scale), label_w)
-            rects[option.id] = { x = margin, y = row_top, w = design_w - margin * 2, h = cy - row_top }
-            cy = cy + math.floor(12 * scale)
-        end
-
-        -- where the backup is. reaper-kb.ini (keyboard shortcuts) is only touched when
-        -- the choice is not "skip"; the mouse modifiers are backed up in every case.
-        color(0.62, 0.80, 0.65)
-        if info.first_backup then
-            cy = draw_text("Don't worry: before anything changes, all your current configuration files are " ..
-                "backed up in your REAPER resource folder: Data/Daniel Kharrat/Config Before Daniel Kharrat",
-                margin, cy, text_w)
+            cap_text = "Up to date \194\183 v" .. info.latest
+        elseif info.installed then
+            cap_text = "v" .. info.installed .. "  \226\134\146  v" .. info.latest
         else
-            cy = draw_text("Don't worry: before anything changes, your current " ..
-                ((mode == "skip") and "mouse modifiers are" or "keyboard shortcuts and mouse modifiers are") ..
-                " backed up in your REAPER resource folder: Data/Daniel Kharrat/Backup",
-                margin, cy, text_w)
+            cap_text = "Latest: v" .. info.latest
         end
-        cy = cy + math.floor(18 * scale)
+        set_font("small")
+        local cap_h = S(28)
+        local cap_w = math.floor(gfx.measurestr(cap_text) + S(26))
+        local cap_x = W - M - cap_w
+        local cap_y = hy + (icon - cap_h) / 2
+        fill_round(cap_x, cap_y + math.max(1, S(1)), cap_w, cap_h, cap_h / 2, C.black, 0.25)
+        area(cap_x, cap_y, cap_w, cap_h, cap_h / 2, C.capsule, C.edge)
+        color(info.same_version and C.green or C.muted)
+        draw_line(cap_text, cap_x, cap_y + cap_h / 2, "center", cap_w)
 
-        -- notes
-        color(0.62, 0.62, 0.65)
-        cy = draw_text("Settings in your own reaper.ini that are not part of the configuration are kept, " ..
-            "such as machine-specific settings and some personal preferences.",
-            margin, cy, text_w)
-        do
+        local cy = hy + icon + S(6)
+        color(C.muted)
+        cy = draw_text("REAPER closes and restarts to apply the update.", title_x, cy, W - M - title_x, "body")
+        cy = cy + S(20)
+
+        -- keyboard shortcuts choice
+        set_font("label")
+        color(C.muted)
+        gfx.x, gfx.y = M + S(4), cy
+        gfx.drawstr("Keyboard Shortcuts and Actions")
+        cy = cy + line_h() + S(6)
+
+        local pad_x, pad_y = S(16), S(12)
+        local dot = S(16)
+        local label_x = M + pad_x + dot + S(12)
+        local label_w = W - M - pad_x - label_x
+        local heights = {}
+        local card_h = 0
+        for i, option in ipairs(SHORTCUT_OPTIONS) do
+            heights[i] = pad_y * 2 + text_height(option.label, label_w, "bold") + S(3) +
+                text_height(option.text, label_w, "small")
+            card_h = card_h + heights[i]
+        end
+        local card_x, card_w = M, W - 2 * M
+        local card_r = S(14)
+        local hair = math.max(1, math.floor(scale / 2 + 0.5))
+        area(card_x, cy, card_w, card_h, card_r, C.card, C.edge)
+
+        local row_y = cy
+        for i, option in ipairs(SHORTCUT_OPTIONS) do
+            local rh = heights[i]
+            local rect = { x = card_x, y = row_y, w = card_w, h = rh }
+            rects[option.id] = rect
+            if can_hover and inside(rect, mouse_x, mouse_y) then
+                fill_round(card_x + hair, cy + hair, card_w - 2 * hair, card_h - 2 * hair, card_r - hair,
+                    C.hover, 1, nil, row_y + ((i == 1) and hair or 0), row_y + rh - ((i == #SHORTCUT_OPTIONS) and hair or 0))
+            end
+            if i > 1 then
+                color(C.sep)
+                gfx.rect(label_x, row_y, card_x + card_w - pad_x - label_x, hair, 1)
+            end
+
+            -- label (first line decides where the radio sits)
+            set_font("bold")
+            local first_mid = row_y + pad_y + line_h() / 2
+            local box = cap_box()
+            if box then
+                first_mid = row_y + pad_y + (box[1] + box[2]) / 2
+            end
+            color(C.text)
+            local ty = draw_text(option.label, label_x, row_y + pad_y, label_w, "bold")
+            color(C.muted)
+            draw_text(option.text, label_x, ty + S(3), label_w, "small")
+
+            -- radio
+            local rcx = M + pad_x + dot / 2
+            if mode == option.id then
+                fill_circle(rcx, first_mid, dot / 2, C.accent)
+                fill_circle(rcx, first_mid, math.max(2, S(3)), C.white)
+            else
+                fill_circle(rcx, first_mid, dot / 2, C.ring)
+                fill_circle(rcx, first_mid, dot / 2 - math.max(1, S(1.5)), C.well)
+            end
+            row_y = row_y + rh
+        end
+        cy = cy + card_h + S(16)
+
+        -- backup note. reaper-kb.ini (keyboard shortcuts) is only touched when the
+        -- choice is not "skip"; the mouse modifiers are backed up in every case.
+        local note
+        if info.first_backup then
+            note = "Before anything changes, all your current configuration files are backed up in your " ..
+                "REAPER resource folder: Data/Daniel Kharrat/Config Before Daniel Kharrat"
+        else
+            note = "Before anything changes, your current " ..
+                ((mode == "skip") and "mouse modifiers are" or "keyboard shortcuts and mouse modifiers are") ..
+                " backed up in your REAPER resource folder: Data/Daniel Kharrat/Backup"
+        end
+        set_font("small")
+        local note_mid = cy + line_h() / 2
+        local nbox = cap_box()
+        if nbox then
+            note_mid = cy + (nbox[1] + nbox[2]) / 2
+        end
+        draw_check(M + pad_x + dot / 2, note_mid, dot / 2)
+        color(C.muted)
+        cy = draw_text(note, label_x, cy, W - M - label_x, "small")
+
+        -- buttons
+        local btn_h = S(30)
+        local btn_y = math.floor(design_h - M - btn_h)
+        local ok_w = button_width("Update", true)
+        local cancel_w = button_width("Cancel", false)
+        rects.ok = { x = W - M - ok_w, y = btn_y, w = ok_w, h = btn_h }
+        rects.cancel = { x = rects.ok.x - S(10) - cancel_w, y = btn_y, w = cancel_w, h = btn_h }
+        draw_button(rects.cancel, "Cancel", false, can_hover and inside(rects.cancel, mouse_x, mouse_y))
+        draw_button(rects.ok, "Update", true, can_hover and inside(rects.ok, mouse_x, mouse_y))
+
+        -- (i) button: what stays the person's own
+        local info_d = S(22)
+        rects.info = { x = M, y = btn_y + (btn_h - info_d) / 2, w = info_d, h = info_d }
+        local info_hot = popover or inside(rects.info, mouse_x, mouse_y)
+        local icx, icy = M + info_d / 2, btn_y + btn_h / 2
+        fill_circle(icx, icy, info_d / 2, info_hot and C.muted or C.ring)
+        fill_circle(icx, icy, info_d / 2 - math.max(1, S(1.5)), C.bg)
+        set_font("glyph")
+        color(info_hot and C.text or C.muted)
+        draw_line("i", icx - info_d / 2, icy, "center", info_d)
+
+        -- If the text and buttons need more height than the window has, shrink
+        -- everything a little and let the loop draw it again, so nothing is cropped.
+        local needed = cy + S(24) + btn_h + M
+        if needed > design_h + 1 and zoom > 0.55 then
+            zoom = math.max(0.55, zoom * design_h / needed)
+            return true
+        end
+
+        -- popover above the (i) button
+        if popover then
             local names = {}
             for _, name in ipairs(info.leave) do
                 names[#names + 1] = KEEP_LABELS[name] or name
             end
-            local list = "These will not be replaced: " .. table.concat(names, ", ") .. "."
-            cy = cy + math.floor(6 * scale)
-            cy = draw_text(list, margin, cy, text_w)
-        end
-        cy = cy + math.floor(6 * scale)
-        cy = draw_text("REAPER will close and restart to apply the update.", margin, cy, text_w)
-
-        -- buttons
-        local btn_w, btn_h = math.floor(110 * scale), math.floor(34 * scale)
-        local btn_y = math.floor(design_h - margin - btn_h)
-        rects.ok = { x = math.floor(design_w - margin - btn_w), y = btn_y, w = btn_w, h = btn_h }
-        rects.cancel = { x = rects.ok.x - math.floor(12 * scale) - btn_w, y = btn_y, w = btn_w, h = btn_h }
-        draw_button(rects.cancel, "Cancel", false)
-        draw_button(rects.ok, "OK", true)
-
-        -- If the text and buttons need more height than the window has, shrink
-        -- everything a little and let the loop draw it again, so nothing is cropped.
-        local needed = cy + math.floor(18 * scale) + btn_h + margin
-        if needed > design_h + 1 and zoom > 0.55 then
-            zoom = math.max(0.55, zoom * design_h / needed)
-            return true
+            local p1 = "Settings in your own reaper.ini that are not part of the configuration are kept, " ..
+                "such as machine-specific settings and some personal preferences."
+            local p2 = "These will not be replaced: " .. table.concat(names, ", ") .. "."
+            local pw = math.min(S(400), W - 2 * M)
+            local ppad = S(16)
+            local tw = pw - 2 * ppad
+            set_font("bold")
+            local head_h = line_h()
+            local ph = ppad * 2 + head_h + S(6) + text_height(p1, tw, "small") + S(8) + text_height(p2, tw, "small")
+            local nub = S(8)
+            local px = M - S(6)
+            local py = btn_y - S(10) - nub - ph
+            for k = 1, 3 do   -- soft shadow
+                fill_round(px - k, py + k * 2 - k, pw + 2 * k, ph + 2 * k, S(14) + k, C.black, 0.10)
+            end
+            area(px, py, pw, ph, S(14), C.pop, C.pop_edge)
+            fill_triangle(icx, py + ph - hair, nub + hair, nub + hair, C.pop_edge, 1, false)
+            fill_triangle(icx, py + ph - hair - 1, nub, nub, C.pop, 1, false)
+            color(C.text)
+            local ty = draw_text("What Stays Yours", px + ppad, py + ppad, tw, "bold")
+            color(C.muted)
+            ty = draw_text(p1, px + ppad, ty + S(6), tw, "small")
+            draw_text(p2, px + ppad, ty + S(8), tw, "small")
+            rects.popover = { x = px, y = py, w = pw, h = ph }
         end
         return false
     end
 
     local function which_target()
-        for _, name in ipairs({ "ok", "cancel", "replace", "merge", "skip" }) do
+        for _, name in ipairs({ "ok", "cancel", "info", "replace", "merge", "skip" }) do
             if inside(rects[name], gfx.mouse_x, gfx.mouse_y) then
                 return name
             end
@@ -953,17 +1306,25 @@ local function show_dialog(info, on_ok, on_cancel)
         local down = (gfx.mouse_cap & 1) == 1
         if down and not mouse_was_down then
             press_target = which_target()
+            if popover and press_target ~= "info" and not inside(rects.popover, gfx.mouse_x, gfx.mouse_y) then
+                popover = false      -- a click outside closes the popover and does nothing else
+                press_target = "closed_popover"
+            end
         elseif not down and mouse_was_down then
             local target = which_target()
             if target and target == press_target then
-                if target == "replace" or target == "merge" or target == "skip" then
-                    mode = target
-                elseif target == "ok" then
-                    finish(true)
-                    return
-                elseif target == "cancel" then
-                    finish(false)
-                    return
+                if target == "info" then
+                    popover = not popover
+                elseif not popover then
+                    if target == "replace" or target == "merge" or target == "skip" then
+                        mode = target
+                    elseif target == "ok" then
+                        finish(true)
+                        return
+                    elseif target == "cancel" then
+                        finish(false)
+                        return
+                    end
                 end
             end
             press_target = nil
@@ -972,9 +1333,16 @@ local function show_dialog(info, on_ok, on_cancel)
 
         -- keyboard
         local key = gfx.getchar()
-        if key < 0 or key == 27 then          -- window closed, or Esc
+        if key < 0 then                       -- window closed
             finish(false)
             return
+        elseif key == 27 then                 -- Esc: close the popover first
+            if popover then
+                popover = false
+            else
+                finish(false)
+                return
+            end
         elseif key == 13 then                 -- Enter
             finish(true)
             return

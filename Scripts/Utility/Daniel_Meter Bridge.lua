@@ -1,11 +1,13 @@
 -- @description Daniel_Meter Bridge
--- @version 1.5
+-- @version 1.6
 -- @changelog
---   VCA meters: a VCA lead track (track grouping: VCA lead) shows a meter of all the tracks that follow
---   it, summed as if their audio went through it (an estimate from their peak meters; nested VCAs included). Followers' meters are
---   post-fader, so the VCA meter moves with the VCA. Tracks whose folder parent also follows the VCA
---   aren't counted twice. The VCA's clip light lights when any of its tracks clips; clicking it
---   resets them.
+--   Meter look window (right-click > Meter look...), shared by all bridge windows:
+--   - Bottom of the meter: -24 to -120 dB (was fixed at -60)
+--   - Colour zones: where red, amber and light green start (red can start below 0 dB, not only the clip LED)
+--   - LEDs: Auto (LED size + maximum, follows the height) or a fixed number. Replaces Meter resolution
+--   - Mono tracks show one meter: tracks whose items are all mono, or (without items) a mono input.
+--     The meter shows the louder of L / R, so a panned mono track still reads right
+--   - Zone sizes: how much of the meter's height each colour zone takes (25-400 %)
 -- @author Daniel
 -- @about
 --   # Meter Bridge
@@ -18,8 +20,9 @@
 --     number; click it to change the track's input
 --   - Meter colors: deep green below -18, light green -18 to -6, amber -6 to 0, red = clip
 --   - Record-armed tracks show their input (as REAPER's meters do), names turn red
---   - One meter per track channel (stereo, 5.1, 7.1...); 2-channel tracks armed with a mono input
+--   - One meter per track channel (stereo, 5.1, 7.1...); mono tracks (mono items, or a mono input)
 --     show a single meter
+--   - Meter look window: bottom of the scale, colour zones, number of LEDs, mono tracks
 --   - VCA lead tracks show the summed level of the tracks that follow them (REAPER shows no meter
 --     for a VCA): an estimate from their peak meters (as there's no real bus)
 --   - Peak hold (off / 1 s / 2 s / 5 s / until reset), latched clip lights
@@ -50,7 +53,8 @@
 --   - Heart (bottom of the dB column, level with the number bars): support the script on Ko-fi
 --   - Right-click the title bar or the dB column: New window, Window color, Dock / Undock, Close window
 --   - Right-click a meter: meter mode (peaks / RMS / LUFS, as in the mixer; selected tracks change together)
---   - Right-click anywhere else: options (tracks, width, peak hold, release, names, input selector...)
+--   - Right-click anywhere else: options (tracks, width, peak hold, release, names, input selector,
+--     Meter look...)
 --   - Running the action again closes the window
 --
 --   Toolbar / startup (same as the Floating Mixer):
@@ -79,6 +83,13 @@ local font_small = ImGui.CreateFont('sans-serif', 11)
 local font_num   = ImGui.CreateFont('sans-serif', 12, ImGui.FontFlags_Bold)
 local font_name  = ImGui.CreateFont('sans-serif', 13)   -- track names
 ImGui.Attach(ctx, font_ui); ImGui.Attach(ctx, font_small); ImGui.Attach(ctx, font_num); ImGui.Attach(ctx, font_name)
+-- the Meter look window's fonts (the Auto Mixer Panel look: Helvetica Neue / Segoe UI / DejaVu Sans)
+local LOOK_FONT = r.GetOS():find('Win') and 'Segoe UI'
+               or ((r.GetOS():find('OSX') or r.GetOS():find('mac')) and 'Helvetica Neue') or 'DejaVu Sans'
+local font_lk   = ImGui.CreateFont(LOOK_FONT, 13)
+local font_lk_b = ImGui.CreateFont(LOOK_FONT, 13, ImGui.FontFlags_Bold)
+local font_lk_s = ImGui.CreateFont(LOOK_FONT, 11)
+ImGui.Attach(ctx, font_lk); ImGui.Attach(ctx, font_lk_b); ImGui.Attach(ctx, font_lk_s)
 
 -- toolbar toggle state; launching the script again while it runs closes it
 local _, _, sec_id, cmd_id = r.get_action_context()
@@ -175,21 +186,38 @@ local DEFAULTS = {
   release = 'fast',      -- 'fast' | 'medium' | 'slow'
   names = 1,             -- track names under the meter
   input = 'number',      -- input selector: 'number' (shown) | 'off'
-  res = 'medium',        -- meter resolution: 'low' | 'medium' | 'high' (LEDs follow the height)
+  -- Meter look (all windows): see the Meter look window
+  m_floor = -60,         -- bottom of the meter (dB)
+  m_red = 0,             -- red from (dB); 0 = only the clip LED is red
+  m_amber = -6,          -- amber from (dB)
+  m_light = -18,         -- light green from (dB); deep green below
+  led_mode = 'auto',     -- 'auto' (LED size + maximum, follows the height) | 'fixed' (a number of LEDs)
+  led_size = 7,          -- auto: one LED per this many pixels (gap included)
+  led_max = 40,          -- auto: at most this many LEDs (the clip LED included)
+  led_count = 30,        -- fixed: this many LEDs (the clip LED included); fewer when the meter is too short
+  mono = 1,              -- mono tracks show one meter
+  sz_red = 100, sz_amber = 100, sz_light = 100, sz_deep = 100,   -- zone sizes (% of the normal scale)
 }
+local LOOK_KEYS = { 'm_floor', 'm_red', 'm_amber', 'm_light', 'led_mode', 'led_size', 'led_max', 'led_count', 'mono',
+                    'sz_red', 'sz_amber', 'sz_light', 'sz_deep' }
 -- view options are per window; window 1 uses the original names (its settings carry over), others '_2'...
-local WIN_KEYS = { filter = true, skip_hidden = true, width = true, names = true, input = true, res = true, dock = true }
+local WIN_KEYS = { filter = true, skip_hidden = true, width = true, names = true, input = true, dock = true }
 local function opt_key(k, n) return (n == 1 or not WIN_KEYS[k]) and k or (k .. '_' .. n) end
 local function load_opt(k, n)
   local v, d = r.GetExtState(EXT, opt_key(k, n)), DEFAULTS[k]
   if v == '' or (k == 'release' and not ({ fast = 1, medium = 1, slow = 1 })[v]) then return d end
+  if k == 'led_mode' and v ~= 'fixed' then return 'auto' end
   if type(d) == 'number' then return tonumber(v) or d end
   if k == 'filter' and v == 'selected' then return 'follow' end   -- (older name)
-  if k == 'res' then return (v == 'max' and 'high') or (({ low = 1, medium = 1, high = 1 })[v] and v) or d end
   if k == 'input' and v ~= 'off' then return 'number' end        -- (channel names were dropped)
   return v
 end
 for k in pairs(DEFAULTS) do if not WIN_KEYS[k] then G[k] = load_opt(k, 1) end end
+-- the old Meter resolution (window 1) becomes the LED size and maximum
+if r.GetExtState(EXT, 'led_size') == '' then
+  local old = ({ low = { 10, 20 }, high = { 5, 60 }, max = { 5, 60 } })[r.GetExtState(EXT, 'res')]
+  if old then G.led_size, G.led_max = old[1], old[2] end
+end
 local function win_settings(n)
   local t = setmetatable({ _n = n }, { __index = G })
   for k in pairs(WIN_KEYS) do if DEFAULTS[k] ~= nil then t[k] = load_opt(k, n) end end
@@ -217,10 +245,15 @@ local RELEASE = { fast = 120, medium = 60, slow = 30 }
 --------------------------------------------------------------------------------
 -- Look
 --------------------------------------------------------------------------------
--- The Medium meter's LEDs (dB thresholds, top to bottom): they define the meter scale (see seg_set).
-local SEG = { 0, -1, -2, -3, -4, -6, -8, -10, -12, -15, -18, -21, -24, -27, -30, -35, -40, -45, -50, -60 }
+-- The scale steps (dB, top to bottom): each step is one unit of meter height, so the scale is finer
+-- near the top. SEG is these steps down to the bottom of the meter (Meter look), the bottom included.
+local BASE_SEG = { 0, -1, -2, -3, -4, -6, -8, -10, -12, -15, -18, -21, -24, -27, -30, -35, -40, -45, -50, -60,
+                   -70, -80, -90, -100, -110, -120 }
+local SEG = {}
 -- dB labels by priority: placed in this order wherever they don't overlap a label already placed
-local LABEL_ORDER = { 0, -18, -60, -6, -30, -12, -40, -3, -24 }
+-- (built with the scale: the bottom of the meter comes second)
+local LABEL_PRIO = { 0, 'floor', -18, -60, -6, -30, -12, -40, -3, -24, -80, -100, -120 }
+local LABEL_ORDER = {}
 local COL = {
   red = 0xFF2A1EFF, amber = 0xFFB020FF, green_light = 0x7EE05AFF, green_deep = 0x1E9A34FF,
   strip = 0x1E1E1EFF, meter_bg = 0x0C0C0CFF, text = 0xC8C8C8FF, text_dim = 0x8A8A8AFF,
@@ -243,11 +276,10 @@ local function dim(c, k)
   return rgba(ch(24), ch(16), ch(8))
 end
 local function brightness(c) return 0.299 * ((c >> 24) & 255) + 0.587 * ((c >> 16) & 255) + 0.114 * ((c >> 8) & 255) end
--- The meter scale is fixed: every color zone keeps the same place and height whatever the resolution
--- (the Medium meter's layout, 20 units from the top: the red clip LED 0..1, amber 0 to -6 dB 1..6,
--- light green -6 to -18 dB 6..11, deep green -18 to -60 dB 11..20). A higher resolution splits each
--- zone into more, smaller LEDs; a lower one into fewer, bigger LEDs. dB <-> units follow the
--- Medium meter's steps (finer near the top), so the dB labels stay in the same spots too.
+-- The meter scale: unit 0..1 is the red clip LED, unit 1 is 0 dB, unit #SEG the bottom of the meter.
+-- Every color zone keeps its place and height whatever the number of LEDs (the defaults: amber 0 to
+-- -6 dB 1..6, light green -6 to -18 dB 6..11, deep green -18 to -60 dB 11..20). More LEDs split each
+-- zone into more, smaller LEDs; fewer into bigger LEDs, so the dB labels stay in the same spots too.
 local function db_to_u(t)
   if t >= SEG[1] then return 1 end
   for k = 1, #SEG - 1 do
@@ -260,9 +292,7 @@ local function u_to_db(u)
   if k < 1 then return SEG[1] elseif k >= #SEG then return SEG[#SEG] end
   return SEG[k] - (u - k) * (SEG[k] - SEG[k + 1])
 end
-local ZONES = {   -- top / bottom (units) and color of each zone below the red clip LED
-  { 1, 6, COL.amber }, { 6, 11, COL.green_light }, { 11, 20, COL.green_deep },
-}
+local ZONES = {}  -- top / bottom (units) and color of each zone below the red clip LED (Look.apply)
 -- counts = LEDs in the amber, light green and deep green zones (+1 red clip LED)
 local function seg_set(counts)
   local set = { t = {}, u0 = {}, u1 = {}, lit = {}, unlit = {} }
@@ -273,36 +303,33 @@ local function seg_set(counts)
   add(0, 0, 1, COL.red)
   local min_u = 99
   for z, zone in ipairs(ZONES) do
-    local n, top, bot = counts[z], zone[1], zone[2]
+    local n, top, bot = counts[z], zone[1], zone[2]       -- (display units: zone sizes applied)
+    local ntop, nbot = zone[4], zone[5]                     -- (scale units: for the dB)
     for j = 1, n do
       local u0, u1 = top + (bot - top) * (j - 1) / n, top + (bot - top) * j / n
-      add(u_to_db(u1), u0, u1, zone[3])        -- lights when the level reaches the LED's bottom edge
+      -- lights when the level reaches the LED's bottom edge
+      add(u_to_db(ntop + (nbot - ntop) * j / n), u0, u1, zone[3])
     end
     min_u = math.min(min_u, (bot - top) / n)
   end
   set.min_u = min_u                            -- the smallest LED (the red one aside), for fitting
   return set
 end
--- meter resolution (right-click > Meter resolution): low, medium, high, very high
--- The number of LEDs follows the meter's height: one LED per this many pixels (gap included), so a
--- taller window shows more LEDs and a shorter one fewer, bigger LEDs, up to the resolution's maximum
--- (so the three always differ in a tall window). A resolution that would look the same as the one in
--- use at the window's current height is grayed out in the menu.
-local RES = {
-  low    = { pitch = 10, max = 20 },
-  medium = { pitch = 7,  max = 40 },
-  high   = { pitch = 5,  max = 60 },
-}
-local RES_MENU = { { 'Low', 'low' }, { 'Medium', 'medium' }, { 'High', 'high' } }
-local MIN_LEDS = 4                                  -- the red LED + one per zone
-local function led_count(res, mh)
-  local o = RES[res] or RES.medium
-  return clamp(math.floor(mh / o.pitch), MIN_LEDS, o.max)
+-- The number of LEDs (Meter look, all windows), the clip LED included:
+-- Auto: one LED per led_size pixels (gap included), so a taller window shows more LEDs and a shorter
+-- one fewer, bigger LEDs, up to led_max. Fixed: led_count LEDs, fewer when the meter is too short
+-- for them (an LED needs 3 px). Always at least the clip LED + one per zone.
+local function led_count(mh)
+  local min_leds = 1 + #ZONES
+  if G.led_mode == 'fixed' then
+    return math.max(min_leds, math.min(G.led_count, math.floor(mh / 3)))
+  end
+  return clamp(math.floor(mh / math.max(2, G.led_size)), min_leds, math.max(min_leds, G.led_max))
 end
 local set_cache = {}
 -- the LED set for a meter mh pixels tall: N LEDs (1 red + the rest shared out by zone size)
 local function seg_for(mh)
-  local n = led_count(S.res, mh) - 1                -- LEDs below the red one, at least 1 per zone
+  local n = led_count(mh) - 1                       -- LEDs below the red one, at least 1 per zone
   if set_cache[n] then return set_cache[n] end
   local total, counts, rem, used = 0, {}, {}, 0
   for _, z in ipairs(ZONES) do total = total + (z[2] - z[1]) end
@@ -324,6 +351,68 @@ local function seg_for(mh)
   set_cache[n] = seg_set(counts)
   return set_cache[n]
 end
+
+-- Meter look: the settings shared by all windows (scale bottom, color zones, LEDs, mono tracks)
+local Look = { open = false }
+-- keeps the zones in order (0 >= red >= amber >= light green >= bottom); the setting just changed wins
+function Look.order(k)
+  G.m_floor = clamp(math.floor(G.m_floor), -120, -24)
+  local fl = G.m_floor
+  if k == 'm_red' then
+    G.m_amber = math.min(G.m_amber, G.m_red); G.m_light = math.min(G.m_light, G.m_amber)
+  elseif k == 'm_amber' then
+    G.m_red = math.max(G.m_red, G.m_amber); G.m_light = math.min(G.m_light, G.m_amber)
+  elseif k == 'm_light' then
+    G.m_amber = math.max(G.m_amber, G.m_light); G.m_red = math.max(G.m_red, G.m_amber)
+  end
+  G.m_red   = clamp(G.m_red, fl, 0)
+  G.m_amber = clamp(G.m_amber, fl, G.m_red)
+  G.m_light = clamp(G.m_light, fl, G.m_amber)
+end
+-- rebuilds the scale, the labels and the zones from the settings
+function Look.apply()
+  Look.order()
+  local fl = G.m_floor
+  for i = #SEG, 1, -1 do SEG[i] = nil end
+  for _, d in ipairs(BASE_SEG) do if d > fl then SEG[#SEG + 1] = d end end
+  SEG[#SEG + 1] = fl
+  for i = #LABEL_ORDER, 1, -1 do LABEL_ORDER[i] = nil end
+  local seen = {}
+  for _, t in ipairs(LABEL_PRIO) do
+    if t == 'floor' then t = fl end
+    if t >= fl and not seen[t] then seen[t] = true; LABEL_ORDER[#LABEL_ORDER + 1] = t end
+  end
+  for i = #ZONES, 1, -1 do ZONES[i] = nil end
+  -- each zone: from the zone above down to db (empty zones are skipped), in scale units, then its size
+  -- applied: the zones are stretched / shrunk by their size and fit back into the meter's height (the
+  -- clip LED keeps its 1 unit). ZONES[i] = { top, bottom (display units), color, top, bottom (scale units) }
+  local nat, top, sum = {}, 1, 0
+  local function zone(db, col, size)
+    local u = db_to_u(db)
+    if u > top + 1e-6 then
+      local f = clamp(size or 100, 25, 400) / 100
+      nat[#nat + 1] = { top, u, col, f }; sum = sum + (u - top) * f; top = u
+    end
+  end
+  zone(G.m_red, COL.red, G.sz_red); zone(G.m_amber, COL.amber, G.sz_amber)
+  zone(G.m_light, COL.green_light, G.sz_light); zone(fl, COL.green_deep, G.sz_deep)
+  local sc, d = (#SEG - 1) / math.max(1e-6, sum), 1
+  for _, z in ipairs(nat) do
+    local len = (z[2] - z[1]) * z[4] * sc
+    ZONES[#ZONES + 1] = { d, d + len, z[3], z[1], z[2] }
+    d = d + len
+  end
+  for k in pairs(set_cache) do set_cache[k] = nil end
+end
+-- scale units -> display units (where on the meter, with the zone sizes applied)
+function Look.disp(u)
+  if u <= 1 then return u end
+  for _, z in ipairs(ZONES) do
+    if u <= z[5] then return z[1] + (u - z[4]) / math.max(1e-6, z[5] - z[4]) * (z[2] - z[1]) end
+  end
+  return #SEG
+end
+Look.apply()
 
 local function val2db(v)
   if not v or v < 0.0000000298023223876953125 then return -150.0 end
@@ -427,17 +516,59 @@ local function n_chan(tr)
   local nch = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_NCHAN') or 2)
   return nch >= 1 and nch or 2
 end
--- one meter per track channel. Only a 2-channel track looks at its input: armed with a mono audio
--- input -> one meter column
+local function is_armed(tr)
+  return tr ~= r.GetMasterTrack(0) and r.GetMediaTrackInfo_Value(tr, 'I_RECARM') == 1
+end
+local function mono_input(tr)
+  local ri = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_RECINPUT'))
+  return ri >= 0 and ri < 4096 and ri & (1024 | 2048) == 0
+end
+-- Mono tracks (Meter look > One meter for mono tracks): Mono.map[track] = true when all its items
+-- play mono (the active take's source is mono, or its channel mode is mono downmix / left / right),
+-- false when any item doesn't (or is MIDI), nil when it has no items. Rebuilt when the project changes.
+local Mono = { map = {}, stamp = -1 }
+function Mono.refresh()
+  local proj = r.EnumProjects(-1)
+  local sc = r.GetProjectStateChangeCount(proj)
+  if proj == Mono.proj and sc == Mono.stamp then return end
+  Mono.proj, Mono.stamp, Mono.map = proj, sc, {}
+  for i = 0, r.CountMediaItems(0) - 1 do
+    local it = r.GetMediaItem(0, i)
+    local tr = r.GetMediaItem_Track(it)
+    if Mono.map[tr] ~= false then
+      local tk = r.GetActiveTake(it)
+      if tk then
+        local mono = false
+        if not r.TakeIsMIDI(tk) then
+          local src = r.GetMediaItemTake_Source(tk)
+          local cm = math.floor(r.GetMediaItemTakeInfo_Value(tk, 'I_CHANMODE'))
+          mono = (src and r.GetMediaSourceNumChannels(src) == 1) or (cm >= 2 and cm <= 4)
+        end
+        Mono.map[tr] = mono
+      end
+    end
+  end
+end
+-- one meter per track channel. A 2-channel track shows one meter when it's mono: armed with a mono
+-- audio input; or (Meter look > mono tracks) not armed, with only mono items, or no items and a
+-- mono input (not a folder parent, and no receives: those carry stereo from other tracks)
 local function n_peak_meters(tr)
   local nch = n_chan(tr)
   if nch ~= 2 then return nch end
   if tr == r.GetMasterTrack(0) then return 2 end
-  if r.GetMediaTrackInfo_Value(tr, 'I_RECARM') ~= 1 then return 2 end
-  local ri = math.floor(r.GetMediaTrackInfo_Value(tr, 'I_RECINPUT'))
-  if ri >= 0 and ri < 4096 and ri & (1024 | 2048) == 0 then return 1 end
-  return 2
+  if is_armed(tr) then return mono_input(tr) and 1 or 2 end
+  if G.mono ~= 1 then return 2 end
+  local m = Mono.map[tr]
+  if m ~= nil then return m and 1 or 2 end
+  if r.GetMediaTrackInfo_Value(tr, 'I_FOLDERDEPTH') == 1 or r.GetTrackNumSends(tr, -1) > 0 then return 2 end
+  return mono_input(tr) and 1 or 2
 end
+-- a mono track that isn't armed: its output may be panned, so its one meter shows the louder of L / R
+-- (meter channel -1). Armed: channel 1 is the input, as before.
+local function mono_out(tr) return n_chan(tr) == 2 and not is_armed(tr) and n_peak_meters(tr) == 1 end
+local function peak_lr(tr) return math.max(r.Track_GetPeakInfo(tr, 0) or 0, r.Track_GetPeakInfo(tr, 1) or 0) end
+-- the peak-hold channels (clip light): both sides for a mono track that isn't armed
+local function hold_chans(tr) return mono_out(tr) and 2 or n_peak_meters(tr) end
 -- The track's meter mode, the same setting as REAPER's mixer (right-click a meter > the Meters options,
 -- I_VUMODE): stereo peaks (2 meters, or 1 for a mono input as above), multichannel peaks (one per channel),
 -- stereo RMS, or one combined RMS / LUFS-M / LUFS-S meter. RMS / loudness are read from channels
@@ -540,10 +671,11 @@ function VCA.sum(tr, n, now)
   local function add(i, v) amp[i] = amp[i] + v; pw[i] = pw[i] + v * v end
   for _, f in ipairs(VCA.map[tr] or {}) do
     local k = VCA.peak_chans(f)
-    for ch = 0, k - 1 do
-      local v = r.Track_GetPeakInfo(f, ch) or 0
-      if k == 1 then for i = 1, n do add(i, v) end
-      else add(ch % n + 1, v) end
+    if k == 1 then
+      local v = mono_out(f) and peak_lr(f) or (r.Track_GetPeakInfo(f, 0) or 0)
+      for i = 1, n do add(i, v) end
+    else
+      for ch = 0, k - 1 do add(ch % n + 1, r.Track_GetPeakInfo(f, ch) or 0) end
     end
   end
   -- between the power sum and the added peaks, VCA.BLEND of the way (in dB) toward the added peaks
@@ -559,7 +691,8 @@ end
 function VCA.hold(tr)
   local h = -150
   for _, f in ipairs(VCA.map[tr] or {}) do
-    for ch = 0, VCA.peak_chans(f) - 1 do h = math.max(h, r.Track_GetPeakHoldDB(f, ch, false) * 100) end
+    local k = mono_out(f) and 2 or VCA.peak_chans(f)
+    for ch = 0, k - 1 do h = math.max(h, r.Track_GetPeakHoldDB(f, ch, false) * 100) end
   end
   return h
 end
@@ -579,6 +712,7 @@ local function meter_chans(tr)
   -- stereo peaks: REAPER only meters channels 1-2 then, so at most 2 meters (the master keeps all)
   local cnt = n_peak_meters(tr)
   if mode == 0 and cnt > 2 and tr ~= r.GetMasterTrack(0) then cnt = 2 end
+  if cnt == 1 and mono_out(tr) then return { -1 } end         -- mono: the louder of L / R
   local t = {}
   for c = 0, cnt - 1 do t[#t + 1] = c end
   return t
@@ -745,7 +879,7 @@ local meters = {}
 -- raw_db: a level given by the caller (a VCA's sum) instead of the track's own meter
 local function meter(tr, ch, now, raw_db)
   local key = r.GetTrackGUID(tr) .. ':' .. ch
-  local raw = raw_db or val2db(r.Track_GetPeakInfo(tr, ch))
+  local raw = raw_db or val2db(ch == -1 and peak_lr(tr) or r.Track_GetPeakInfo(tr, ch))
   local st = meters[key]
   if not st then st = { disp = raw, hold = raw, hold_t = now, t = now }; meters[key] = st end
   local dt, rel = now - st.t, RELEASE[S.release] or 20
@@ -769,7 +903,7 @@ local function reset_track(tr, no_vca)
     r.Track_GetPeakHoldDB(tr, ch, true)
     local st = meters[g .. ':' .. ch]; if st then st.hold, st.hold_t = st.disp, 0 end
   end
-  for ch = 1024, 1025 do local st = meters[g .. ':' .. ch]; if st then st.hold, st.hold_t = st.disp, 0 end end
+  for _, ch in ipairs({ -1, 1024, 1025 }) do local st = meters[g .. ':' .. ch]; if st then st.hold, st.hold_t = st.disp, 0 end end
 end
 local function reset_all()
   reset_track(r.GetMasterTrack(0))
@@ -882,7 +1016,7 @@ local function draw_scale(x, y0, h, bg, row_h, txt)
   ImGui.PushFont(ctx, font_small)
   for _, t in ipairs(LABEL_ORDER) do
     do   -- at the same spot for every resolution (the middle of the Medium meter's LED for t)
-      local cy = mt + (db_to_u(t) - 0.5) * k
+      local cy = mt + Look.disp(db_to_u(t) - 0.5) * k
       local ok = cy - 5 >= y0 and cy + 5 <= y0 + h
       for _, py in ipairs(placed) do if math.abs(py - cy) < 11 then ok = false; break end end
       if ok then
@@ -1220,7 +1354,7 @@ local function draw_strip(tr, x, y0, w, h, now)
   if vca then
     hold_db = VCA.hold(tr)                                   -- a VCA: any of its tracks clipped
   else
-    local pk = n_peak_meters(tr)                             -- the clip light always follows the peaks
+    local pk = hold_chans(tr)                                -- the clip light always follows the peaks
     for c = 0, pk - 1 do hold_db = math.max(hold_db, r.Track_GetPeakHoldDB(tr, c, false) * 100) end
   end
   local clipped = hold_db > 0
@@ -1420,6 +1554,7 @@ local function window_menu(W)
   if not ImGui.BeginPopup(ctx, 'win_menu') then return end
   if ImGui.MenuItem(ctx, 'New window') then Win.new_req = true end
   Win.color_menu(W.n)
+  if ImGui.MenuItem(ctx, 'Meter look...', nil, Look.open) then Look.open = true end
   ImGui.Separator(ctx)
   if W.docked then
     if ImGui.MenuItem(ctx, 'Undock window') then W.dock_req = 0 end
@@ -1525,22 +1660,8 @@ local function options_menu(W)
     end
     ImGui.EndMenu(ctx)
   end
-  if submenu('Meter resolution') then
-    for _, o in ipairs(RES_MENU) do
-      -- grayed out when it would look the same as now at this window height
-      local mh = D.lay and D.lay.mh or 0
-      local same = S.res ~= o[2] and led_count(o[2], mh) == led_count(S.res, mh)
-      if same then ImGui.BeginDisabled(ctx) end
-      if item(o[1], S.res == o[2]) then set_opt('res', o[2]) end
-      if same then
-        ImGui.EndDisabled(ctx)
-        if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenDisabled) then
-          ImGui.SetTooltip(ctx, 'No difference at this window height.\nMake the window taller to use it.')
-        end
-      end
-    end
-    ImGui.EndMenu(ctx)
-  end
+  -- scale, color zones, LEDs, mono tracks: the Meter look window (all bridge windows)
+  if item('Meter look...', Look.open) then Look.open = true; ImGui.CloseCurrentPopup(ctx) end
   -- the meter mode of every track in this window at once (the master keeps peaks)
   if submenu('Meter mode (all tracks in window)') then
     local list, common = {}, nil
@@ -1704,6 +1825,331 @@ local function keep_reaper_focus(focused)
 end
 
 --------------------------------------------------------------------------------
+-- Meter look window: the meter settings shared by all bridge windows. Daniel's Apple-style house style,
+-- dark (macOS settings / Finder vibe): plain window, soft grey rounded groups with a hairline edge,
+-- Apple sliders with a value readout (click it to type a value), a segmented control, a switch,
+-- notes behind small (i) buttons. Changes show right away; they're saved when a control is let go.
+--------------------------------------------------------------------------------
+do
+  local C = {
+    win = 0x1E1E20FF, group = 0x262629FF, hair = 0xFFFFFF14, text = 0xFFFFFFD9, text2 = 0xEBEBF599,
+    accent = 0x2F6FD0FF, fill = 0x7878801F, fill_hov = 0x7878802E, track = 0x7878803D, seg_on = 0x636366FF,
+    sw_off = 0x78788052, knob = 0xF5F5F7FF, shadow = 0x00000059, well = 0x161618FF, popup = 0x2C2C2EF7,
+  }
+  -- GW = the settings column's width: it follows the window width (at least MIN_GW)
+  local GW, ROW_H, LABEL_W, VAL_W, GAP, PREV_W, MIN_GW = 380, 36, 132, 72, 18, 112, 380
+  local dl                                                  -- the window's draw list (this frame)
+
+  Look.save = function()
+    for _, k in ipairs(LOOK_KEYS) do r.SetExtState(EXT, k, tostring(G[k]), true) end
+  end
+  Look.set = function(k, v)
+    if G[k] == v then return end
+    G[k] = v
+    Look.apply()
+  end
+  local function set_zone(k, v) G[k] = v; Look.order(k); Look.apply() end   -- the zone just moved wins
+
+  -- text with its vertical centre at cy; returns its width
+  local function text_at(font, x, cy, col, s)
+    ImGui.PushFont(ctx, font)
+    local w, h = ImGui.CalcTextSize(ctx, s)
+    ImGui.DrawList_AddText(dl, math.floor(x), math.floor(cy - h / 2), col, s)
+    ImGui.PopFont(ctx)
+    return w
+  end
+  local function text_width(font, s) ImGui.PushFont(ctx, font); local w = ImGui.CalcTextSize(ctx, s); ImGui.PopFont(ctx); return w end
+  local function button(id, x1, y1, x2, y2)
+    ImGui.SetCursorScreenPos(ctx, x1, y1)
+    ImGui.InvisibleButton(ctx, id, math.max(1, x2 - x1), math.max(1, y2 - y1))
+    return ImGui.IsItemClicked(ctx, ImGui.MouseButton_Left), ImGui.IsItemHovered(ctx), ImGui.IsItemActive(ctx)
+  end
+
+  -- a small circular (i) button that opens a popover with the note
+  local function info(id, x, cy, str)
+    local clicked, hov = button('##i' .. id, x - 9, cy - 9, x + 9, cy + 9)
+    if clicked then ImGui.OpenPopup(ctx, '##pop' .. id) end
+    local col = hov and C.text or C.text2
+    ImGui.DrawList_AddCircle(dl, x, cy, 7.5, col, 24, 1.2)
+    ImGui.DrawList_AddCircleFilled(dl, x, cy - 3.2, 1.1, col)   -- drawn, so it's centred on every OS
+    ImGui.DrawList_AddRectFilled(dl, x - 0.8, cy - 1.2, x + 0.8, cy + 4, col)
+    if ImGui.BeginPopup(ctx, '##pop' .. id) then
+      ImGui.PushFont(ctx, font_lk)
+      ImGui.PushTextWrapPos(ctx, 260)
+      ImGui.TextColored(ctx, C.text, str)
+      ImGui.PopTextWrapPos(ctx)
+      ImGui.PopFont(ctx)
+      ImGui.EndPopup(ctx)
+    end
+  end
+
+  -- a group: bold header (with an optional (i)), then a rounded area of n rows with inset separators.
+  -- Returns the top of the rows.
+  local function group(x, y, title, n, note, id)
+    text_at(font_lk_b, x + 4, y + 9, C.text, title)
+    if note then info(id, x + GW - 12, y + 9, note) end
+    local ty, h = y + 24, n * ROW_H
+    local rnd = n == 1 and 14 or 20
+    ImGui.DrawList_AddRectFilled(dl, x, ty, x + GW, ty + h, C.group, rnd)
+    ImGui.DrawList_AddRect(dl, x + 0.5, ty + 0.5, x + GW - 0.5, ty + h - 0.5, C.hair, rnd, 0, 1)
+    for i = 1, n - 1 do
+      ImGui.DrawList_AddLine(dl, x + 14, ty + i * ROW_H, x + GW - 14, ty + i * ROW_H, C.hair, 1)
+    end
+    return ty
+  end
+
+  -- a slider row: label, Apple slider (filled track, lozenge thumb), value readout. Drag to
+  -- change; click the readout to type a value (Enter: keep, Esc: cancel)
+  local function slider(x, y, label, k, lo, hi, fmt, zone)
+    local cy = y + ROW_H / 2
+    text_at(font_lk, x + 14, cy, C.text, label)
+    local vx2 = x + GW - 14
+    local vx1 = vx2 - VAL_W
+    local tx1, tx2 = x + LABEL_W, vx1 - 18
+    local v = G[k]
+    local _, hov, act = button('##s' .. k, tx1 - 10, y, tx2 + 10, y + ROW_H)
+    local nv = v
+    if act then
+      local mx = ImGui.GetMousePos(ctx)
+      nv = lo + math.floor(clamp((mx - tx1) / (tx2 - tx1), 0, 1) * (hi - lo) + 0.5)
+    end                                                       -- (no mouse wheel: it scrolls the window)
+    if nv ~= v then
+      if zone then set_zone(k, nv) else Look.set(k, nv) end
+      v = G[k]
+    end
+    if ImGui.IsItemDeactivated(ctx) then Look.save() end
+    local tx = tx1 + (v - lo) / math.max(1, hi - lo) * (tx2 - tx1)
+    ImGui.DrawList_AddRectFilled(dl, tx1, cy - 2, tx2, cy + 2, C.track, 2)
+    ImGui.DrawList_AddRectFilled(dl, tx1, cy - 2, tx, cy + 2, C.accent, 2)
+    ImGui.DrawList_AddRectFilled(dl, tx - 10, cy - 6, tx + 10, cy + 8, C.shadow, 7)
+    ImGui.DrawList_AddRectFilled(dl, tx - 10, cy - 7, tx + 10, cy + 7, (act or hov) and 0xFFFFFFFF or C.knob, 7)
+    -- value readout
+    if Look.edit == k then
+      ImGui.SetCursorScreenPos(ctx, vx1, cy - 11)
+      ImGui.SetNextItemWidth(ctx, VAL_W)
+      if Look.edit_focus then ImGui.SetKeyboardFocusHere(ctx); Look.edit_focus = false end
+      local enter, buf = ImGui.InputText(ctx, '##e' .. k, Look.buf,
+        ImGui.InputTextFlags_CharsDecimal | ImGui.InputTextFlags_EnterReturnsTrue | ImGui.InputTextFlags_AutoSelectAll)
+      Look.buf = buf
+      if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+        Look.edit = nil
+      elseif enter or ImGui.IsItemDeactivated(ctx) then
+        local n = tonumber(buf)
+        if n then
+          n = clamp(math.floor(n + 0.5), lo, hi)
+          if zone then set_zone(k, n) else Look.set(k, n) end
+          Look.save()
+        end
+        Look.edit = nil
+      end
+    else
+      local clicked, vh = button('##v' .. k, vx1, cy - 11, vx2, cy + 11)
+      if vh and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_DelayNormal) then ImGui.SetTooltip(ctx, 'Click to type a value') end
+      ImGui.DrawList_AddRectFilled(dl, vx1, cy - 11, vx2, cy + 11, vh and C.fill_hov or C.fill, 11)
+      local s = fmt(v)
+      text_at(font_lk, (vx1 + vx2 - text_width(font_lk, s)) / 2, cy, C.text, s)
+      if clicked then Look.edit, Look.buf, Look.edit_focus = k, tostring(v), true end
+    end
+  end
+
+  -- a segmented control row (equal segments; the chosen one a lighter grey, like macOS dark mode)
+  local function segmented(x, y, label, k, opts)
+    local cy = y + ROW_H / 2
+    text_at(font_lk, x + 14, cy, C.text, label)
+    local sx1, sx2 = x + LABEL_W, x + GW - 14
+    ImGui.DrawList_AddRectFilled(dl, sx1, cy - 12, sx2, cy + 12, C.track, 12)
+    local sw = (sx2 - sx1) / #opts
+    for i, o in ipairs(opts) do
+      local a = sx1 + (i - 1) * sw
+      local clicked, hov = button('##g' .. k .. i, a, cy - 12, a + sw, cy + 12)
+      local on = G[k] == o[2]
+      if on then ImGui.DrawList_AddRectFilled(dl, a + 2, cy - 10, a + sw - 2, cy + 10, C.seg_on, 10) end
+      text_at(font_lk, a + (sw - text_width(font_lk, o[1])) / 2, cy, (on or hov) and C.text or C.text2, o[1])
+      if clicked and not on then Look.set(k, o[2]); Look.save() end
+    end
+  end
+
+  -- a switch row (on = accent)
+  local function switch(x, y, label, k)
+    local cy = y + ROW_H / 2
+    text_at(font_lk, x + 14, cy, C.text, label)
+    local sx2 = x + GW - 14
+    local sx1 = sx2 - 38
+    local clicked = button('##w' .. k, sx1, cy - 11, sx2, cy + 11)
+    local on = G[k] == 1
+    ImGui.DrawList_AddRectFilled(dl, sx1, cy - 11, sx2, cy + 11, on and C.accent or C.sw_off, 11)
+    local kx = on and (sx2 - 11) or (sx1 + 11)
+    ImGui.DrawList_AddCircleFilled(dl, kx, cy + 1, 9.5, C.shadow)
+    ImGui.DrawList_AddCircleFilled(dl, kx, cy, 9, C.knob)
+    if clicked then Look.set(k, on and 0 or 1); Look.save() end
+  end
+
+  -- a read-only row: label left, value right in the secondary color
+  local function readout(x, y, label, value)
+    local cy = y + ROW_H / 2
+    text_at(font_lk, x + 14, cy, C.text, label)
+    text_at(font_lk, x + GW - 14 - text_width(font_lk, value), cy, C.text2, value)
+  end
+
+  -- a secondary capsule button
+  local function capsule(id, x, y, label)
+    local w = text_width(font_lk, label) + 28
+    local clicked, hov = button(id, x, y, x + w, y + 28)
+    ImGui.DrawList_AddRectFilled(dl, x, y, x + w, y + 28, hov and C.fill_hov or C.fill, 14)
+    text_at(font_lk, x + 14, y + 14, C.text, label)
+    return clicked
+  end
+
+  -- a meter drawn with the current settings, all LEDs lit, with its dB labels
+  local function preview(x, y, w, h)
+    ImGui.DrawList_AddRectFilled(dl, x, y, x + w, y + h, C.group, 20)
+    ImGui.DrawList_AddRect(dl, x + 0.5, y + 0.5, x + w - 0.5, y + h - 0.5, C.hair, 20, 0, 1)
+    local mw, lw = 18, 30
+    local mx1 = math.floor(x + (w - (lw + 8 + mw)) / 2 + lw + 8)
+    local mt, mb = y + 22, y + h - 28
+    ImGui.DrawList_AddRectFilled(dl, mx1 - 4, mt - 4, mx1 + mw + 4, mb + 4, C.well, 6)
+    local set = seg_for(mb - mt)
+    local k = (mb - mt) / #SEG
+    for i in ipairs(set.t) do
+      local a, b = mt + set.u0[i] * k, mt + set.u1[i] * k
+      local g = (b - a >= 4) and 1 or 0
+      ImGui.DrawList_AddRectFilled(dl, mx1, math.floor(a), mx1 + mw, math.floor(b) - g, set.lit[i])
+    end
+    local placed = {}
+    for _, t in ipairs(LABEL_ORDER) do
+      local cy = mt + Look.disp(db_to_u(t) - 0.5) * k
+      local ok = true
+      for _, py in ipairs(placed) do if math.abs(py - cy) < 12 then ok = false; break end end
+      if ok then
+        placed[#placed + 1] = cy
+        local s = tostring(t)
+        text_at(font_lk_s, mx1 - 8 - text_width(font_lk_s, s), cy, C.text2, s)
+      end
+    end
+    -- the LED count at this height, under the meter
+    local cnt = #set.t .. ' LEDs'
+    text_at(font_lk_s, x + (w - text_width(font_lk_s, cnt)) / 2, y + h - 10, C.text2, cnt)
+  end
+
+  local function db(v) return v .. ' dB' end
+  local function plain(v) return tostring(v) end
+  -- the settings column (in a child that scrolls when the window is shorter than the settings)
+  local function settings()
+    dl = ImGui.GetWindowDrawList(ctx)
+    GW = math.floor((ImGui.GetContentRegionAvail(ctx)))       -- (the scrollbar, when shown, is left out)
+    local x0, y0 = ImGui.GetCursorScreenPos(ctx)
+    local y = y0
+    -- Scale
+    local ty = group(x0, y, 'Scale', 1,
+      'The lowest level the meters show (-24 to -120 dB).\n\nDrag the slider, or click a value to type it.', 'scale')
+    slider(x0, ty, 'Bottom of meter', 'm_floor', -120, -24, db, true)
+    y = ty + ROW_H + GAP
+    -- Colour zones
+    ty = group(x0, y, 'Colour Zones', 3,
+      'Each colour starts at its level and goes up to the next zone. Deep green is below light green.\n\n'
+      .. 'Red at 0 dB: only the clip LED at the top is red.\n\nA zone set to the same level as the one above it is left out.', 'zones')
+    slider(x0, ty, 'Red from', 'm_red', G.m_floor, 0, function(v) return v == 0 and 'Clip only' or db(v) end, true)
+    slider(x0, ty + ROW_H, 'Amber from', 'm_amber', G.m_floor, 0, db, true)
+    slider(x0, ty + 2 * ROW_H, 'Light green from', 'm_light', G.m_floor, 0, db, true)
+    y = ty + 3 * ROW_H + GAP
+    -- Zone sizes
+    ty = group(x0, y, 'Zone Sizes', 4,
+      'How much of the meter\'s height each colour zone takes. 100% is the normal scale; 200% makes the '
+      .. 'zone twice as tall, and the other zones get shorter to fit.\n\nThe dB levels don\'t change, only where '
+      .. 'they sit on the meter. A zone that is left out (see Colour Zones) has no size.', 'sizes')
+    local function pct(v) return v .. '%' end
+    slider(x0, ty, 'Red', 'sz_red', 25, 400, function(v) return G.m_red == 0 and 'Not used' or pct(v) end)
+    slider(x0, ty + ROW_H, 'Amber', 'sz_amber', 25, 400, pct)
+    slider(x0, ty + 2 * ROW_H, 'Light green', 'sz_light', 25, 400, pct)
+    slider(x0, ty + 3 * ROW_H, 'Deep green', 'sz_deep', 25, 400, pct)
+    y = ty + 4 * ROW_H + GAP
+    -- LEDs
+    local fixed = G.led_mode == 'fixed'
+    local rows = fixed and 3 or 4
+    ty = group(x0, y, 'Segments', rows,
+      'Auto: one LED per "LED size" pixels of meter height, up to "Maximum LEDs". Taller windows show more LEDs, '
+      .. 'shorter ones fewer, bigger LEDs.\n\nFixed: always this many LEDs, fewer only when the meter is too short '
+      .. 'for them (an LED needs 3 px).\n\nLED counts include the clip LED.', 'leds')
+    segmented(x0, ty, 'LEDs', 'led_mode', { { 'Auto', 'auto' }, { 'Fixed', 'fixed' } })
+    if fixed then
+      slider(x0, ty + ROW_H, 'Number of LEDs', 'led_count', 4, 120, plain)
+    else
+      slider(x0, ty + ROW_H, 'LED size', 'led_size', 3, 16, function(v) return v .. ' px' end)
+      slider(x0, ty + 2 * ROW_H, 'Maximum LEDs', 'led_max', 8, 120, plain)
+    end
+    readout(x0, ty + (rows - 1) * ROW_H, 'In the bridge now', Look.mh and (led_count(Look.mh) .. ' LEDs') or '-')
+    y = ty + rows * ROW_H + GAP
+    -- Tracks
+    ty = group(x0, y, 'Tracks', 1,
+      'Mono tracks: tracks with only mono items, or no items and a mono input (not folders or tracks with '
+      .. 'receives). The one meter shows the louder of L / R, so a panned track still reads right.', 'tracks')
+    switch(x0, ty, 'One meter for mono tracks', 'mono')
+    y = ty + ROW_H + GAP
+    if capsule('##reset', x0, y, 'Reset to Defaults') then
+      for _, k in ipairs(LOOK_KEYS) do G[k] = DEFAULTS[k] end
+      Look.edit = nil
+      Look.apply(); Look.save()
+    end
+    ImGui.SetCursorScreenPos(ctx, x0, y0)
+    ImGui.Dummy(ctx, GW, y + 28 - y0)
+  end
+
+  -- Stretch: wider = longer sliders, taller = taller preview meter. A window shorter than the settings
+  -- scrolls the settings column; the preview always fills the height.
+  local function body()
+    local aw, ah = ImGui.GetContentRegionAvail(ctx)
+    local x0, y0 = ImGui.GetCursorScreenPos(ctx)
+    local lw = math.max(MIN_GW + 8, aw - 16 - PREV_W)         -- (+8: room for the scrollbar)
+    if ImGui.BeginChild(ctx, '##lk_settings', lw, ah) then
+      settings()
+      ImGui.EndChild(ctx)
+    end
+    dl = ImGui.GetWindowDrawList(ctx)
+    local px = x0 + lw + 16
+    text_at(font_lk_b, px + 4, y0 + 9, C.text, 'Preview')
+    preview(px, y0 + 24, PREV_W, math.max(60, ah - 24))
+    ImGui.SetCursorScreenPos(ctx, x0, y0)
+    ImGui.Dummy(ctx, lw + 16 + PREV_W, ah)
+  end
+
+  Look.draw = function()
+    local cols = {
+      { ImGui.Col_WindowBg, C.win }, { ImGui.Col_PopupBg, C.popup }, { ImGui.Col_Border, C.hair },
+      { ImGui.Col_Text, C.text }, { ImGui.Col_TitleBg, C.win }, { ImGui.Col_TitleBgActive, 0x2A2A2DFF },
+      { ImGui.Col_TitleBgCollapsed, C.win }, { ImGui.Col_FrameBg, C.fill_hov }, { ImGui.Col_FrameBgHovered, C.fill_hov },
+      { ImGui.Col_FrameBgActive, C.fill_hov }, { ImGui.Col_TextSelectedBg, 0x2F6FD066 },
+      { ImGui.Col_ChildBg, 0x00000000 }, { ImGui.Col_ScrollbarBg, 0x00000000 },
+      { ImGui.Col_ScrollbarGrab, C.sw_off }, { ImGui.Col_ScrollbarGrabHovered, 0x7878807A },
+      { ImGui.Col_ScrollbarGrabActive, 0x7878807A },
+    }
+    for _, c in ipairs(cols) do ImGui.PushStyleColor(ctx, c[1], c[2]) end
+    local vars = {
+      { ImGui.StyleVar_WindowPadding, 20, 18 }, { ImGui.StyleVar_ItemSpacing, 0, 0 },
+      { ImGui.StyleVar_FramePadding, 10, 3 }, { ImGui.StyleVar_FrameRounding, 11 },
+      { ImGui.StyleVar_WindowRounding, 12 }, { ImGui.StyleVar_PopupRounding, 12 },
+      { ImGui.StyleVar_WindowBorderSize, 1 }, { ImGui.StyleVar_PopupBorderSize, 1 },
+      { ImGui.StyleVar_ScrollbarSize, 8 }, { ImGui.StyleVar_ScrollbarRounding, 4 },
+    }
+    for _, v in ipairs(vars) do ImGui.PushStyleVar(ctx, v[1], v[2], v[3]) end
+    ImGui.PushFont(ctx, font_lk)
+    -- resizable (stretch): at least as wide as the settings + preview, any height down to a short meter
+    local min_w = 40 + MIN_GW + 8 + 16 + PREV_W
+    ImGui.SetNextWindowSize(ctx, min_w, 600, ImGui.Cond_FirstUseEver)
+    ImGui.SetNextWindowSizeConstraints(ctx, min_w, 160, 10000, 10000)
+    local visible, open = ImGui.Begin(ctx, 'Meter Look###DanielMeterBridgeLook', true,
+      ImGui.WindowFlags_NoCollapse | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse)
+    if visible then
+      body()
+      ImGui.End(ctx)
+    end
+    ImGui.PopFont(ctx)
+    ImGui.PopStyleVar(ctx, #vars)
+    ImGui.PopStyleColor(ctx, #cols)
+    if not open then Look.open = false; Look.edit = nil end
+  end
+end
+
+--------------------------------------------------------------------------------
 -- Main loop
 --------------------------------------------------------------------------------
 local WFLAGS = ImGui.WindowFlags_NoCollapse | ImGui.WindowFlags_HorizontalScrollbar
@@ -1784,6 +2230,7 @@ local function draw_window(W, now)
   if content_w > aw then ah = ah - sbar end      -- the horizontal scrollbar takes some height
   local rh = math.max(MIN_ROW_H, math.floor(ah / rows))
   D.lay = strip_layout(rh - 4)
+  Look.mh = D.lay.mh                                 -- (the Meter look window shows the LED count)
   local sx = ox + ImGui.GetScrollX(ctx)              -- the scale stays at the left edge
   -- the dB-scale column shows the window's color (the only color you see when it's docked)
   local scale_txt = (wcol ~= bg) and ((Win.text_on(wcol) & ~0xFF) | 0xD0) or nil
@@ -1864,6 +2311,7 @@ local function loop()
   Theme.check()
 
   Win.load()
+  Mono.refresh()
   VCA.refresh(now)
   if Win.new_req then Win.new_req = nil; Win.add() end
 
@@ -1875,6 +2323,7 @@ local function loop()
     any_focus = any_focus or focused
   end
   ImGui.PopFont(ctx)
+  if Look.open then Look.draw() end
   keep_reaper_focus(any_focus)
 
   -- closing windows: the last one closing ends the script (and isn't reopened at the next startup)

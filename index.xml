@@ -700,7 +700,7 @@
     </reapack>
 
     <reapack name="Daniel_Update configuration.lua" type="script" desc="Daniel_Update configuration.lua">
-      <version name="2.0" author="Daniel" time="2026-09">
+      <version name="2.1" author="Daniel" time="2026-11">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Update%20configuration.lua</source>
       </version>
     </reapack>

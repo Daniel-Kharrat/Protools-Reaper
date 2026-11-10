@@ -8,6 +8,9 @@
 --   - Mono tracks show one meter: tracks whose items are all mono, or (without items) a mono input.
 --     The meter shows the louder of L / R, so a panned mono track still reads right
 --   - Zone sizes: how much of the meter's height each colour zone takes (25-400 %)
+--   - Continuous meter: a smooth bar instead of LEDs (same zones and sizes), peak hold as a thin line.
+--     It rises at once and falls smoothly at REAPER's meter decay (120 dB/s); the LED meters keep
+--     their own timing (Release)
 -- @author Daniel
 -- @about
 --   # Meter Bridge
@@ -197,9 +200,10 @@ local DEFAULTS = {
   led_count = 30,        -- fixed: this many LEDs (the clip LED included); fewer when the meter is too short
   mono = 1,              -- mono tracks show one meter
   sz_red = 100, sz_amber = 100, sz_light = 100, sz_deep = 100,   -- zone sizes (% of the normal scale)
+  continuous = 0,        -- 1 = a continuous bar instead of LEDs
 }
 local LOOK_KEYS = { 'm_floor', 'm_red', 'm_amber', 'm_light', 'led_mode', 'led_size', 'led_max', 'led_count', 'mono',
-                    'sz_red', 'sz_amber', 'sz_light', 'sz_deep' }
+                    'sz_red', 'sz_amber', 'sz_light', 'sz_deep', 'continuous' }
 -- view options are per window; window 1 uses the original names (its settings carry over), others '_2'...
 local WIN_KEYS = { filter = true, skip_hidden = true, width = true, names = true, input = true, dock = true }
 local function opt_key(k, n) return (n == 1 or not WIN_KEYS[k]) and k or (k .. '_' .. n) end
@@ -241,6 +245,10 @@ end
 -- dB per second. REAPER's own meter decay (Preferences > Track control panels) also applies:
 -- the meter can't fall faster than that.
 local RELEASE = { fast = 120, medium = 60, slow = 30 }
+-- The continuous meter rises at once and falls smoothly (every frame) at REAPER's meter decay rate
+-- (Preferences > Track control panels: meter decay; the same value as the Floating Mixer). No update
+-- tick: stepping at REAPER's 12 Hz felt laggy here.
+local REAPER_DECAY = 120
 
 --------------------------------------------------------------------------------
 -- Look
@@ -549,15 +557,16 @@ function Mono.refresh()
     end
   end
 end
--- one meter per track channel. A 2-channel track shows one meter when it's mono: armed with a mono
--- audio input; or (Meter look > mono tracks) not armed, with only mono items, or no items and a
--- mono input (not a folder parent, and no receives: those carry stereo from other tracks)
+-- one meter per track channel. With Meter look > "One meter for mono tracks" on, a 2-channel track
+-- shows one meter when it's mono: armed with a mono audio input; or not armed, with only mono items,
+-- or no items and a mono input (not a folder parent, and no receives: those carry stereo from other
+-- tracks). Off: always two meters.
 local function n_peak_meters(tr)
   local nch = n_chan(tr)
   if nch ~= 2 then return nch end
   if tr == r.GetMasterTrack(0) then return 2 end
-  if is_armed(tr) then return mono_input(tr) and 1 or 2 end
   if G.mono ~= 1 then return 2 end
+  if is_armed(tr) then return mono_input(tr) and 1 or 2 end
   local m = Mono.map[tr]
   if m ~= nil then return m and 1 or 2 end
   if r.GetMediaTrackInfo_Value(tr, 'I_FOLDERDEPTH') == 1 or r.GetTrackNumSends(tr, -1) > 0 then return 2 end
@@ -873,7 +882,8 @@ function Theme.check()
 end
 
 --------------------------------------------------------------------------------
--- Meter ballistics: instant rise, release at the chosen rate, peak hold
+-- Meter ballistics: instant rise, then a fall at the chosen rate (LED meters: Release; continuous:
+-- REAPER_DECAY). Peak hold for both.
 --------------------------------------------------------------------------------
 local meters = {}
 -- raw_db: a level given by the caller (a VCA's sum) instead of the track's own meter
@@ -884,6 +894,7 @@ local function meter(tr, ch, now, raw_db)
   if not st then st = { disp = raw, hold = raw, hold_t = now, t = now }; meters[key] = st end
   local dt, rel = now - st.t, RELEASE[S.release] or 20
   st.t = now
+  if G.continuous == 1 then rel = REAPER_DECAY end           -- continuous: REAPER's decay, every frame
   st.disp = math.max(raw, st.disp - rel * dt)
   if S.hold == 0 then
     st.hold = st.disp
@@ -1003,6 +1014,29 @@ local function seg_y(i, mt, mb)
   local set, k = D.lay.seg, (mb - mt) / #SEG
   local a, b = mt + set.u0[i] * k, mt + set.u1[i] * k
   return a, b, b - a
+end
+
+-- the continuous meter (Meter look > Continuous meter): each zone a solid bar in its color, lit from the
+-- level down; the clip area at the top lights at 0 dBFS; peak hold = a 2 px line in its zone's color
+local function cont_meter(dl, x1, x2, mt, mb, disp, hold)
+  local k = (mb - mt) / #SEG
+  local fl = SEG[#SEG]
+  local function y_of(db) return mt + Look.disp(db_to_u(db)) * k end
+  local ly = (disp <= fl) and mb or y_of(disp)
+  local g = (k >= 4) and 1 or 0
+  ImGui.DrawList_AddRectFilled(dl, x1, mt, x2, math.floor(mt + k) - g, disp >= 0 and COL.red or dim(COL.red, 0.16))
+  for _, z in ipairs(ZONES) do
+    local a, b = math.floor(mt + z[1] * k), math.floor(mt + z[2] * k)
+    ImGui.DrawList_AddRectFilled(dl, x1, a, x2, b, dim(z[3], 0.16))
+    local top = math.max(a, math.floor(ly))
+    if top < b then ImGui.DrawList_AddRectFilled(dl, x1, top, x2, b, z[3]) end
+  end
+  if hold > fl and hold < 0 and hold > disp + 0.5 then
+    local hy = math.floor(y_of(hold))
+    for _, z in ipairs(ZONES) do
+      if hy <= mt + z[2] * k then ImGui.DrawList_AddRectFilled(dl, x1, hy - 1, x2, hy + 1, z[3]); break end
+    end
+  end
 end
 
 local function draw_scale(x, y0, h, bg, row_h, txt)
@@ -1327,14 +1361,18 @@ local function draw_strip(tr, x, y0, w, h, now)
     local cx2 = math.floor(mx1 + c * (cw + gap) + cw)
     if cx2 <= cx1 then cx2 = cx1 + 1 end
     rect(cx1, mt, cx2, mb, COL.meter_bg)
-    local set = D.lay.seg
-    local hold_i
-    if hold > -149 then for i, t in ipairs(set.t) do if hold >= t then hold_i = i; break end end end
-    for i, t in ipairs(set.t) do
-      local a, b, sh = seg_y(i, mt, mb)
-      local g = (sh >= 4) and 1 or 0
-      local lit = disp >= t or i == hold_i
-      rect(cx1, math.floor(a), cx2, math.floor(b) - g, lit and set.lit[i] or set.unlit[i])
+    if G.continuous == 1 then
+      cont_meter(D.dl, cx1, cx2, mt, mb, disp, hold)
+    else
+      local set = D.lay.seg
+      local hold_i
+      if hold > -149 then for i, t in ipairs(set.t) do if hold >= t then hold_i = i; break end end end
+      for i, t in ipairs(set.t) do
+        local a, b, sh = seg_y(i, mt, mb)
+        local g = (sh >= 4) and 1 or 0
+        local lit = disp >= t or i == hold_i
+        rect(cx1, math.floor(a), cx2, math.floor(b) - g, lit and set.lit[i] or set.unlit[i])
+      end
     end
   end
 
@@ -1677,7 +1715,9 @@ local function options_menu(W)
     end
     ImGui.EndMenu(ctx)
   end
-  if submenu('Release') then
+  -- (the continuous meter falls at REAPER's meter decay, so Release is for the LED meters only)
+  local led = G.continuous ~= 1
+  if ImGui.BeginMenu(ctx, Menu.pad(led and 'Release' or 'Release (LED meters only)', keep), led) then
     for _, k in ipairs({ 'fast', 'medium', 'slow' }) do
       if item(k:sub(1, 1):upper() .. k:sub(2) .. ' (' .. RELEASE[k] .. ' dB/s)', S.release == k) then set_opt('release', k) end
     end
@@ -2010,10 +2050,14 @@ do
     ImGui.DrawList_AddRectFilled(dl, mx1 - 4, mt - 4, mx1 + mw + 4, mb + 4, C.well, 6)
     local set = seg_for(mb - mt)
     local k = (mb - mt) / #SEG
-    for i in ipairs(set.t) do
-      local a, b = mt + set.u0[i] * k, mt + set.u1[i] * k
-      local g = (b - a >= 4) and 1 or 0
-      ImGui.DrawList_AddRectFilled(dl, mx1, math.floor(a), mx1 + mw, math.floor(b) - g, set.lit[i])
+    if G.continuous == 1 then
+      cont_meter(dl, mx1, mx1 + mw, mt, mb, 1, -150)          -- all lit
+    else
+      for i in ipairs(set.t) do
+        local a, b = mt + set.u0[i] * k, mt + set.u1[i] * k
+        local g = (b - a >= 4) and 1 or 0
+        ImGui.DrawList_AddRectFilled(dl, mx1, math.floor(a), mx1 + mw, math.floor(b) - g, set.lit[i])
+      end
     end
     local placed = {}
     for _, t in ipairs(LABEL_ORDER) do
@@ -2027,7 +2071,7 @@ do
       end
     end
     -- the LED count at this height, under the meter
-    local cnt = #set.t .. ' LEDs'
+    local cnt = G.continuous == 1 and 'Continuous' or (#set.t .. ' LEDs')
     text_at(font_lk_s, x + (w - text_width(font_lk_s, cnt)) / 2, y + h - 10, C.text2, cnt)
   end
 
@@ -2064,24 +2108,31 @@ do
     slider(x0, ty + 3 * ROW_H, 'Deep green', 'sz_deep', 25, 400, pct)
     y = ty + 4 * ROW_H + GAP
     -- LEDs
+    -- (continuous: only the switch; the LED settings come back when it's off)
+    local cont = G.continuous == 1
     local fixed = G.led_mode == 'fixed'
-    local rows = fixed and 3 or 4
+    local rows = cont and 1 or (fixed and 4 or 5)
     ty = group(x0, y, 'Segments', rows,
-      'Auto: one LED per "LED size" pixels of meter height, up to "Maximum LEDs". Taller windows show more LEDs, '
-      .. 'shorter ones fewer, bigger LEDs.\n\nFixed: always this many LEDs, fewer only when the meter is too short '
-      .. 'for them (an LED needs 3 px).\n\nLED counts include the clip LED.', 'leds')
-    segmented(x0, ty, 'LEDs', 'led_mode', { { 'Auto', 'auto' }, { 'Fixed', 'fixed' } })
-    if fixed then
-      slider(x0, ty + ROW_H, 'Number of LEDs', 'led_count', 4, 120, plain)
-    else
-      slider(x0, ty + ROW_H, 'LED size', 'led_size', 3, 16, function(v) return v .. ' px' end)
-      slider(x0, ty + 2 * ROW_H, 'Maximum LEDs', 'led_max', 8, 120, plain)
+      'Continuous meter: a smooth bar instead of LEDs. The colour zones and sizes stay the same; the peak hold '
+      .. 'is a thin line.\n\nAuto: one LED per "LED size" pixels of meter height, up to "Maximum LEDs". Taller '
+      .. 'windows show more LEDs, shorter ones fewer, bigger LEDs.\n\nFixed: always this many LEDs, fewer only '
+      .. 'when the meter is too short for them (an LED needs 3 px).\n\nLED counts include the clip LED.', 'leds')
+    switch(x0, ty, 'Continuous meter', 'continuous')
+    if not cont then
+      segmented(x0, ty + ROW_H, 'LEDs', 'led_mode', { { 'Auto', 'auto' }, { 'Fixed', 'fixed' } })
+      if fixed then
+        slider(x0, ty + 2 * ROW_H, 'Number of LEDs', 'led_count', 4, 120, plain)
+      else
+        slider(x0, ty + 2 * ROW_H, 'LED size', 'led_size', 3, 16, function(v) return v .. ' px' end)
+        slider(x0, ty + 3 * ROW_H, 'Maximum LEDs', 'led_max', 8, 120, plain)
+      end
+      readout(x0, ty + (rows - 1) * ROW_H, 'In the bridge now', Look.mh and (led_count(Look.mh) .. ' LEDs') or '-')
     end
-    readout(x0, ty + (rows - 1) * ROW_H, 'In the bridge now', Look.mh and (led_count(Look.mh) .. ' LEDs') or '-')
     y = ty + rows * ROW_H + GAP
     -- Tracks
     ty = group(x0, y, 'Tracks', 1,
-      'Mono tracks: tracks with only mono items, or no items and a mono input (not folders or tracks with '
+      'Mono tracks: record-armed tracks with a mono input; other tracks with only mono items, or no items and a '
+      .. 'mono input (not folders or tracks with '
       .. 'receives). The one meter shows the louder of L / R, so a panned track still reads right.', 'tracks')
     switch(x0, ty, 'One meter for mono tracks', 'mono')
     y = ty + ROW_H + GAP

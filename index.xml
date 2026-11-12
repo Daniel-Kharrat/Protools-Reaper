@@ -670,14 +670,15 @@
     </reapack>
 
     <reapack name="Daniel_Restore_ini_files.sh" type="script" desc="Daniel_Restore_ini_files.sh">
-      <version name="1.8" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore_ini_files.sh</source>
+      <version name="1.9" author="Daniel" time="2026-11">
+        <source platform="darwin">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore_ini_files.sh</source>
+        <source platform="linux">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore_ini_files.sh</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Restore_ini_files.bat" type="script" desc="Daniel_Restore_ini_files.bat">
-      <version name="1.5" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore_ini_files.bat</source>
+      <version name="1.6" author="Daniel" time="2026-11">
+        <source platform="windows">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Restore_ini_files.bat</source>
       </version>
     </reapack>
 
@@ -688,14 +689,15 @@
     </reapack>
 
     <reapack name="Daniel_Replace toolbar_icons.sh" type="script" desc="Daniel_Replace toolbar_icons.sh">
-      <version name="1.5" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Replace%20toolbar_icons.sh</source>
+      <version name="1.6" author="Daniel" time="2026-11">
+        <source platform="darwin">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Replace%20toolbar_icons.sh</source>
+        <source platform="linux">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Replace%20toolbar_icons.sh</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Replace toolbar_icons.bat" type="script" desc="Daniel_Replace toolbar_icons.bat">
-      <version name="1.0" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Replace%20toolbar_icons.bat</source>
+      <version name="1.1" author="Daniel" time="2026-11">
+        <source platform="windows">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Replace%20toolbar_icons.bat</source>
       </version>
     </reapack>
 
@@ -712,14 +714,15 @@
     </reapack>
 
     <reapack name="Daniel_Update_configuration.sh" type="script" desc="Daniel_Update_configuration.sh">
-      <version name="1.2" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Update_configuration.sh</source>
+      <version name="1.3" author="Daniel" time="2026-11">
+        <source platform="darwin">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Update_configuration.sh</source>
+        <source platform="linux">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Update_configuration.sh</source>
       </version>
     </reapack>
 
     <reapack name="Daniel_Update_configuration.bat" type="script" desc="Daniel_Update_configuration.bat">
-      <version name="1.3" author="Daniel" time="2026-09">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Update_configuration.bat</source>
+      <version name="1.4" author="Daniel" time="2026-11">
+        <source platform="windows">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Updater/Daniel_Update_configuration.bat</source>
       </version>
     </reapack>
     

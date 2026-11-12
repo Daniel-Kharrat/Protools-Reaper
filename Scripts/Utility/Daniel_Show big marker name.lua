@@ -1,10 +1,108 @@
-reaper.set_action_options(1)
+-- Daniel_Show big marker name.lua
+-- Version: 1.5
+-- Author: Daniel Kharrat
+-- Shows the current marker / region name in a big window.
+-- Changelog:
+--   1.5  Right-click menu with Close.
+--        Window comes back after a REAPER restart if it was open
+--        (toolbar toggle script + global startup action).
+
+local reaper = reaper
+
+------------------------------------------------------------
+-- TOOLBAR SYNC
+--
+-- The toolbar button runs the separate "(toolbar toggle)"
+-- script. This script keeps that button (and its own toggle
+-- state) matching whether the window is really open, and
+-- keeps the Show_Big_Marker_Name flag in reaper.ini for the
+-- startup action.
+------------------------------------------------------------
+
+local _, _, sec_id, cmd_id = reaper.get_action_context()
+
+local closed_by_user = false   -- set by "Close" in the right-click menu
+
+do
+local TOGGLE_KEY = 'Show_Big_Marker_Name'   -- the key in reaper.ini that the startup action reads
+local EXT = 'Daniel_ShowBigMarkerName'
+-- the toolbar button's script: Daniel_Show big marker name (toolbar toggle).lua
+local TOGGLE_BUTTON = '_RS6c0d512c6aebb1207367e64782697d63455f6ef1'
+local function toggle_button_id()
+  local id = reaper.NamedCommandLookup(TOGGLE_BUTTON)
+  if id and id ~= 0 then return id end
+end
+local function set_visual_state(on)
+  local v = on and 1 or 0
+  reaper.SetToggleCommandState(sec_id, cmd_id, v); reaper.RefreshToolbar2(sec_id, cmd_id)
+  local tid = toggle_button_id()
+  if tid then reaper.SetToggleCommandState(0, tid, v); reaper.RefreshToolbar2(0, tid) end
+end
+local REAPER_INI = reaper.GetResourcePath() .. "/reaper.ini"
+-- Sets KEY=value in reaper.ini, in the [toolbar button states] section. If the line isn't
+-- there yet, it's added to that section (and the section is added at the end if it's missing).
+local function SetIniValue(key, value)
+  local file = io.open(REAPER_INI, "rb")
+  if not file then return false end
+  local contents = file:read("*all")
+  file:close()
+  value = tostring(value)
+
+  local new_contents, count = contents:gsub(
+    "(\n" .. key .. "=)[^\r\n]*",
+    function(prefix) return prefix .. value end
+  )
+  if count == 0 then
+    local nl = contents:find("\r\n", 1, true) and "\r\n" or "\n"
+    local header = "[toolbar button states]"
+    local s = (contents:sub(1, #header) == header) and 1 or contents:find("\n" .. header, 1, true)
+    if s then
+      local eol = contents:find("\n", s + (s == 1 and 0 or 1), true)
+      if not eol then contents = contents .. nl; eol = #contents end   -- header was the last line
+      new_contents = contents:sub(1, eol) .. key .. "=" .. value .. nl .. contents:sub(eol + 1)
+    else
+      if contents ~= "" and not contents:match("\n$") then contents = contents .. nl end
+      new_contents = contents .. header .. nl .. key .. "=" .. value .. nl
+    end
+  end
+  if new_contents == contents then return true end
+
+  file = io.open(REAPER_INI, "wb")
+  if not file then return false end
+  file:write(new_contents)
+  file:close()
+  return true
+end
+local function write_ini_flag(on) SetIniValue(TOGGLE_KEY, on and 1 or 0) end
+-- Running the action while the window is open turns it off. REAPER stops the running script and, with
+-- set_action_options(1 + 2), starts it again right away; the stopped one left the time it stopped, so
+-- this new start knows it's a "turn off": it writes 0 and doesn't open. (REAPER quitting stops the
+-- script without starting it again, so the flag stays 1 and the window comes back at the next startup.)
+local stopped_at = tonumber(reaper.GetExtState(EXT, 'stopped_at'))
+reaper.DeleteExtState(EXT, 'stopped_at', false)
+if stopped_at and reaper.time_precise() - stopped_at < 1 then
+  set_visual_state(false)
+  write_ini_flag(false)
+  return
+end
+set_visual_state(true)
+write_ini_flag(true)
+reaper.atexit(function()
+  set_visual_state(false)
+  if closed_by_user then
+    write_ini_flag(false)                        -- closed from the menu: stays closed
+  else                                           -- stopped by running it again (or REAPER quitting)
+    reaper.SetExtState(EXT, 'stopped_at', tostring(reaper.time_precise()), false)
+  end
+end)
+end
+-- launching the script again while it runs closes it (a toggle), without REAPER's dialog:
+-- 1 = stop the running one, 2 = then start this one (which sees it was a "turn off", above)
+if reaper.set_action_options then reaper.set_action_options(1 | 2) end
 
 ------------------------------------------------------------
 -- SETTINGS
 ------------------------------------------------------------
-
-local reaper = reaper
 local imgui = reaper.ImGui_CreateContext("Current Marker")
 
 local font = reaper.ImGui_CreateFont("Arial", reaper.ImGui_FontFlags_Bold())
@@ -485,10 +583,42 @@ local function loop()
         )
 
         ----------------------------------------------------
-        -- RETURN FOCUS TO REAPER AFTER A CLICK
+        -- RIGHT-CLICK MENU: CLOSE
+        --
+        -- The window has no title bar (no X), so close it
+        -- from here. Same as the X on the other windows:
+        -- it stays closed at the next REAPER start.
         ----------------------------------------------------
 
-        if reaper.ImGui_IsWindowFocused(
+        reaper.ImGui_PushStyleVar(imgui, reaper.ImGui_StyleVar_WindowPadding(), 6, 6)
+        reaper.ImGui_PushStyleVar(imgui, reaper.ImGui_StyleVar_PopupRounding(), 6)
+        reaper.ImGui_PushStyleColor(imgui, reaper.ImGui_Col_PopupBg(),       0x222228FF)
+        reaper.ImGui_PushStyleColor(imgui, reaper.ImGui_Col_Border(),        0x2E2E36FF)
+        reaper.ImGui_PushStyleColor(imgui, reaper.ImGui_Col_Text(),          0xEDEDF2FF)
+        reaper.ImGui_PushStyleColor(imgui, reaper.ImGui_Col_HeaderHovered(), 0x5B9BF055)
+
+        if reaper.ImGui_BeginPopupContextWindow(imgui) then
+            if reaper.ImGui_MenuItem(imgui, "Close") then
+                closed_by_user = true
+                open = false
+            end
+            reaper.ImGui_EndPopup(imgui)
+        end
+
+        reaper.ImGui_PopStyleColor(imgui, 4)
+        reaper.ImGui_PopStyleVar(imgui, 2)
+
+        ----------------------------------------------------
+        -- RETURN FOCUS TO REAPER AFTER A CLICK
+        -- (not while the right-click menu is open)
+        ----------------------------------------------------
+
+        local menuOpen = reaper.ImGui_IsPopupOpen(
+            imgui, "",
+            reaper.ImGui_PopupFlags_AnyPopupId()
+        )
+
+        if not menuOpen and reaper.ImGui_IsWindowFocused(
                imgui,
                reaper.ImGui_FocusedFlags_RootAndChildWindows()
            ) then

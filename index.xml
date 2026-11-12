@@ -640,7 +640,7 @@
     </reapack>
 
     <reapack name="Daniel_VCA Spill.lua" type="script" desc="Daniel_VCA Spill.lua">
-      <version name="1.0" author="Daniel" time="2026-11-12T00:00:00Z">
+      <version name="1.1" author="Daniel" time="2026-11-12T00:00:00Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_VCA%20Spill.lua</source>
       </version>
     </reapack>

@@ -9,11 +9,18 @@ local view_start, view_end = reaper.GetSet_ArrangeView2(0, false, 0, 0)
 --Insert empty item
 reaper.Main_OnCommand(40142, 0)
 
--- Give the new item a fixed dark gray color (good contrast with white text), not the track color
+-- Give the new item a fixed gray color (same as the theme background), not the track color
 local NOTE_COLOR = reaper.ColorToNative(80, 80, 80) | 0x1000000
+-- Item length in measures (uses the time signature at the item start)
+local NOTE_LENGTH_MEASURES = 3
 local item = reaper.GetSelectedMediaItem(0, 0)
 if item then
   reaper.SetMediaItemInfo_Value(item, "I_CUSTOMCOLOR", NOTE_COLOR)
+  local pos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+  local _, _, beats_per_measure, _, denom = reaper.TimeMap2_timeToBeats(0, pos)
+  local length_qn = NOTE_LENGTH_MEASURES * beats_per_measure * 4 / denom
+  local end_time = reaper.TimeMap2_QNToTime(0, reaper.TimeMap2_timeToQN(0, pos) + length_qn)
+  reaper.SetMediaItemInfo_Value(item, "D_LENGTH", end_time - pos)
   reaper.UpdateItemInProject(item)
 end
 

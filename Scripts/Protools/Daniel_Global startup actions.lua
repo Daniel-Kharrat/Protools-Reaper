@@ -30,6 +30,7 @@ if file then
         "Meter_Bridge",
         "Auto_Mixer_Panel",
         "Horizontal_Zoom_Presets_Manager",
+        "Show_Big_Marker_Name",
     }
 
     for _, key in ipairs(keys) do
@@ -119,4 +120,13 @@ end
 if toggles["Horizontal_Zoom_Presets_Manager"] == "1" then
     --Script: Daniel_Horizontal zoom presets manager.lua
     reaper.Main_OnCommand(reaper.NamedCommandLookup("_RSd3f0c65f03b9ea9fd7b289fae07e4e84cdda964e"), 0)
+end
+
+--------------------------------------------------
+--Show Big Marker Name
+--------------------------------------------------
+
+if toggles["Show_Big_Marker_Name"] == "1" then
+    --Script: Daniel_Show big marker name.lua
+    reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS28b2f9e3de9bb609d9febfaa1e1d3198d4bab8b3"), 0)
 end

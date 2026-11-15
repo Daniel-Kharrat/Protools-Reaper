@@ -1,4 +1,4 @@
--- @description VCA Spill
+-- @description VCA Spill (mixer and arrange)
 -- @author Daniel Kharrat
 -- @version 1.1
 -- @about
@@ -14,13 +14,13 @@
 --   - Nested VCAs: if a follower is also a leader, select it and push to
 --     spill it.
 --
---   Only the mixer (MCP) changes. The arrange view (TCP) is not changed.
+--   Both the mixer (MCP) and the arrange view (TCP) change.
 --   No SWS needed.
 
-local EXT     = "Daniel_VCA Spill"
+local EXT     = "Daniel_VCA Spill (mixer and arrange)"
 local K_MODE  = "mode"      -- "" = normal, "leaders", "spill"
 local K_LEAD  = "leader"    -- GUID of the spilled leader
-local K_SNAP  = "snapshot"  -- saved normal view: GUID=0/1;...
+local K_SNAP  = "snapshot"  -- saved normal view: GUID=mixer/arrange (0/1 each);...
 
 local _, _, section_id, cmd_id = reaper.get_action_context()
 
@@ -57,11 +57,15 @@ local function any_leader()
   return false
 end
 
--- Show in the mixer only the tracks for which keep(track) is true
-local function show_in_mixer(keep)
+-- Show in the mixer and arrange view only the tracks for which keep(track)
+-- is true. keep() can also return two values: mixer, arrange.
+local function show_tracks(keep)
   for i = 0, reaper.CountTracks(0) - 1 do
     local tr = reaper.GetTrack(0, i)
-    reaper.SetMediaTrackInfo_Value(tr, "B_SHOWINMIXER", keep(tr) and 1 or 0)
+    local mcp, tcp = keep(tr)
+    if tcp == nil then tcp = mcp end
+    reaper.SetMediaTrackInfo_Value(tr, "B_SHOWINMIXER", mcp and 1 or 0)
+    reaper.SetMediaTrackInfo_Value(tr, "B_SHOWINTCP",   tcp and 1 or 0)
   end
 end
 
@@ -71,29 +75,31 @@ local function save_snapshot()
   local parts = {}
   for i = 0, reaper.CountTracks(0) - 1 do
     local tr = reaper.GetTrack(0, i)
-    local vis = reaper.GetMediaTrackInfo_Value(tr, "B_SHOWINMIXER")
-    parts[#parts + 1] = reaper.GetTrackGUID(tr) .. "=" .. (vis ~= 0 and "1" or "0")
+    local mcp = reaper.GetMediaTrackInfo_Value(tr, "B_SHOWINMIXER") ~= 0
+    local tcp = reaper.GetMediaTrackInfo_Value(tr, "B_SHOWINTCP") ~= 0
+    parts[#parts + 1] = reaper.GetTrackGUID(tr) .. "=" ..
+      (mcp and "1" or "0") .. (tcp and "1" or "0")
   end
   set(K_SNAP, table.concat(parts, ";"))
 end
 
 local function restore_snapshot()
   local saved = {}
-  for guid, vis in get(K_SNAP):gmatch("([^;=]+)=([01])") do
-    saved[guid] = vis == "1"
+  for guid, mcp, tcp in get(K_SNAP):gmatch("([^;=]+)=([01])([01])") do
+    saved[guid] = { mcp == "1", tcp == "1" }
   end
   -- Tracks added after the snapshot are shown
-  show_in_mixer(function(tr)
+  show_tracks(function(tr)
     local v = saved[reaper.GetTrackGUID(tr)]
-    if v == nil then return true end
-    return v
+    if v == nil then return true, true end
+    return v[1], v[2]
   end)
 end
 
 -- Views --------------------------------------------------------------------
 
 local function view_leaders()
-  show_in_mixer(is_leader)
+  show_tracks(is_leader)
   set(K_MODE, "leaders")
   set(K_LEAD, "")
   set_button(true)
@@ -102,7 +108,7 @@ end
 
 local function view_spill(leader)
   local l_lo, l_hi = leader_bits(leader)
-  show_in_mixer(function(tr)
+  show_tracks(function(tr)
     if tr == leader then return true end
     local f_lo = reaper.GetSetTrackGroupMembership(tr, "VOLUME_VCA_FOLLOW", 0, 0)
     local f_hi = reaper.GetSetTrackGroupMembershipHigh(tr, "VOLUME_VCA_FOLLOW", 0, 0)
@@ -130,7 +136,7 @@ local sel_leader = (sel and is_leader(sel)) and sel or nil
 
 if mode == "" and not any_leader() then
   set_button(false)
-  reaper.MB("This project has no VCA leaders.", "VCA Spill", 0)
+  reaper.MB("This project has no VCA leaders.", "VCA Spill (mixer and arrange)", 0)
   return
 end
 

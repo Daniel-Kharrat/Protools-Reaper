@@ -341,10 +341,6 @@ local function drag_value(id, h, v, lo, hi, reset, per_dx, per_dy, wheel_step)
     if d ~= 0 then drag[id] = clamp(drag[id] + d, lo, hi); nv = drag[id] end
   end
   if h.deactivated and drag[id] then nv = drag[id]; done = true; drag[id] = nil end
-  if h.hov and not h.act and wheel_on_faders() then
-    local w = ImGui.GetMouseWheel(ctx)
-    if w ~= 0 then nv = clamp(v + w * wheel_step * (is_fine() and 0.2 or 1), lo, hi); done = true end
-  end
   return nv, done
 end
 
@@ -1036,6 +1032,7 @@ end
 local function send_drag_source(tr, slot, label)
   if ImGui.BeginDragDropSource(ctx) then
     ImGui.SetDragDropPayload(ctx, 'DTS_SEND', r.GetTrackGUID(tr) .. '|' .. slot)
+    state.fl_drag = { kind = 'send', tr = tr, slot = slot }   -- for a drop on a native track
     ImGui.Text(ctx, label)
     ImGui.EndDragDropSource(ctx)
   end
@@ -1109,7 +1106,10 @@ local function list_scroll(key, y0, y1, maxscroll, blocked)
   local mx, my = ImGui.GetMousePos(ctx)
   if not blocked and ImGui.IsWindowHovered(ctx) and mx >= X(0) and mx <= X(DESIGN_W) and my >= Y(y0) and my < Y(y1) then
     local w = ImGui.GetMouseWheel(ctx)
-    if w ~= 0 then state[key] = state[key] - (w > 0 and 1 or -1) end
+    if w ~= 0 then                                   -- the list takes the wheel; the strips don't scroll then
+      state[key] = state[key] - (w > 0 and 1 or -1)
+      state.list_wheel = true
+    end
   end
   state[key] = clamp(state[key], 0, math.max(0, maxscroll))
 end
@@ -1135,6 +1135,7 @@ end
 local function fx_drag_source(tr, i, label)
   if ImGui.BeginDragDropSource(ctx) then
     ImGui.SetDragDropPayload(ctx, 'DTS_FX', r.GetTrackGUID(tr) .. '|' .. i)
+    state.fl_drag = { kind = 'fx', tr = tr, idx = i }         -- for a drop on a native track
     ImGui.Text(ctx, label)
     ImGui.EndDragDropSource(ctx)
   end
@@ -3639,6 +3640,194 @@ do
   end
 end
 
+-- Drag a track's routing (I/O) button in REAPER's own mixer onto a floating strip: makes a send from that
+-- track to the strip's track. REAPER doesn't tell scripts about its own drags, so the press is checked
+-- under the mouse (js_ReaScriptAPI), and the release is checked over the floating strips.
+-- A plain click or a drop on the same track makes nothing.
+-- Copy a send or an FX from one track to another (Alt moves it), the same rules as the floating mixer.
+-- kind: 'io' (routing button: a send to the track), 'send' (a send: e = its entry), 'fx' (idx = FX index).
+state.nd_drop = function(src, kind, idx, dst, e)
+  if not src or not dst or src == dst or dst == r.GetMasterTrack(0) then return end
+  local move = is_alt()
+  if kind == 'io' then
+    for i = 0, r.GetTrackNumSends(src, 0) - 1 do
+      if r.GetTrackSendInfo_Value(src, 0, i, 'P_DESTTRACK') == dst then return end   -- already sent there
+    end
+    undo_wrap('Send from routing button drag', function() r.CreateTrackSend(src, dst) end)
+  elseif kind == 'send' then
+    if not e then
+      for _, x in ipairs(send_list(src)) do if x.cat == 0 and x.ci == idx then e = x end end
+    end
+    if e and e.cat then
+      undo_wrap(move and 'Move send to track' or 'Copy send to track', function()
+        r.PreventUIRefresh(1)
+        copy_send(src, e, dst)
+        if move then r.RemoveTrackSend(src, e.cat, e.ci) end
+        r.PreventUIRefresh(-1)
+      end)
+    end
+  elseif kind == 'fx' then
+    undo_wrap(move and 'Move FX to track' or 'Copy FX to track', function()
+      r.PreventUIRefresh(1)
+      r.TrackFX_CopyToTrack(src, idx, dst, r.TrackFX_GetCount(dst), move)
+      r.PreventUIRefresh(-1)
+    end)
+  end
+end
+
+state.native_drag_update = function()
+  if not r.JS_Mouse_GetState then return end
+  local down = (r.JS_Mouse_GetState(1) & 1) == 1
+  local x, y = r.GetMousePosition()
+  if down and not state.nd_was_down then
+    state.nd_src, state.nd_kind, state.nd_idx = nil, nil, nil
+    state.nd_start = { x, y }
+    local tr, info = r.GetThingFromPoint(x, y)
+    if tr and info then
+      if info == 'mcp.io' then
+        state.nd_src, state.nd_kind = tr, 'io'
+      elseif info:find('mcp%.sendlist') then
+        state.nd_src, state.nd_kind, state.nd_idx = tr, 'send', tonumber(info:match('sendlist%s+(%d+)'))
+      elseif info:find('mcp%.fxlist') then
+        state.nd_src, state.nd_kind, state.nd_idx = tr, 'fx', tonumber(info:match('fxlist%s+(%d+)'))
+      end
+    end
+  elseif not down and state.nd_was_down then
+    local mx, my = ImGui.PointConvertNative(ctx, x, y, false)
+    local over_float
+    for _, W in ipairs(state.wins or {}) do
+      for _, sr in ipairs(W.strip_rects or {}) do
+        if mx >= sr[1] and mx < sr[2] and my >= sr[3] and my < sr[4] then over_float = sr[5] end
+      end
+    end
+    local dragged = state.nd_start and (math.abs(x - state.nd_start[1]) + math.abs(y - state.nd_start[2]) > 6)
+    -- native -> floating: dropped on a floating strip
+    if state.nd_src and dragged and over_float and (state.nd_idx ~= nil or state.nd_kind == 'io') then
+      state.nd_drop(state.nd_src, state.nd_kind, state.nd_idx, over_float)
+    end
+    -- floating -> native: released over a track in REAPER's mixer
+    if state.fl_drag and not over_float then
+      local tr, info = r.GetThingFromPoint(x, y)
+      if tr and info and (info:find('^mcp%.io') or info:find('^mcp%.sendlist') or info:find('^mcp%.fxlist')) then
+        local fl = state.fl_drag
+        local e = (fl.kind == 'send') and send_list(fl.tr)[fl.slot] or nil
+        state.nd_drop(fl.tr, fl.kind, fl.idx, tr, e)
+      end
+    end
+    state.nd_src, state.nd_kind, state.nd_idx = nil, nil, nil
+    state.fl_drag = nil
+  end
+  state.nd_was_down = down
+end
+
+-- Double-click the empty space right of the strips: a new track, after the last track of this window
+-- (at the end of the project if the window is empty). In the list the window follows, it's added to the list;
+-- in follow-selection mode it becomes the selected track.
+state.empty_dblclick = function(L, W, tracks)
+  if not ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then return end
+  if ImGui.IsAnyItemHovered(ctx) or not ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_ChildWindows) then return end
+  local mx, my = ImGui.GetMousePos(ctx)
+  local empty_left = L.wx + L.total - (W.off or 0)           -- where the strips end (left edge of the empty space)
+  if mx < empty_left or mx >= L.wx + L.avail or my < L.wy or my >= L.wy + L.H then return end
+  local after = 0                                             -- insert after this project track number
+  for _, t in ipairs(tracks) do
+    if t ~= r.GetMasterTrack(0) then after = math.max(after, math.floor(r.GetMediaTrackInfo_Value(t, 'IP_TRACKNUMBER'))) end
+  end
+  if after == 0 then after = r.CountTracks(0) end
+  r.Undo_BeginBlock()
+  r.InsertTrackAtIndex(after, true)
+  local nt = r.GetTrack(0, after)
+  if nt then
+    if state.mode == 'list' then
+      state.list[#state.list + 1] = r.GetTrackGUID(nt)
+      save_choice()
+    else
+      r.SetOnlyTrackSelected(nt)
+    end
+  end
+  r.Undo_EndBlock('Add track', -1)
+  r.TrackList_AdjustWindows(false)
+  r.UpdateArrange()
+end
+
+-- Layout of one mixer window's strips. A window narrower than its tracks scrolls (W.off, in pixels);
+-- the master strip stays pinned on the right. Returns the strips in view and the scroll range.
+state.strip_layout = function(tracks, widths, gaps, wx, wy, H, W, K)
+  local L = { wx = wx, wy = wy, H = H }
+  local ww = ImGui.GetWindowWidth(ctx)
+  local n = #tracks
+  L.mk = (n > 0 and tracks[n] == r.GetMasterTrack(0)) and n or nil   -- the master, last in the row
+  L.mw = L.mk and widths[L.mk] or 0
+  L.ns = L.mk and (n - 1) or n                                         -- strips that scroll
+  L.avail = math.max(0, ww - L.mw)
+  local sx, pos = {}, 0                                                -- each scrolling strip's left edge in the row
+  for k = 1, L.ns do
+    pos = pos + gaps[k]
+    sx[k] = pos
+    pos = pos + widths[k]
+  end
+  L.total = pos
+  L.max_off = math.max(0, pos - L.avail)
+  W.off = clamp(W.off or 0, 0, L.max_off)          -- constant speed: the wheel moves it directly
+  L.BAR_H = 12 * K                                                     -- thick enough to grab
+  L.bar = L.max_off > 0
+  if L.bar then L.H = H - L.BAR_H end                                  -- the bar takes the bottom of the strips
+  L.shown = {}                                                         -- strips in view (a partly visible one is drawn; the window clips it)
+  for k = 1, L.ns do
+    local x = wx + sx[k] - W.off
+    local gx = x - gaps[k]
+    if gx < wx + L.avail and x + widths[k] > wx then
+      L.shown[#L.shown + 1] = { k = k, gx = gx, x = x, tr = tracks[k] }
+    end
+  end
+  if L.mk then
+    L.shown[#L.shown + 1] = { k = L.mk, gx = wx + ww - L.mw, x = wx + ww - L.mw, tr = tracks[L.mk] }
+  end
+  return L
+end
+
+-- the mouse wheel over the strips scrolls them sideways (the FX / send lists keep the wheel for their own scroll)
+state.wheel_px = 12   -- pixels the strips move per wheel step (smaller = finer)
+state.scroll_input = function(L, W, K)
+  if not L.bar or state.list_wheel or not ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_ChildWindows) then return end
+  local mx, my = ImGui.GetMousePos(ctx)
+  if mx >= L.wx and mx < L.wx + L.avail and my >= L.wy and my < L.wy + L.H + L.BAR_H then
+    local wh = ImGui.GetMouseWheel(ctx)
+    if wh ~= 0 then W.off = clamp(W.off - wh * state.wheel_px * K, 0, L.max_off) end   -- wheel up: earlier tracks
+  end
+end
+
+-- the scrollbar along the bottom: drag the thumb, or click the track
+state.thumb_w_of = function(L, K)
+  return math.max(20 * K, L.avail * L.avail / L.total)
+end
+
+state.draw_scrollbar = function(L, W, K)
+  if not L.bar then return end
+  local wx, wy, avail, H, BAR_H = L.wx, L.wy, L.avail, L.H, L.BAR_H
+  local room = avail - state.thumb_w_of(L, K)
+  local thumb = state.thumb_w_of(L, K)
+  -- where the thumb is now (from the current position)
+  local tx0 = wx + ((L.max_off > 0) and (W.off / L.max_off * room) or 0)
+  ImGui.SetCursorScreenPos(ctx, wx, wy + H)
+  ImGui.InvisibleButton(ctx, '##hscroll', math.max(1, avail), BAR_H)
+  local mx = ImGui.GetMousePos(ctx)
+  if ImGui.IsItemActivated(ctx) then
+    -- grabbed on the thumb: keep the grab point; on the empty track: centre the thumb on the click
+    if mx >= tx0 and mx <= tx0 + thumb then W.grab = mx - tx0 else W.grab = thumb / 2 end
+  end
+  if ImGui.IsItemActive(ctx) and room > 0 then
+    local p = clamp(mx - wx - (W.grab or thumb / 2), 0, room)
+    W.off = p / room * L.max_off
+    tx0 = wx + p                                       -- draw the thumb where the mouse holds it
+  end
+  local hot = ImGui.IsItemHovered(ctx) or ImGui.IsItemActive(ctx)
+  local dl = ImGui.GetWindowDrawList(ctx)
+  ImGui.DrawList_AddRectFilled(dl, wx, wy + H, wx + avail, wy + H + BAR_H, 0x00000066)
+  ImGui.DrawList_AddRectFilled(dl, tx0, wy + H + 1, tx0 + thumb, wy + H + BAR_H - 1,
+    hot and 0xFFFFFFB0 or 0xFFFFFF60, BAR_H / 2)
+end
+
 state.draw_mixer_window = function(W)
   if W.close_req then W.close_req = nil; return false end      -- "Close window" from the title-bar menu
   local tracks = strip_tracks()
@@ -3671,13 +3860,27 @@ state.draw_mixer_window = function(W)
     end
     winw = math.max(40, tp('Layout' .. lay .. '-mcpWidth', 88)) * K
   end
-  ImGui.SetNextWindowSize(ctx, winw, 560, ImGui.Cond_FirstUseEver)
+  -- width: fitted to the strips, until the user drags the edge; then the width they chose is kept
+  -- (saved per window). "Fit to tracks" in the title-bar menu goes back to fitted.
+  if W.fit == nil then
+    local saved = tonumber(r.GetExtState('Daniel_FloatingMixer', inst_key('wpx')))
+    W.fit = not (saved and saved > 0)
+    W.saved_w = (not W.fit) and saved or nil
+  end
+  if W.fit then
+    if W.want_w ~= winw then                         -- strips changed: refit the width
+      ImGui.SetNextWindowSize(ctx, winw, W.last_h or 560, ImGui.Cond_Always)
+      W.want_w = winw
+    end
+  else
+    ImGui.SetNextWindowSize(ctx, W.saved_w or winw, W.last_h or 560, ImGui.Cond_FirstUseEver)
+  end
   do -- first launch ever: centered on screen; after that ReaImGui remembers where it was left
     local cx, cy = ImGui.Viewport_GetCenter(ImGui.GetMainViewport(ctx))
     local off = (W.n - 1) * 30                        -- later windows open a little offset
     ImGui.SetNextWindowPos(ctx, cx + off, cy + off, ImGui.Cond_FirstUseEver, 0.5, 0.5)
   end
-  ImGui.SetNextWindowSizeConstraints(ctx, winw, 380, winw, 5000)   -- width is fixed by the strips
+  ImGui.SetNextWindowSizeConstraints(ctx, 60 * K, 380, 5000, 5000)   -- free width: scroll through the tracks
   local wcol = state.win_color(W.n)
   ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 0, 0)
   ImGui.PushStyleColor(ctx, ImGui.Col_WindowBg, COL.bg)
@@ -3695,6 +3898,15 @@ state.draw_mixer_window = function(W)
     local d = 1
     if ImGui.GetWindowDpiScale and (r.GetOS() or ''):find('Win') then d = ImGui.GetWindowDpiScale(ctx) or 1 end
     state.ui_k = (d > 0) and 1 / d or 1
+    local aw, ah = ImGui.GetWindowSize(ctx)
+    W.last_h = ah
+    if not state.docked and W.fit and W.want_w and math.abs(aw - W.want_w) > 2 then   -- the user dragged the edge
+      W.fit = false
+    end
+    if not state.docked and not W.fit and math.abs((W.saved_w or 0) - aw) > 2 then    -- keep the width the user chose
+      W.saved_w = aw
+      r.SetExtState('Daniel_FloatingMixer', inst_key('wpx'), tostring(math.floor(aw + 0.5)), true)
+    end
   end
   if state.docked then
     local id = ImGui.GetWindowDockID(ctx)
@@ -3714,6 +3926,10 @@ state.draw_mixer_window = function(W)
   if visible and ImGui.BeginPopup(ctx, 'title_menu') then
     if ImGui.MenuItem(ctx, 'New window') then state.new_win_req = true end
     state.color_menu(W.n)
+    if ImGui.MenuItem(ctx, 'Fit to tracks') then        -- back to the width of the strips
+      W.fit, W.want_w, W.saved_w = true, nil, nil
+      r.SetExtState('Daniel_FloatingMixer', inst_key('wpx'), '', true)
+    end
     ImGui.Separator(ctx)
     if state.docked then
       if ImGui.MenuItem(ctx, 'Undock window') then state.dock_req = 0 end
@@ -3804,34 +4020,33 @@ state.draw_mixer_window = function(W)
     state.cur_tracks = tracks
     state.strip_rects = {}
     state.fx_rows = {}
-    do
-      local x = wx
-      for k, tr in ipairs(tracks) do
-        x = x + gaps[k]
-        state.strip_rects[k] = { x, x + widths[k], wy, wy + H, tr }; x = x + widths[k]
-      end
+    state.list_wheel = false                         -- set by an FX / send list that took the wheel this frame
+    -- the window may be narrower than its tracks: the strips scroll (bar along the bottom); the master stays
+    -- pinned on the right. W.off = how far the row is scrolled, in pixels.
+    local L = state.strip_layout(tracks, widths, gaps, wx, wy, H, W, K)
+    H = L.H
+    for _, s in ipairs(L.shown) do
+      state.strip_rects[#state.strip_rects + 1] = { s.x, s.x + widths[s.k], wy, wy + H, s.tr }
     end
     if #tracks > 0 then
-      local x = wx
-      for k, tr in ipairs(tracks) do
+      for _, s in ipairs(L.shown) do
+        local tr, k = s.tr, s.k
         if gaps[k] > 0 then        -- the spacer: empty mixer background; drag it to move it
-          ImGui.SetCursorScreenPos(ctx, x, wy)
+          ImGui.SetCursorScreenPos(ctx, s.gx, wy)
           ImGui.InvisibleButton(ctx, '##spacer' .. r.GetTrackGUID(tr), gaps[k], math.max(1, H))
           -- grabbed: lighter gray, like REAPER's spacer while held (measured: 82,82,82)
           local lit = ImGui.IsItemActive(ctx)
-          ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x, wy, x + gaps[k], wy + H,
+          ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), s.gx, wy, s.gx + gaps[k], wy + H,
             lit and 0x525252FF or theme_col('col_mixerbg', 0x333333FF))
           if ImGui.BeginDragDropSource(ctx) then
             ImGui.SetDragDropPayload(ctx, 'DTS_SPACER', r.GetTrackGUID(tr))
             ImGui.Text(ctx, 'Move spacer')
             ImGui.EndDragDropSource(ctx)
           end
-          x = x + gaps[k]
         end
         ImGui.PushID(ctx, r.GetTrackGUID(tr))
-        draw_strip(tr, x, wy, widths[k], H)
+        draw_strip(tr, s.x, wy, widths[k], H)
         ImGui.PopID(ctx)
-        x = x + widths[k]
       end
     else
       -- wrapped to the window, so nothing is cut off in a one-strip window
@@ -3845,6 +4060,9 @@ state.draw_mixer_window = function(W)
       ImGui.PopStyleColor(ctx)
       ImGui.PopTextWrapPos(ctx)
     end
+    state.empty_dblclick(L, W, tracks)
+    state.scroll_input(L, W, K)
+    state.draw_scrollbar(L, W, K)
     -- dragging an FX in from REAPER's FX browser: outline the slot (or strip) it would land on
     if state.fxb and state.fxb.moving and state.fxb.mx then
       local q = state.fxb_hit(state.fx_rows, state.strip_rects, state.fxb.mx, state.fxb.my)
@@ -3858,14 +4076,15 @@ state.draw_mixer_window = function(W)
     end
     state.kf_ours = state.kf_ours or ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow)
     ImGui.PopStyleColor(ctx)
-    ImGui.End(ctx)
   end
+  ImGui.End(ctx)                 -- always: Dear ImGui needs End() after every Begin(), visible or not
   return open
 end
 
 local function loop()
   theme_check()
   update_reaper_touch()
+  state.native_drag_update()
   state.fxb_update()
   -- the windows open in this project come back (a new project: just window 1). Switching project tabs
   -- switches to that project's windows.

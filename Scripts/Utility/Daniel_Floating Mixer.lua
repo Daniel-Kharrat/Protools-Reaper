@@ -791,7 +791,7 @@ local tracks_menu, route_target, keep_reaper_focus
 local state = { vol_buf = '', name_buf = '', focus = false }
 
 local function track_from_guid(guid)
-  -- a GUID -> track table, built once per frame (was: every track checked for every lookup)
+  -- a GUID -> track table, built once per frame
   if state.gmap_frame ~= G.frame then
     state.gmap_frame = G.frame
     local m = G.master()
@@ -1190,6 +1190,49 @@ local function list_scroll(key, y0, y1, maxscroll, blocked)
   state[key] = clamp(state[key], 0, math.max(0, maxscroll))
 end
 
+-- Scroll bar of an FX / send list, like REAPER's mixer: shown while the mouse is over a list that has more
+-- rows than fit (or while the bar is held). Drag the thumb, or click the bar to jump there.
+-- G.sbar_input is called BEFORE the list's rows (so the bar gets the mouse, not the slot under it);
+-- G.sbar_draw AFTER them (so it's drawn on top). key = 'fx_scroll' / 'send_scroll' (rows, in state).
+-- (On G: the main chunk is close to Lua's 200-local limit.)
+G.sbar_held = {}
+G.sbar_input = function(key, y0, y1, rows, maxscroll)
+  maxscroll = math.max(0, maxscroll)
+  state[key] = clamp(state[key], 0, maxscroll)
+  if maxscroll <= 0 or y1 - y0 < 20 then return end
+  local id = (G.sid or '') .. key
+  local mx, my = ImGui.GetMousePos(ctx)
+  local over = ImGui.IsWindowHovered(ctx) and mx >= X(0) and mx <= X(DESIGN_W) and my >= Y(y0) and my < Y(y1)
+  if not over and not G.sbar_held[id] then return end
+  local bx1, bx2 = X(DESIGN_W - 14), X(DESIGN_W - 4)          -- 5 pt wide, at the right of the slots
+  local by1, by2 = Y(y0 + 3), Y(y1 - 3)
+  local th = by2 - by1
+  local total = rows + maxscroll
+  local thumb = math.max(12, th * rows / total)
+  local room = th - thumb
+  local ty = by1 + room * state[key] / maxscroll
+  ImGui.SetCursorScreenPos(ctx, bx1, by1)
+  ImGui.InvisibleButton(ctx, '##sbar_' .. key, math.max(1, bx2 - bx1), math.max(1, th))
+  local hov, act = ImGui.IsItemHovered(ctx), ImGui.IsItemActive(ctx)
+  if ImGui.IsItemActivated(ctx) then
+    -- grabbed on the thumb: keep the grab point; on the bar: center the thumb on the click
+    G.sbar_grab = (my >= ty and my <= ty + thumb) and (my - ty) or thumb / 2
+  end
+  if act and room > 0 then
+    local p = clamp(my - by1 - (G.sbar_grab or thumb / 2), 0, room)
+    state[key] = math.floor(p / room * maxscroll + 0.5)
+    ty = by1 + room * state[key] / maxscroll
+  end
+  G.sbar_held[id] = act or nil
+  return { bx1, bx2, by1, by2, ty, ty + thumb, hov or act }
+end
+G.sbar_draw = function(b)
+  if not b then return end
+  local rw = (b[2] - b[1]) / 2
+  ImGui.DrawList_AddRectFilled(G.dl, b[1], b[3], b[2], b[4], 0x00000050, rw)                    -- the bar
+  ImGui.DrawList_AddRectFilled(G.dl, b[1] + 1, b[5], b[2] - 1, b[6], b[7] and 0xFFFFFFB0 or 0xFFFFFF70, rw) -- thumb
+end
+
 -- REAPER 7.75+: FX can sit in particular slots with empty slots between them.
 -- chain index -> slot via TrackFX_GetNamedConfigParm('chain_index_to_slot'); falls back to 1:1.
 local function fx_slot_map(tr, nfx)
@@ -1342,6 +1385,7 @@ local function draw_fx_area(tr, y0, y1)
   for i = 0, nfx - 1 do by_slot[slot_of[i]] = i end
   local rows = math.max(1, math.floor((split - y0 - 6 + (SLOT_P - SLOT_H)) / SLOT_P))
   list_scroll('fx_scroll', y0, split, last_slot + 2 - rows)
+  local fx_bar = G.sbar_input('fx_scroll', y0, split, rows, last_slot + 2 - rows)
   for row = 0, rows - 1 do
     local slot = row + state.fx_scroll
     local i = by_slot[slot]
@@ -1444,6 +1488,7 @@ local function draw_fx_area(tr, y0, y1)
   local srows = math.max(0, math.floor((y1 - sy0 - 2 + (SLOT_P - SLOT_H)) / SLOT_P))
   local knob_hovered = false
   local st = img('mcp_send_knob_stack')
+  local send_bar = G.sbar_input('send_scroll', sy0, y1, srows, nslots + 1 - srows)
   for row = 0, srows - 1 do
     local slot = row + state.send_scroll
     local s = list[slot]
@@ -1540,6 +1585,8 @@ local function draw_fx_area(tr, y0, y1)
     end
   end
   list_scroll('send_scroll', sy0, y1, nslots + 1 - srows, knob_hovered)
+  G.sbar_draw(fx_bar)
+  G.sbar_draw(send_bar)
 end
 
 local function knob(tr, id, cx, cy, v, reset, label, setter, stack_names)
@@ -1838,18 +1885,69 @@ local function meter_db(tr, ch)
   return st.disp
 end
 
+-- Gain reduction of the track's FX (plugins that report it: ReaComp, JSFX with ext_gr_meter, supported
+-- VST/VST3), added up over the chain. nil = no plugin on the track reports it. Rises at once, falls at
+-- the meter decay rate. (On G: the main chunk is close to Lua's 200-local limit.)
+G.gr_state = {}
+G.track_gr = function(tr)
+  local any, sum = false, 0
+  for i = 0, r.TrackFX_GetCount(tr) - 1 do
+    if r.TrackFX_GetEnabled(tr, i) and not r.TrackFX_GetOffline(tr, i) then
+      local ok, v = r.TrackFX_GetNamedConfigParm(tr, i, 'GainReduction_dB')
+      v = ok and tonumber(v)
+      if v then any = true; sum = sum + math.abs(v) end
+    end
+  end
+  if not any then G.gr_state[tr] = nil; return nil end
+  local now = r.time_precise()
+  local st = G.gr_state[tr]
+  if not st then st = { disp = sum, t = now }; G.gr_state[tr] = st end
+  local dt = now - st.t
+  st.t = now
+  if sum >= st.disp then st.disp = sum
+  else st.disp = math.max(sum, st.disp - (meter_decay or METER_DECAY) * dt) end
+  return st.disp
+end
+
 local function draw_meter(tr, mt, mb)
   local M = G.meter or { a1 = 0, a2 = 25, b1 = 27, b2 = 52, lx = 26 }
+  -- gain reduction, like REAPER's mixer: a column at the right of the meter (theme colors vu_gr_*), filled
+  -- from the top by the reduction on the meter's dB scale. The meter gets narrower to make room.
+  local gr = (not M.master) and G.track_gr(tr) or nil
+  local gr_x1, gr_x2
+  if gr then
+    local w = M.b2 - M.a1
+    local function sx(x) return M.a1 + (x - M.a1) * 0.64 end
+    gr_x1, gr_x2 = M.a1 + w * 0.68, M.b2
+    local M2 = {}
+    for k, v in pairs(M) do M2[k] = v end
+    M2.a2, M2.b1, M2.b2, M2.lx = sx(M.a2), sx(M.b1), sx(M.b2), sx(M.lx)
+    M = M2
+  end
   -- REAPER Preferences > Appearance > Track control panels: meter range
   local vmax = cfg_num('vumaxvol', 6)
   local vmin = cfg_num('vuminvol', -62)
   if vmax <= vmin then vmax, vmin = 6, -62 end
   local function my(db) return mt + (vmax - clamp(db, vmin, vmax)) / (vmax - vmin) * (mb - mt) end
+  -- REAPER spreads the meter image's color bands from 0 dB (top of the image) down to the bottom of the
+  -- meter; above 0 dB is the clip light. (Measured on REAPER's mixer: the bands start at -6 / -18 dB.)
+  local it0 = my(0)
+  local function img_f(ly) return clamp((ly - it0) / math.max(1, mb - it0), 0, 1) end
+  -- With a gain reduction meter, REAPER draws the lit part in fixed bands, not from
+  -- the image (measured on REAPER's mixer): green below -18 dB, light green -18..-6, amber -6..0
+  local function lit_bands(x1, x2, ly)
+    local top = math.max(ly, it0)
+    local bands = { { -150, -18, 0x23A101FF }, { -18, -6, 0x61FF02FF }, { -6, 0, 0xFBB203FF } }
+    for _, b in ipairs(bands) do
+      local ya, yb = math.max(top, my(b[2])), my(b[1])
+      if yb > ya then rect(X(x1), Y(ya), X(x2), Y(yb), b[3]) end
+    end
+  end
 
   local hold = math.max(r.Track_GetPeakHoldDB(tr, 0, false), r.Track_GetPeakHoldDB(tr, 1, false)) * 100
   local armed = r.GetMediaTrackInfo_Value(tr, 'I_RECARM') == 1
-  -- meter_strip_v column pairs (unlit, lit): 0 = normal, 1 = clipped (orange), 2 = record armed,
-  -- 3 = clipped while armed (red)
+  -- meter_strip_v column pairs (unlit, lit), colors from the theme image: 0 = normal, 1 = clipped,
+  -- 2 = record armed, 3 = clipped while armed. (With a gain reduction meter, the lit part uses fixed bands.)
   local pair = (hold > 0) and (armed and 3 or 1) or (armed and 2 or 0)
   local strip = img('meter_strip_v')
   local lvl = {}
@@ -1866,11 +1964,13 @@ local function draw_meter(tr, mt, mb)
       if im then
         local cw = (im.x1 - im.x0) / 8
         local uu, ul = im.x0 + p * 2 * cw, im.x0 + p * 2 * cw + cw
-        ImGui.DrawList_AddImage(G.dl, im.img, X(x1), Y(mt), X(x2), Y(mb),
+        ImGui.DrawList_AddImage(G.dl, im.img, X(x1), Y(it0), X(x2), Y(mb),   -- (above 0 dB: the clip light)
           (uu + 0.5) / im.w, (im.y0 + 0.5) / im.h, (uu + cw - 0.5) / im.w, (im.y1 - 0.5) / im.h)
-        if not vdis and db > vmin and ly < mb then
-          local v0 = use_rms and (im.y0 + 0.5) or (im.y0 + (ly - mt) / (mb - mt) * (im.y1 - im.y0))
-          ImGui.DrawList_AddImage(G.dl, im.img, X(x1), Y(ly), X(x2), Y(mb),
+        if not vdis and db > vmin and ly < mb and gr and not use_rms then
+          lit_bands(x1, x2, ly)
+        elseif not vdis and db > vmin and ly < mb then
+          local v0 = use_rms and (im.y0 + 0.5) or (im.y0 + img_f(ly) * (im.y1 - im.y0))
+          ImGui.DrawList_AddImage(G.dl, im.img, X(x1), Y(math.max(ly, it0)), X(x2), Y(mb),
             (ul + 0.5) / im.w, v0 / im.h, (ul + cw - 0.5) / im.w, (im.y1 - 0.5) / im.h)
         end
       else
@@ -1912,11 +2012,13 @@ local function draw_meter(tr, mt, mb)
       local ch_h = strip.y1 - strip.y0
       local uu = strip.x0 + pair * 2 * cw          -- unlit column
       local ul = uu + cw                           -- lit column
-      ImGui.DrawList_AddImage(G.dl, strip.img, X(x1), Y(mt), X(x2), Y(mb),
+      ImGui.DrawList_AddImage(G.dl, strip.img, X(x1), Y(it0), X(x2), Y(mb),   -- (above 0 dB: the clip light)
         (uu + 0.5) / strip.w, strip.y0 / strip.h, (uu + cw - 0.5) / strip.w, strip.y1 / strip.h)
-      if db > vmin and ly < mb then
-        local f = (ly - mt) / (mb - mt)
-        ImGui.DrawList_AddImage(G.dl, strip.img, X(x1), Y(ly), X(x2), Y(mb),
+      if db > vmin and ly < mb and gr then
+        lit_bands(x1, x2, ly)
+      elseif db > vmin and ly < mb then
+        local f = img_f(ly)
+        ImGui.DrawList_AddImage(G.dl, strip.img, X(x1), Y(math.max(ly, it0)), X(x2), Y(mb),
           (ul + 0.5) / strip.w, (strip.y0 + f * ch_h) / strip.h, (ul + cw - 0.5) / strip.w, strip.y1 / strip.h)
       end
     else
@@ -1925,6 +2027,14 @@ local function draw_meter(tr, mt, mb)
     end
   end
 
+  if gr then
+    -- the theme's gain reduction colors (vu_gr_bgcol / vu_gr_fgcol), like REAPER's mixer
+    rect(X(gr_x1), Y(mt), X(gr_x2), Y(mb), theme_col('vu_gr_bgcol', 0x202020FF))
+    if gr > 0.05 then
+      local gy = mt + math.min(gr, vmax - vmin) / (vmax - vmin) * (mb - mt)
+      rect(X(gr_x1), Y(mt), X(gr_x2), Y(gy), theme_col('vu_gr_fgcol', 0xE0E000FF))
+    end
+  end
   -- clip light: the meter's top section (above 0 dB) shows the peak; red when clipped. Click to reset.
   -- tracks: one light across both channels; master: one per channel, each with its own peak readout
   local cy2 = math.max(my(0), mt + 22)

@@ -235,6 +235,21 @@ end
 -- Drawing helpers (design coordinates -> screen)
 --------------------------------------------------------------------------------
 local G = {}
+-- per-frame caches: G.frame is counted up once per defer cycle in loop(), so each value is asked
+-- from REAPER once per frame instead of once per strip / per call
+G.frame, G.mf, G.lf = 0, -1, -1
+G.master = function()                       -- the master track, once per frame
+  if G.mf ~= G.frame then G.mf, G.mt = G.frame, r.GetMasterTrack(0) end
+  return G.mt
+end
+G.def_layout = function()                   -- the theme's default mixer layout (ok, name), once per frame
+  if G.lf ~= G.frame then
+    G.lf = G.frame
+    if r.ThemeLayout_GetLayout then G.lay_ok, G.lay_name = r.ThemeLayout_GetLayout('mcp', -1)
+    else G.lay_ok, G.lay_name = false, nil end
+  end
+  return G.lay_ok, G.lay_name
+end
 local function X(v) return G.ox + v * G.s end
 local function Y(v) return G.oy + v * G.s end
 
@@ -257,14 +272,39 @@ local function list_name_font(kind)
 end
 
 local function text_size(fnt, size, str)
-  ImGui.PushFont(ctx, fnt); local w, h = ImGui.CalcTextSize(ctx, str); ImGui.PopFont(ctx)
+  -- the font's own size of each text is measured once and kept (per font); the scale is applied after
+  G.tsc = G.tsc or { n = 0 }
+  local fk = fnt or 0                      -- (no font = the default font)
+  local fc = G.tsc[fk]
+  if not fc then fc = {}; G.tsc[fk] = fc end
+  local m = fc[str]
+  if not m then
+    ImGui.PushFont(ctx, fnt); local w, h = ImGui.CalcTextSize(ctx, str); ImGui.PopFont(ctx)
+    if G.tsc.n > 4000 then G.tsc = { n = 0 }; fc = {}; G.tsc[fk] = fc end   -- keep it small
+    G.tsc.n = G.tsc.n + 1
+    m = { w, h }; fc[str] = m
+  end
   local k = size * G.s / FONT_BASE
-  return w * k, h * k
+  return m[1] * k, m[2] * k
 end
 local function fit(fnt, size, str, maxw)
-  if text_size(fnt, size, str) <= maxw then return str end
-  while #str > 1 and text_size(fnt, size, str .. '..') > maxw do str = str:sub(1, -2) end
-  return str .. '..'
+  -- the result is kept (per font, size, scale, width and name), so the name is measured once, not every frame
+  G.fitc = G.fitc or { n = 0 }
+  local fk = fnt or 0                      -- (no font = the default font)
+  local fc = G.fitc[fk]
+  if not fc then fc = {}; G.fitc[fk] = fc end
+  local key = size .. '|' .. G.s .. '|' .. maxw .. '|' .. str
+  local v = fc[key]
+  if v then return v end
+  local out = str
+  if text_size(fnt, size, str) > maxw then
+    while #out > 1 and text_size(fnt, size, out .. '..') > maxw do out = out:sub(1, -2) end
+    out = out .. '..'
+  end
+  if G.fitc.n > 4000 then G.fitc = { n = 0 }; fc = {}; G.fitc[fk] = fc end   -- keep it small
+  G.fitc.n = G.fitc.n + 1
+  fc[key] = out
+  return out
 end
 -- x,y screen; y is vertical center; align 'l','c','r'
 local function text(fnt, size, x, y, col, str, align)
@@ -488,6 +528,17 @@ local function parse_colors(ini)
   return c
 end
 local function theme_col(key, fallback)
+  -- kept until the next theme check (every 1.5 s): REAPER is asked once per color, not every call
+  Theme.colc = Theme.colc or {}
+  local cv = Theme.colc[key]
+  if cv ~= nil then if cv == false then return fallback end; return cv end
+  cv = Theme.col_read(key)
+  Theme.colc[key] = cv or false
+  if cv == false or cv == nil then return fallback end
+  return cv
+end
+-- (on Theme, not a new local: the main chunk is close to Lua's 200-local limit)
+Theme.col_read = function(key)
   if r.GetThemeColor and not Theme.fallback then   -- not Default 7-based: the Default 7 colors (below) instead
     local c = r.GetThemeColor(key, 0)
     if c and c >= 0 then
@@ -496,7 +547,7 @@ local function theme_col(key, fallback)
     end
   end
   local v = Theme.colors[key]
-  if not v or v < 0 then return fallback end
+  if not v or v < 0 then return false end
   v = math.floor(v)
   return rgba(v & 255, (v >> 8) & 255, (v >> 16) & 255)
 end
@@ -587,11 +638,11 @@ end
 local function set_track_layout(tr)
   local _, lay = r.GetSetMediaTrackInfo_String(tr, 'P_MCP_LAYOUT', '', false)
   local def = 'A'
-  if r.ThemeLayout_GetLayout then
-    local ok, d = r.ThemeLayout_GetLayout('mcp', -1)   -- theme's default mixer layout
+  do
+    local ok, d = G.def_layout()                       -- theme's default mixer layout
     if ok and d and d ~= '' then def = d end
   end
-  if tr ~= r.GetMasterTrack(0) then
+  if tr ~= G.master() then
     -- tracks use the theme's default layout (A), whatever the mixer uses (B / C would break the strip),
     -- except its colored-fader versions (e.g. 'A_Blue Fader (mixer only)', set by SWS auto layout):
     -- those keep layout A's shape, only their images (fader cap) differ
@@ -651,6 +702,7 @@ local function theme_check()
   local now = r.time_precise()
   if now < Theme.next_check then return end
   Theme.next_check = now + 1.5
+  Theme.colc = {}                                   -- theme colors are read again (picks up color changes)
   read_params()
   local tf = r.GetLastColorThemeFile()
   if tf == Theme.file then
@@ -739,17 +791,31 @@ local tracks_menu, route_target, keep_reaper_focus
 local state = { vol_buf = '', name_buf = '', focus = false }
 
 local function track_from_guid(guid)
-  local m = r.GetMasterTrack(0)
+  -- a GUID -> track table, built once per frame (was: every track checked for every lookup)
+  if state.gmap_frame ~= G.frame then
+    state.gmap_frame = G.frame
+    local m = G.master()
+    local map = { [r.GetTrackGUID(m)] = m }
+    for i = 0, r.CountTracks(0) - 1 do
+      local t = r.GetTrack(0, i); map[r.GetTrackGUID(t)] = t
+    end
+    state.gmap = map
+  end
+  local t = state.gmap[guid]
+  -- tracks added / deleted earlier in this same frame: check the hit, and search on a miss
+  if t and r.ValidatePtr2(0, t, 'MediaTrack*') and r.GetTrackGUID(t) == guid then return t end
+  local m = G.master()
   if r.GetTrackGUID(m) == guid then return m end
   for i = 0, r.CountTracks(0) - 1 do
-    local t = r.GetTrack(0, i); if r.GetTrackGUID(t) == guid then return t end
+    local u = r.GetTrack(0, i); if r.GetTrackGUID(u) == guid then state.gmap[guid] = u; return u end
   end
+  state.gmap[guid] = nil
 end
 -- helper tracks of other scripts never show up here (not in the list, not when selected)
 do
   local HIDDEN_TRACKS = { ['always recording (auto)'] = true }
   state.hidden_track = function(tr)
-    if not tr or tr == r.GetMasterTrack(0) then return false end
+    if not tr or tr == G.master() then return false end
     local _, nm = r.GetSetMediaTrackInfo_String(tr, 'P_NAME', '', false)
     return HIDDEN_TRACKS[nm:lower()] == true
   end
@@ -783,15 +849,18 @@ end
 -- read from the track's state (undo-style, which is light) and checked again every half second.
 --------------------------------------------------------------------------------
 local mcp_comp = {}
-local function is_folder(tr) return tr ~= r.GetMasterTrack(0) and r.GetMediaTrackInfo_Value(tr, 'I_FOLDERDEPTH') == 1 end
+local function is_folder(tr) return tr ~= G.master() and r.GetMediaTrackInfo_Value(tr, 'I_FOLDERDEPTH') == 1 end
 local function mcp_collapsed(tr)
   if not is_folder(tr) then return false end
+  -- the state chunk (it holds all plugin states: slow on heavy folders) is read again only when the
+  -- project changed, or every 3 s as a backup
   local g, now = r.GetTrackGUID(tr), r.time_precise()
+  local psc = r.GetProjectStateChangeCount(0)
   local c = mcp_comp[g]
-  if not c or now - c.t > 0.5 then
+  if not c or c.psc ~= psc or now - c.t > 3 then
     local ok, ch = r.GetTrackStateChunk(tr, '', true)
     local v = ok and tonumber(ch:match('\n%s*BUSCOMP%s+%-?%d+%s+(%-?%d+)')) or 0
-    c = { v = v, t = now }; mcp_comp[g] = c
+    c = { v = v, t = now, psc = psc }; mcp_comp[g] = c
   end
   return c.v ~= 0
 end
@@ -806,7 +875,7 @@ local function set_mcp_collapsed(tr, on)
   r.SetTrackStateChunk(tr, new, true)          -- undo-style: keeps the track's plugins as they are
   r.PreventUIRefresh(-1)
   r.TrackList_AdjustWindows(false)             -- the real mixer shows / hides the children too
-  mcp_comp[r.GetTrackGUID(tr)] = { v = on and 1 or 0, t = r.time_precise() }
+  mcp_comp[r.GetTrackGUID(tr)] = { v = on and 1 or 0, t = r.time_precise(), psc = r.GetProjectStateChangeCount(0) }
 end
 -- hidden here because a folder it's in is collapsed, and that folder is shown in this window
 local function hidden_by_collapse(tr, shown)
@@ -834,16 +903,16 @@ local function strip_tracks()
     end
   end
   -- in track order (master first), and children of a collapsed folder that's shown stay hidden
-  local function pos(t) return (t == r.GetMasterTrack(0)) and 0 or r.GetMediaTrackInfo_Value(t, 'IP_TRACKNUMBER') end
+  local function pos(t) return (t == G.master()) and 0 or r.GetMediaTrackInfo_Value(t, 'IP_TRACKNUMBER') end
   table.sort(out, function(a, b) return pos(a) < pos(b) end)
   local vis = {}
   for _, t in ipairs(out) do
-    if t == r.GetMasterTrack(0) or not hidden_by_collapse(t, shown) then vis[#vis + 1] = t end
+    if t == G.master() or not hidden_by_collapse(t, shown) then vis[#vis + 1] = t end
   end
   return vis
 end
 local function track_name(tr)
-  if tr == r.GetMasterTrack(0) then return 'MASTER', 'MASTER' end
+  if tr == G.master() then return 'MASTER', 'MASTER' end
   local n = math.floor(r.GetMediaTrackInfo_Value(tr, 'IP_TRACKNUMBER'))
   local _, name = r.GetSetMediaTrackInfo_String(tr, 'P_NAME', '', false)
   return tostring(n), (name ~= '' and name or ('Track ' .. n))
@@ -862,8 +931,15 @@ local function recinput_name(v)
   return nm(idx)
 end
 local function clean_fx_name(n)
-  n = n:gsub('^[%w]+:%s*', ''):gsub('%s*%b()$', '')
-  return n
+  -- kept per raw name (the name changes are done once, not every frame)
+  G.fxn = G.fxn or { n = 0 }
+  local c = G.fxn[n]
+  if c then return c end
+  c = n:gsub('^[%w]+:%s*', ''):gsub('%s*%b()$', '')
+  if G.fxn.n > 2000 then G.fxn = { n = 0 } end
+  G.fxn.n = G.fxn.n + 1
+  G.fxn[n] = c
+  return c
 end
 
 --------------------------------------------------------------------------------
@@ -1241,7 +1317,7 @@ local function draw_fx_area(tr, y0, y1)
     -- (Empty slots are drawn darker on top of it, so this is the color between the slots.)
     -- Master (no track color): measured 51 gray.
     local mr, mg, mb_ = main_sec_rgb(tr, true)
-    if tr == r.GetMasterTrack(0) then
+    if tr == G.master() then
       G.listbg = { mr * 0.3 + 12, mg * 0.3 + 12, mb_ * 0.3 + 12 }
     else
       G.listbg = { mr / 3 + 13, mg / 3 + 13, mb_ / 3 + 13 }
@@ -1402,7 +1478,7 @@ local function draw_fx_area(tr, y0, y1)
         local bg = G.listbg or { 45, 40, 35 }
         -- hardware outputs (and everything on the master) have no destination track color: REAPER draws
         -- their level light gray like an FX slot (white @ ~55% over the list background, measured)
-        local plain = (tr == r.GetMasterTrack(0)) or s.cat == 1 or not s.col
+        local plain = (tr == G.master()) or s.cat == 1 or not s.col
         -- slot color underneath (the theme images: normal = white @ 35%, muted = (191,48,74) @ 25%)
         local sR, sG, sB
         if muted then
@@ -1544,7 +1620,7 @@ end
 -- Dropping on the left half puts it before that track, the right half after. If the dragged track is
 -- selected, all selected tracks move together (REAPER's behavior); otherwise just that track.
 local function track_drag_source(tr)
-  if tr == r.GetMasterTrack(0) then return end
+  if tr == G.master() then return end
   if ImGui.BeginDragDropSource(ctx) then
     ImGui.SetDragDropPayload(ctx, 'DTS_TRACK', r.GetTrackGUID(tr))
     local n, nm = track_name(tr)
@@ -1581,7 +1657,7 @@ end
 
 -- drop zone: the item just submitted (bar / name / input section) of strip tr
 local function track_drop_target(tr)
-  if tr == r.GetMasterTrack(0) then return end
+  if tr == G.master() then return end
   if ImGui.BeginDragDropTarget(ctx) then
     local mx = ImGui.GetMousePos(ctx)
     local after = mx > X(DESIGN_W / 2)
@@ -1643,7 +1719,7 @@ local function show_track_menu(tr, kind)
 end
 
 local function select_click(tr)
-  local master = r.GetMasterTrack(0)
+  local master = G.master()
   -- anchor: the last track clicked here, or REAPER's last touched track (e.g. clicked in the main window)
   local anchor = (state.sel_anchor and track_from_guid(state.sel_anchor)) or r.GetLastTouchedTrack()
   if is_fine() and anchor and anchor ~= master and tr ~= master then
@@ -1734,20 +1810,26 @@ local function cfg_num(name, fallback)
   return (ok and tonumber(v)) or fallback
 end
 
--- Meter ballistics like REAPER's mixer: instant rise, held until the next update tick,
--- then falls at the decay rate (Preferences > Track Control Panels: meter update frequency / meter decay).
--- REAPER's values are read if found; otherwise these defaults are used (change them here if you like).
-local METER_HZ, METER_DECAY = 12, 120      -- your REAPER prefs: meter update frequency (Hz), meter decay (dB/s)
+-- Meter ballistics like REAPER's mixer: a rise shows at once; the peak is held until the next update tick,
+-- then falls at the decay rate. The update frequency and decay are REAPER's own meter settings
+-- (reaper.ini: vuupdfreq, vudecay), read again every 2 s so a change in REAPER is followed.
+local METER_HZ, METER_DECAY = 12, 120      -- used only if REAPER's values can't be read (REAPER's defaults)
 local meter_hz, meter_decay
 local meter_state = {}
 local function meter_db(tr, ch)
-  if not meter_hz then meter_hz, meter_decay = METER_HZ, METER_DECAY end
-  local key = r.GetTrackGUID(tr) .. ch
   local now = r.time_precise()
+  if not meter_hz or now - (G.mcfg_t or 0) > 2 then
+    G.mcfg_t = now
+    meter_hz = math.max(1, cfg_num('vuupdfreq', METER_HZ))
+    meter_decay = math.max(0, cfg_num('vudecay', METER_DECAY))
+  end
   local raw = val2db(r.Track_GetPeakInfo(tr, ch))
-  local st = meter_state[key]
-  if not st then st = { disp = raw, acc = -150, t = now }; meter_state[key] = st end
+  local tm = meter_state[tr]
+  if not tm then tm = {}; meter_state[tr] = tm end
+  local st = tm[ch]
+  if not st then st = { disp = raw, acc = -150, t = now }; tm[ch] = st end
   if raw > st.acc then st.acc = raw end
+  if raw > st.disp then st.disp = raw end      -- a rise shows at once
   local dt = now - st.t
   if dt >= 1 / meter_hz then
     st.disp = math.max(st.acc, st.disp - meter_decay * dt)
@@ -2002,7 +2084,7 @@ local function draw_fader(tr, gt, gb)
     local gw = (groove.x1 - groove.x0) * groove.k
     -- tracks: REAPER draws the groove image 2 px wider than it is, and its middle (the black groove)
     -- stretches: 6 px instead of 4 (measured). The master keeps the image's own width (4 px, measured).
-    if tr ~= r.GetMasterTrack(0) then gw = gw + 2 end
+    if tr ~= G.master() then gw = gw + 2 end
     local x1, y1, x2, y2 = GX - gw / 2, gt - groove.T * groove.k, GX + gw / 2, gb + groove.B * groove.k
     nine(groove, x1, y1, x2, y2)
     -- automation mode: REAPER lays the mode's color over the whole groove image area at 50%
@@ -2297,7 +2379,7 @@ state.solo_do = function(tr, what)
 end
 -- Mute button actions, as in REAPER's mute menu. Also used by the button's modifier clicks.
 state.mute_do = function(tr, what)
-  local master = r.GetMasterTrack(0)
+  local master = G.master()
   if what == 'unmute_all' then
     r.Main_OnCommand(40339, 0)                              -- Track: Unmute all tracks
   elseif what == 'exclusive' or what == 'others' then
@@ -2473,7 +2555,7 @@ local function draw_lower(tr, is_master, LT, MT, MB)
 end
 
 local function start_rename(tr)
-  if tr == r.GetMasterTrack(0) then return end
+  if tr == G.master() then return end
   local _, n = r.GetSetMediaTrackInfo_String(tr, 'P_NAME', '', false)
   state.name_buf, state.renaming, state.rename_focus = n, r.GetTrackGUID(tr), true
 end
@@ -2550,7 +2632,7 @@ local function draw_bar(tr, BT, BB)
   -- folder button (theme mcp.folder): folders get the collapse button on the left of the bar (40 x 40),
   -- the last track of a folder gets the folder-end edge on the right (12 x 40). The number and the
   -- selection dot move right by 18 on folders, like the theme.
-  local fstate = (tr == r.GetMasterTrack(0)) and 0 or r.GetMediaTrackInfo_Value(tr, 'I_FOLDERDEPTH')
+  local fstate = (tr == G.master()) and 0 or r.GetMediaTrackInfo_Value(tr, 'I_FOLDERDEPTH')
   local folder = fstate == 1
   local bx1, bx2 = folder and 40 or 0, DESIGN_W
   local last_im = fstate < 0 and img('mcp_folder_last') or nil
@@ -2937,7 +3019,7 @@ tracks_menu = function(id)
   ImGui.TextDisabled(ctx, 'Tracks to show:')
   -- the track list stays open while you tick tracks; clicking outside the menu closes it
   local keep = state.keep_open_begin()
-  local m = r.GetMasterTrack(0)
+  local m = G.master()
   if state.check_item('MASTER', state.mode == 'list' and in_list(r.GetTrackGUID(m)) ~= nil, keep) then
     toggle_in_list(r.GetTrackGUID(m))
   end
@@ -3006,7 +3088,7 @@ local function add_send_menu(tr)
     end)
   end
   ImGui.TextDisabled(ctx, 'Send to:')
-  local m = r.GetMasterTrack(0)
+  local m = G.master()
   if tr ~= m then
     for i = 0, r.CountTracks(0) - 1 do
       local t = r.GetTrack(0, i)
@@ -3122,14 +3204,14 @@ end
 --------------------------------------------------------------------------------
 local function layout_letter(tr)
   local _, lay = r.GetSetMediaTrackInfo_String(tr, 'P_MCP_LAYOUT', '', false)
-  if tr ~= r.GetMasterTrack(0) then lay = '' end   -- tracks always use the theme's default layout (A)
-  if lay == '' and r.ThemeLayout_GetLayout then local ok, d = r.ThemeLayout_GetLayout('mcp', -1); lay = ok and d or 'A' end
+  if tr ~= G.master() then lay = '' end   -- tracks always use the theme's default layout (A)
+  if lay == '' and r.ThemeLayout_GetLayout then local ok, d = G.def_layout(); lay = ok and d or 'A' end
   return (lay:gsub('^%d+%%_', '')):match('^%a') or 'A'
 end
 
 -- width in points, exactly like the theme: armed -> mcpWidthRecarm, selected -> mcpWidthSel, else mcpWidth
 local function strip_width(tr)
-  if tr == r.GetMasterTrack(0) then return tp('masterMcpWidth', 130) end
+  if tr == G.master() then return tp('masterMcpWidth', 130) end
   local L = 'Layout' .. layout_letter(tr) .. '-'
   local w
   if r.GetMediaTrackInfo_Value(tr, 'I_RECARM') == 1 then w = tp(L .. 'mcpWidthRecarm', nil)
@@ -3145,15 +3227,17 @@ end
 --   "RMS" readout underneath.
 local rms_state = {}
 local function rms_db(tr, ch)
-  local key = r.GetTrackGUID(tr) .. 'rms' .. ch
   local now = r.time_precise()
   local raw = val2db(r.Track_GetPeakInfo(tr, 1024 + ch))     -- master: RMS/loudness values
-  local st = rms_state[key]
-  if not st then st = { disp = raw, acc = -150, t = now }; rms_state[key] = st end
+  local tm = rms_state[tr]
+  if not tm then tm = {}; rms_state[tr] = tm end
+  local st = tm[ch]
+  if not st then st = { disp = raw, acc = -150, t = now }; tm[ch] = st end
   if raw > st.acc then st.acc = raw end
+  if raw > st.disp then st.disp = raw end      -- a rise shows at once
   local dt = now - st.t
-  if dt >= 1 / METER_HZ then
-    st.disp = math.max(st.acc, st.disp - METER_DECAY * dt)
+  if dt >= 1 / (meter_hz or METER_HZ) then          -- same update frequency / decay as the peak meters
+    st.disp = math.max(st.acc, st.disp - (meter_decay or METER_DECAY) * dt)
     st.acc, st.t = -150, now
   end
   return st.disp
@@ -3421,7 +3505,7 @@ local function draw_master(tr, P, D)
 end
 
 local function draw_strip(tr, wx, wy, W, H)
-  local is_master = (tr == r.GetMasterTrack(0))
+  local is_master = (tr == G.master())
   set_tint(tr)
   set_track_layout(tr)
   -- fixed scale: 1 design unit = one pixel of the theme's 200% images = half a point (same size as the mixer)
@@ -3593,6 +3677,16 @@ do
   local function color_key(n) return n == 1 and 'color' or ('color_' .. n) end
   -- returns the window's color (0xRRGGBBAA) and whether it was picked by hand
   state.win_color = function(n)
+    -- once per frame per window (cleared when a color is set)
+    state.wc_cache = (state.wc_frame == G.frame) and state.wc_cache or {}
+    state.wc_frame = G.frame
+    local c = state.wc_cache[n]
+    if c then return c[1], c[2] end
+    local col, picked = state.win_color_read(n)
+    state.wc_cache[n] = { col, picked }
+    return col, picked
+  end
+  state.win_color_read = function(n)
     local _, v = r.GetProjExtState(0, 'Daniel_FloatingMixer', color_key(n))
     local c = tonumber(v or '', 16)
     if c then return (c << 8) | 0xFF, true end
@@ -3601,10 +3695,11 @@ do
   end
   -- col = 0xRRGGBBAA, or nil for automatic
   state.set_win_color = function(n, col)
+    state.wc_cache = {}
     r.SetProjExtState(0, 'Daniel_FloatingMixer', color_key(n), col and string.format('%06X', col >> 8) or '')
     r.MarkProjectDirty(0)
   end
-  state.forget_win_color = function(n) r.SetProjExtState(0, 'Daniel_FloatingMixer', color_key(n), '') end
+  state.forget_win_color = function(n) state.wc_cache = {}; r.SetProjExtState(0, 'Daniel_FloatingMixer', color_key(n), '') end
   -- a darker / dimmer version of a color (for inactive title bars)
   state.dim_color = function(c, k)
     return rgba(((c >> 24) & 255) * k, ((c >> 16) & 255) * k, ((c >> 8) & 255) * k, c & 255)
@@ -3647,7 +3742,7 @@ end
 -- Copy a send or an FX from one track to another (Alt moves it), the same rules as the floating mixer.
 -- kind: 'io' (routing button: a send to the track), 'send' (a send: e = its entry), 'fx' (idx = FX index).
 state.nd_drop = function(src, kind, idx, dst, e)
-  if not src or not dst or src == dst or dst == r.GetMasterTrack(0) then return end
+  if not src or not dst or src == dst or dst == G.master() then return end
   local move = is_alt()
   if kind == 'io' then
     for i = 0, r.GetTrackNumSends(src, 0) - 1 do
@@ -3731,7 +3826,7 @@ state.empty_dblclick = function(L, W, tracks)
   if mx < empty_left or mx >= L.wx + L.avail or my < L.wy or my >= L.wy + L.H then return end
   local after = 0                                             -- insert after this project track number
   for _, t in ipairs(tracks) do
-    if t ~= r.GetMasterTrack(0) then after = math.max(after, math.floor(r.GetMediaTrackInfo_Value(t, 'IP_TRACKNUMBER'))) end
+    if t ~= G.master() then after = math.max(after, math.floor(r.GetMediaTrackInfo_Value(t, 'IP_TRACKNUMBER'))) end
   end
   if after == 0 then after = r.CountTracks(0) end
   r.Undo_BeginBlock()
@@ -3750,13 +3845,16 @@ state.empty_dblclick = function(L, W, tracks)
   r.UpdateArrange()
 end
 
--- Layout of one mixer window's strips. A window narrower than its tracks scrolls (W.off, in pixels);
--- the master strip stays pinned on the right. Returns the strips in view and the scroll range.
+-- Layout of one mixer window's strips. A window narrower than its tracks scrolls (W.off, in pixels).
+-- The master is first in track order, so it's drawn on the left and scrolls with the other strips.
+-- (A master that is last in the row, with other strips, would be pinned on the right; the track order
+-- never puts it there.) Returns the strips in view and the scroll range.
 state.strip_layout = function(tracks, widths, gaps, wx, wy, H, W, K)
   local L = { wx = wx, wy = wy, H = H }
   local ww = ImGui.GetWindowWidth(ctx)
   local n = #tracks
-  L.mk = (n > 0 and tracks[n] == r.GetMasterTrack(0)) and n or nil   -- the master, last in the row
+  -- the master, if it's last in the row and not alone (alone, it's drawn on the left like any strip)
+  L.mk = (n > 1 and tracks[n] == G.master()) and n or nil
   L.mw = L.mk and widths[L.mk] or 0
   L.ns = L.mk and (n - 1) or n                                         -- strips that scroll
   L.avail = math.max(0, ww - L.mw)
@@ -3830,35 +3928,47 @@ end
 
 state.draw_mixer_window = function(W)
   if W.close_req then W.close_req = nil; return false end      -- "Close window" from the title-bar menu
-  local tracks = strip_tracks()
+  -- hidden last frame (a docked tab behind another tab): the track list and widths are built only if it
+  -- shows again (after Begin). Its size stays as it was.
+  local tracks, widths, gaps, winw
+  local K = state.ui_k or 1
+  state.draw_k = K
+  local function build()
+  tracks = strip_tracks()
   state.max_depth = 0                              -- deepest folder level shown (for "MCP Folder Balance Type")
   for _, t in ipairs(tracks) do
-    if t ~= r.GetMasterTrack(0) then state.max_depth = math.max(state.max_depth, r.GetTrackDepth(t)) end
+    if t ~= G.master() then state.max_depth = math.max(state.max_depth, r.GetTrackDepth(t)) end
   end
   -- Windows display scaling (e.g. 125%): ReaImGui enlarges everything by it, REAPER's mixer doesn't,
   -- so the strips are drawn smaller by the same factor to stay the mixer's size. K is measured after
   -- Begin (the window's display scale) and used from the next frame on; 1 on macOS / Linux.
-  local K = state.ui_k or 1
-  state.draw_k = K
-  local widths, total = {}, 0
+  local total = 0
+  widths = {}
   -- track spacers (right-click a track > "Add spacer before/after track"): REAPER marks the track that
   -- has a spacer before it (I_SPACER); shown as a gap between strips, like the mixer
-  local gaps, SPACER_W = {}, 16   -- measured on the real mixer: 32 px on Retina = 16 pt
+  local SPACER_W = 16
+  gaps = {}   -- measured on the real mixer: 32 px on Retina = 16 pt
   for k, tr in ipairs(tracks) do
     widths[k] = strip_width(tr) * K
     local prev = tracks[k - 1]
-    gaps[k] = (prev and prev ~= r.GetMasterTrack(0) and tr ~= r.GetMasterTrack(0)
+    gaps[k] = (prev and prev ~= G.master() and tr ~= G.master()
                and r.GetMediaTrackInfo_Value(tr, 'I_SPACER') == 1) and SPACER_W * K or 0
     total = total + widths[k] + gaps[k]
   end
-  local winw = total                               -- exactly the strips' width
+  winw = total                                     -- exactly the strips' width
   if #tracks == 0 then                             -- empty: one normal strip wide, so selecting a track doesn't resize it
     local lay = 'A'
     if r.ThemeLayout_GetLayout then
-      local ok, d = r.ThemeLayout_GetLayout('mcp', -1)
+      local ok, d = G.def_layout()
       if ok and d then lay = (d:gsub('^%d+%%_', '')):match('^%a') or 'A' end
     end
     winw = math.max(40, tp('Layout' .. lay .. '-mcpWidth', 88)) * K
+  end
+  end -- build()
+  if W.hidden then
+    winw = W.want_w or W.saved_w or (88 * K)        -- not built: keep the size it has
+  else
+    build()
   end
   -- width: fitted to the strips, until the user drags the edge; then the width they chose is kept
   -- (saved per window). "Fit to tracks" in the title-bar menu goes back to fitted.
@@ -3892,6 +4002,10 @@ state.draw_mixer_window = function(W)
   if state.dock_req then ImGui.SetNextWindowDockID(ctx, state.dock_req); state.dock_req = nil end
   local visible, open = ImGui.Begin(ctx, title .. '###DanielFloatingMixer' .. (W.n > 1 and W.n or ''), true, WFLAGS)
   ImGui.PopStyleColor(ctx, 4); ImGui.PopStyleVar(ctx)
+  -- right after Begin, the "last item" is the title bar, or the window's tab when it's tabbed in a docker
+  local title_hov = visible and ImGui.IsItemHovered(ctx)
+  if visible and W.hidden then build() end         -- shown again: build its strips now
+  W.hidden = not visible
   if visible then ImGui.PushStyleColor(ctx, ImGui.Col_DragDropTarget, 0x00000000) end
   state.docked = visible and ImGui.IsWindowDocked(ctx) or false
   if visible then
@@ -3915,12 +4029,14 @@ state.draw_mixer_window = function(W)
     end
   end
   -- right-click the title bar or the colored top row (not on a button): dock / undock, window color
-  if visible and ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_ChildWindows)
-     and ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Right) then
-    local _, wy = ImGui.GetWindowPos(ctx)
+  -- (the row is measured from where the content starts, not the window's top: tabbed in a docker, the tab bar
+  -- sits above the content, so the window's top edge isn't the row's top)
+  if visible and ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Right) then
+    local _, cy = ImGui.GetCursorScreenPos(ctx)       -- nothing drawn yet: the top of the colored row
     local _, my = ImGui.GetMousePos(ctx)
-    local top = (state.docked and 0 or ImGui.GetFrameHeight(ctx)) + TOOLBAR_H
-    if my < wy + top and not ImGui.IsAnyItemHovered(ctx) then ImGui.OpenPopup(ctx, 'title_menu') end
+    local on_row = ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_ChildWindows)
+                   and my < cy + TOOLBAR_H and not ImGui.IsAnyItemHovered(ctx)
+    if title_hov or on_row then ImGui.OpenPopup(ctx, 'title_menu') end
   end
   -- same as the Meter Bridge's: New window, Window color | Dock / Undock, Close window
   if visible and ImGui.BeginPopup(ctx, 'title_menu') then
@@ -4021,12 +4137,23 @@ state.draw_mixer_window = function(W)
     state.strip_rects = {}
     state.fx_rows = {}
     state.list_wheel = false                         -- set by an FX / send list that took the wheel this frame
-    -- the window may be narrower than its tracks: the strips scroll (bar along the bottom); the master stays
-    -- pinned on the right. W.off = how far the row is scrolled, in pixels.
+    -- the window may be narrower than its tracks: the strips scroll (bar along the bottom).
+    -- W.off = how far the row is scrolled, in pixels.
     local L = state.strip_layout(tracks, widths, gaps, wx, wy, H, W, K)
     H = L.H
+    local strips_end = wx                            -- right edge of the last strip in view
     for _, s in ipairs(L.shown) do
       state.strip_rects[#state.strip_rects + 1] = { s.x, s.x + widths[s.k], wy, wy + H, s.tr }
+      strips_end = math.max(strips_end, s.x + widths[s.k])
+    end
+    -- empty area beside the strips: the theme's mixer background, like REAPER's mixer and the gray under
+    -- folder tracks (only this area: the strips themselves keep the window background behind them)
+    do
+      local wxe = ImGui.GetWindowPos(ctx) + ImGui.GetWindowWidth(ctx)
+      local wye = select(2, ImGui.GetWindowPos(ctx)) + select(2, ImGui.GetWindowSize(ctx))
+      if strips_end < wxe then
+        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), strips_end, wy, wxe, wye, state.mixer_gray())
+      end
     end
     if #tracks > 0 then
       for _, s in ipairs(L.shown) do
@@ -4084,6 +4211,7 @@ state.draw_mixer_window = function(W)
 end
 
 local function loop()
+  G.frame = G.frame + 1                 -- new frame: the per-frame caches refresh
   theme_check()
   update_reaper_touch()
   state.native_drag_update()

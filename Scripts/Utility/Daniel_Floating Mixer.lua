@@ -4076,8 +4076,10 @@ state.draw_mixer_window = function(W)
     end
     state.kf_ours = state.kf_ours or ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow)
     ImGui.PopStyleColor(ctx)
+    -- only when visible: ReaImGui ends a hidden window itself (e.g. a docked tab behind another tab).
+    -- Calling End() for it too caused "Calling End() too many times" with 3+ docked windows.
+    ImGui.End(ctx)
   end
-  ImGui.End(ctx)                 -- always: Dear ImGui needs End() after every Begin(), visible or not
   return open
 end
 

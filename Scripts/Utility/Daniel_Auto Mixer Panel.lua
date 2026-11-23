@@ -1,7 +1,18 @@
 -- @description Daniel_Auto Mixer Panel
 -- @author Daniel Kharrat
--- @version 2.17
+-- @version 2.18
 -- @changelog
+--   Faster: uses much less CPU, mostly with many strips or many tracks. Look and controls unchanged.
+--   The plugin and its parameters are found once per track and found again only when the project
+--   changes; tracks are looked up once per frame; text sizes are kept; tooltips are made only on hover;
+--   the project is scanned only when it changes (plus a slow safety scan). The shared settings
+--   (Last mic hold, Hold below, Release) are sent to the plugins only when they change or a strip appears.
+--   The input meter falls at REAPER's meter decay (Preferences > Track control panels), like the
+--   Meter Bridge.
+--   Every control has its own tooltip. Fixed: the input and output chips (and the other controls)
+--   showed the strip's tooltip instead of their own.
+--   Removed code for plugin versions before 2.4 (Mode, groups 5-8).
+--   2.17:
 --   Bypass button on each strip (power key at the start of the header, replacing the strip
 --   number): takes the channel out of the auto mix without removing it; it passes at unity and
 --   the others share without it. A bypassed strip shows "Bypassed" in place of the dB readout and
@@ -80,12 +91,12 @@
 -- @about
 --   Control panel for "Daniel_Auto Mixer" (JSFX), a Dugan-style gain-sharing
 --   automatic mic mixer for live sound.
---   * Starts with 4 empty slots. "+" adds a slot; the window grows and wraps
+--   * Starts with 3 empty slots. "+" adds a slot; the window grows and wraps
 --     into rows.
 --   * Each slot takes a hardware input (creates a hidden, monitor-only track
 --     with the auto mixer on it) or an existing track (adds the auto mixer to it).
 --   * Tracks that already have the auto mixer appear automatically.
---   * Live gain-share and input meters, mode, group and weight per channel.
+--   * Live gain-share and input meters, group and weight per channel.
 --   * Muting a track takes it out of the gain sharing.
 --   * The slot layout is saved with the project.
 --   Requires ReaImGui 0.9 or newer.
@@ -231,6 +242,9 @@ reaper.gmem_attach(GMEM_NAME)
 ---------------------------------------------------------------------
 -- State
 ---------------------------------------------------------------------
+-- settings shared by all channels (applied to every Auto Mixer instance)
+local CFG_DEFAULT = { hold = 1, thr = -55, rel = 120 }
+
 local S = {
   proj        = nil,
   slots       = {},      -- { guid = "...", created = bool } or {} for empty
@@ -244,13 +258,32 @@ local S = {
   closed_by_user = false,
   sel_anchor  = nil,     -- last strip clicked (for Shift range selection)
   pending_move = nil,    -- { from, to } strip reorder, applied after drawing
-  cfg         = { hold = 1, thr = -55, rel = 120 },
+  cfg         = {},      -- shared settings, read from the project (load_cfg)
   renaming    = nil,     -- guid of the track being renamed
   dock_req    = nil,     -- dock id to apply before the next frame (0 = undock)
   close_req   = false,
   name_buf    = "",
   rename_focus = false,
+  scan_psc    = nil,     -- project state change count at the last scan
+  cfg_ver     = 0,       -- goes up when the shared settings change (sent to the plugins then)
+  dock_saved  = nil,     -- docker id last saved (saved again only when it changes)
 }
+
+---------------------------------------------------------------------
+-- Caches (performance)
+---------------------------------------------------------------------
+local NOW = reaper.time_precise()  -- time of the current frame
+local PSC = -1                     -- project state change count, read once per frame
+local GMAP = nil                   -- GUID -> track, built once per frame when first needed
+local FXC = {}                     -- per track GUID: { tr, fx, P, psc, t, cfg }
+local FX_RECHECK = 2               -- s: check the cached plugin index again at least this often
+local SCAN_MIN, SCAN_SAFETY = 0.3, 3   -- s: scan after a project change at most this often; always every 3 s
+local MSET = {}                    -- moving_set results for this frame
+local DECAY = { rate = 24, t = -10 }   -- input meter fall (dB/s): REAPER's meter decay, read every 2 s
+-- tooltips: the first control under the mouse this frame (inner controls come before the card
+-- behind them); shown after TIP_DELAY s on the same control
+local TIP = { cand = nil, text = nil, arg = nil, id = nil, t = 0, mx = -1e9, my = -1e9 }
+local TIP_DELAY = 0.4
 
 ---------------------------------------------------------------------
 -- Helpers
@@ -268,18 +301,24 @@ local function find_fx(tr)
   return nil
 end
 
+-- one GUID -> track map per frame (built on first use; reset when tracks are added or deleted)
 local function track_by_guid(guid)
-  for i = 0, reaper.CountTracks(0) - 1 do
-    local tr = reaper.GetTrack(0, i)
-    if reaper.GetTrackGUID(tr) == guid then return tr end
+  local m = GMAP
+  if not m then
+    m = {}
+    for i = 0, reaper.CountTracks(0) - 1 do
+      local tr = reaper.GetTrack(0, i)
+      local g = reaper.GetTrackGUID(tr)
+      if not m[g] then m[g] = tr end
+    end
+    GMAP = m
   end
-  return nil
+  return m[guid]
 end
-
-local function db(v) return (v and v > 0) and 20 * math.log(v, 10) or -150 end
+local function tracks_changed() GMAP = nil end
 
 -- the plugin's parameters, found by name so slider order doesn't matter
-local PARAM_KEYS = { mode = "Mode", weight = "Weight", group = "Group", rel = "Release",
+local PARAM_KEYS = { weight = "Weight", group = "Group", rel = "Release",
                      hold = "Last mic hold", thr = "Hold below", slot = "Slot",
                      bypass = "Bypass auto mix" }
 local function params_of(tr, fx)
@@ -293,6 +332,23 @@ local function params_of(tr, fx)
   return P
 end
 
+-- the plugin index and parameter numbers of a track, kept between frames. Checked again (one name
+-- read) when the project changes or every FX_RECHECK s; searched again only if the plugin moved or
+-- was removed. A new entry has cfg = nil, so the shared settings are sent to it.
+local function fx_entry(tr, guid)
+  local e = FXC[guid]
+  if e and e.tr == tr then
+    if e.psc == PSC and NOW - e.t < FX_RECHECK then return e end
+    local ok, name = reaper.TrackFX_GetFXName(tr, e.fx, "")
+    if ok and name:find(FX_MATCH, 1, true) then e.psc, e.t = PSC, NOW return e end
+  end
+  local fx = find_fx(tr)
+  if not fx then FXC[guid] = nil return nil end
+  e = { tr = tr, fx = fx, P = params_of(tr, fx), psc = PSC, t = NOW }
+  FXC[guid] = e
+  return e
+end
+
 local function save_state()
   local parts = {}
   for _, s in ipairs(S.slots) do
@@ -301,16 +357,15 @@ local function save_state()
   reaper.SetProjExtState(0, EXT, "slots", table.concat(parts, ";"))
 end
 
--- settings shared by all channels (applied to every Auto Mixer instance)
-local CFG_DEFAULT = { hold = 1, thr = -55, rel = 120 }
-
 local function save_cfg()
+  S.cfg_ver = S.cfg_ver + 1     -- send the new values to the plugins
   reaper.SetProjExtState(0, EXT, "settings",
     string.format("hold=%d;thr=%g;rel=%g", S.cfg.hold, S.cfg.thr, S.cfg.rel))
 end
 
 local function load_cfg()
   S.cfg = { hold = CFG_DEFAULT.hold, thr = CFG_DEFAULT.thr, rel = CFG_DEFAULT.rel }
+  S.cfg_ver = S.cfg_ver + 1
   local ok, str = reaper.GetProjExtState(0, EXT, "settings")
   if ok == 1 then
     for k, v in str:gmatch("(%a+)=([%-%d%.]+)") do
@@ -340,13 +395,16 @@ end
 -- keep slots in sync with the project: drop deleted tracks / removed plugins,
 -- add tracks that got the plugin by hand
 local function scan()
-  local present = {}
+  local present, seen = {}, {}
   for i = 0, reaper.CountTracks(0) - 1 do
     local tr = reaper.GetTrack(0, i)
-    if track_name(tr) ~= HIDDEN_TRACK and find_fx(tr) then
-      present[reaper.GetTrackGUID(tr)] = true
+    local guid = reaper.GetTrackGUID(tr)
+    seen[guid] = true
+    if track_name(tr) ~= HIDDEN_TRACK and fx_entry(tr, guid) then
+      present[guid] = true
     end
   end
+  for g in pairs(FXC) do if not seen[g] then FXC[g] = nil end end   -- forget deleted tracks
   local changed, known = false, {}
   for i, s in ipairs(S.slots) do
     if s.guid then
@@ -400,6 +458,7 @@ local function assign_input(slot, ch)
   reaper.PreventUIRefresh(1)
   local idx = insert_index()
   reaper.InsertTrackAtIndex(idx, true)
+  tracks_changed()
   local tr = reaper.GetTrack(0, idx)
   reaper.GetSetMediaTrackInfo_String(tr, "P_NAME", "Mic " .. (ch + 1), true)
   reaper.SetMediaTrackInfo_Value(tr, "I_RECINPUT", ch)  -- mono hardware input
@@ -412,6 +471,7 @@ local function assign_input(slot, ch)
   reaper.PreventUIRefresh(-1)
   if fx < 0 then
     reaper.DeleteTrack(tr)
+    tracks_changed()
     reaper.Undo_EndBlock("Auto Mixer: add input (failed)", -1)
     S.error_msg = "Couldn't find the Daniel_Auto Mixer plugin. Is it in your Effects folder?"
     return
@@ -440,8 +500,10 @@ local function remove_slot(i, delete_track)
     local tr = track_by_guid(s.guid)
     if tr then
       reaper.Undo_BeginBlock()
+      FXC[s.guid] = nil
       if delete_track then
         reaper.DeleteTrack(tr)
+        tracks_changed()
       else
         local fx = find_fx(tr)
         if fx then reaper.TrackFX_Delete(tr, fx) end
@@ -564,26 +626,50 @@ local function rr(x, y, w, h, r, hex, a)
   ImGui.DrawList_AddRectFilled(DL, x, y, x + w, y + h, rgba(hex, a), r)
 end
 
+-- text sizes, kept per font and text (cleared if the window's DPI scale changes or the cache gets big)
+local TXT = { size = {}, clip = {}, n = 0, dpi = nil, bypass_font = nil }
+local function text_cache_clear()
+  TXT.size, TXT.clip, TXT.n, TXT.bypass_font = {}, {}, 0, nil
+end
+
 local function text_w(f, str)
+  local c = TXT.size[f]
+  if not c then c = {} TXT.size[f] = c end
+  local s = c[str]
+  if s then return s[1], s[2] end
   ImGui.PushFont(ctx, f)
   local w, h = ImGui.CalcTextSize(ctx, str)
   ImGui.PopFont(ctx)
+  if TXT.n > 4000 then text_cache_clear() c = {} TXT.size[f] = c end
+  c[str] = { w, h }
+  TXT.n = TXT.n + 1
   return w, h
 end
 
 local function text_at(f, str, x, y, hex, align, a)
-  ImGui.PushFont(ctx, f)
-  local w, h = ImGui.CalcTextSize(ctx, str)
+  local w, h = text_w(f, str)
   if align == "center" then x = x - w / 2 elseif align == "right" then x = x - w end
+  ImGui.PushFont(ctx, f)
   ImGui.DrawList_AddText(DL, math.floor(x + 0.5), math.floor(y + 0.5), rgba(hex, a), str)
   ImGui.PopFont(ctx)
   return w, h
 end
 
+-- shortened text, kept per font, width and text
 local function clip_text(f, str, max_w)
-  if text_w(f, str) <= max_w then return str end
-  while #str > 1 and text_w(f, str .. "...") > max_w do str = str:sub(1, -2) end
-  return str .. "..."
+  local cf = TXT.clip[f]
+  if not cf then cf = {} TXT.clip[f] = cf end
+  local cw = cf[max_w]
+  if not cw then cw = {} cf[max_w] = cw end
+  local r = cw[str]
+  if r then return r end
+  r = str
+  if text_w(f, str) > max_w then
+    while #r > 1 and text_w(f, r .. "...") > max_w do r = r:sub(1, -2) end
+    r = r .. "..."
+  end
+  cw[str] = r
+  return r
 end
 
 local function mods() return ImGui.GetKeyMods(ctx) end
@@ -594,7 +680,7 @@ local function is_alt()  return (mods() & ImGui.Mod_Alt) ~= 0 end
 local function is_ctrl()
   local m = mods()
   if (m & ImGui.Mod_Ctrl) ~= 0 then return true end
-  if reaper.GetOS():match("^OSX") or reaper.GetOS():match("^macOS") then
+  if OS:match("^OSX") or OS:match("^macOS") then
     if (m & ImGui.Mod_Super) ~= 0 then return true end
   end
   if reaper.JS_Mouse_GetState then return (reaper.JS_Mouse_GetState(4) & 4) ~= 0 end   -- 4 = Cmd / Ctrl
@@ -602,13 +688,35 @@ local function is_ctrl()
 end
 
 -- invisible hit area at screen position
-local function hit(id, x, y, w, h, tip)
+-- offer a tooltip for a rectangle; the first one under the mouse this frame wins.
+-- tip: text, or a function(tip_arg) that makes the text (called only when the tooltip shows)
+local function tip_rect(id, x, y, w, h, tip, tip_arg)
+  local mx, my = TIP.mx, TIP.my   -- mouse position, read once per frame
+  if TIP.cand or mx < x or mx >= x + w or my < y or my >= y + h or not ImGui.IsWindowHovered(ctx) then return end
+  -- key: the control and where it is (the same control stays in the same place while hovered)
+  TIP.cand, TIP.text, TIP.arg = id .. "@" .. math.floor(x) .. "," .. math.floor(y), tip, tip_arg
+end
+
+-- show the tooltip offered this frame (once the mouse has stayed on it for TIP_DELAY s)
+local function show_tooltip(now)
+  if TIP.cand and not ImGui.IsMouseDown(ctx, ImGui.MouseButton_Left) then
+    if TIP.cand ~= TIP.id then TIP.id, TIP.t = TIP.cand, now end
+    if now - TIP.t >= TIP_DELAY then
+      local s = TIP.text
+      if type(s) == "function" then s = s(TIP.arg) end
+      ImGui.SetTooltip(ctx, s)
+    end
+  else
+    TIP.id = nil
+  end
+  TIP.cand = nil
+end
+
+local function hit(id, x, y, w, h, tip, tip_arg)
   ImGui.SetCursorScreenPos(ctx, x, y)
   local clicked = ImGui.InvisibleButton(ctx, id, math.max(1, w), math.max(1, h))
   local hov = ImGui.IsItemHovered(ctx)
-  if tip and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_DelayNormal) and not ImGui.IsItemActive(ctx) then
-    ImGui.SetTooltip(ctx, tip)
-  end
+  if tip then tip_rect(id, x, y, w, h, tip, tip_arg) end
   return { click = clicked, hov = hov, act = ImGui.IsItemActive(ctx),
     activated = ImGui.IsItemActivated(ctx), deactivated = ImGui.IsItemDeactivated(ctx),
     dbl = hov and ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) }
@@ -630,21 +738,22 @@ local function wheel_on_faders()
   return wheel_cache
 end
 
--- vertical drag: value change per screen pixel; Shift = fine; Alt-click / double-click = reset
+-- drag: value change per screen pixel (vertical: up = more; horiz: right = more); Shift = fine;
+-- Alt-click / double-click = reset; mouse wheel (faders follow REAPER's "ignore mousewheel on faders")
 local drag = {}
-local function drag_value(id, h, v, lo, hi, reset, per_dy, wheel_step)
+local function drag_value(id, h, v, lo, hi, reset, per_px, wheel_step, horiz)
   local nv, done
   if h.activated then drag[id] = v if is_alt() then drag[id] = reset nv = reset end end
   if h.dbl then drag[id] = reset nv = reset end
   if h.act and drag[id] then
-    local _, dy = ImGui.GetMouseDelta(ctx)
-    local d = -dy * per_dy * (is_fine() and 0.1 or 1)
+    local dx, dy = ImGui.GetMouseDelta(ctx)
+    local d = (horiz and dx or -dy) * per_px * (is_fine() and 0.1 or 1)
     if d ~= 0 then drag[id] = clamp(drag[id] + d, lo, hi) nv = drag[id] end
   end
   if h.deactivated and drag[id] then nv = drag[id] done = true drag[id] = nil end
-  if h.hov and not h.act and wheel_on_faders() then
+  if h.hov and not h.act and (horiz or wheel_on_faders()) then
     local w = ImGui.GetMouseWheel(ctx)
-    if w ~= 0 then nv = clamp(v + w * wheel_step * (is_fine() and 0.2 or 1), lo, hi) done = true end
+    if w ~= 0 then nv = clamp(v + w * wheel_step * ((not horiz and is_fine()) and 0.2 or 1), lo, hi) done = true end
   end
   return nv, done
 end
@@ -657,8 +766,8 @@ local function keycap(x, y, label, hl)
   return w
 end
 
-local function close_x(id, x, y)
-  local h = hit(id, x - 3, y - 3, 16, 16)
+local function close_x(id, x, y, tip)
+  local h = hit(id, x - 3, y - 3, 16, 16, tip)
   local c = rgba(h.hov and COL.text or COL.dim)
   ImGui.DrawList_AddLine(DL, x + 1, y + 1, x + 9, y + 9, c, 1.5)
   ImGui.DrawList_AddLine(DL, x + 9, y + 1, x + 1, y + 9, c, 1.5)
@@ -684,17 +793,17 @@ local function draw_bypass_chip(x, y, bypassed, hov)
   local cx, cy = math.floor(x + w / 2) + 0.5, math.floor(y + hgt / 2) + 1
   local R, T = 5.6, 1.6                  -- ring outer radius, stroke weight
   local rm = R - T / 2                   -- middle of the stroke
-  local GAP = math.rad(42)               -- half the opening, from straight up
+  local OPEN = math.rad(42)               -- half the opening, from straight up
   ImGui.DrawList_AddCircleFilled(DL, cx, cy, R, c, 40)
   ImGui.DrawList_AddCircleFilled(DL, cx, cy, R - T, rgba(bg), 40)
   -- cut the opening with a wedge in the chip colour
   local L = R + 2
   ImGui.DrawList_AddTriangleFilled(DL, cx, cy,
-    cx - L * math.sin(GAP), cy - L * math.cos(GAP),
-    cx + L * math.sin(GAP), cy - L * math.cos(GAP), rgba(bg))
+    cx - L * math.sin(OPEN), cy - L * math.cos(OPEN),
+    cx + L * math.sin(OPEN), cy - L * math.cos(OPEN), rgba(bg))
   -- rounded ends of the ring
   for _, sgn in ipairs({ -1, 1 }) do
-    ImGui.DrawList_AddCircleFilled(DL, cx + sgn * rm * math.sin(GAP), cy - rm * math.cos(GAP), T / 2, c, 12)
+    ImGui.DrawList_AddCircleFilled(DL, cx + sgn * rm * math.sin(OPEN), cy - rm * math.cos(OPEN), T / 2, c, 12)
   end
   -- stem, rounded at both ends
   ImGui.DrawList_AddRectFilled(DL, cx - T / 2, cy - R - 1, cx + T / 2, cy - 1, c, T / 2)
@@ -706,15 +815,6 @@ local function bypass_chip(x, y, bypassed)
               or "In the auto mix\nClick: bypass (take it out without removing it)")
   draw_bypass_chip(x, y, bypassed, h.hov)
   return h.click, h.hov
-end
-
-local function key_button(id, x, y, w, h, label)
-  local hh = hit(id, x, y, w, h)
-  rr(x, y + 1, w, h, 6, COL.keyedge)
-  rr(x, y, w, h, 6, hh.hov and COL.keyhov or COL.key)
-  local _, th = text_w(font_small, label)
-  text_at(font_small, label, x + w / 2, y + (h - th) / 2, COL.text, "center")
-  return hh.click
 end
 
 -- status line under the readout: one fixed-size bar whose colour glides to the channel's state
@@ -732,7 +832,7 @@ local function draw_status(d, cx, y, target, tip, dt)
   d.bar_col = d.bar_col and mix(d.bar_col, target, math.min(1, dt / STATUS_FADE)) or target
   local x1 = cx - STATUS_W / 2
   rr(x1, y, STATUS_W, STATUS_H, STATUS_H / 2, d.bar_col)
-  if ImGui.IsMouseHoveringRect(ctx, x1, y - 4, x1 + STATUS_W, y + STATUS_H + 4) then ImGui.SetTooltip(ctx, tip) end
+  tip_rect("##status", x1, y - 4, STATUS_W, STATUS_H + 8, tip)
 end
 
 ---------------------------------------------------------------------
@@ -835,7 +935,7 @@ end
 local function draw_weight(id, tr, fx, pi, cx, top, bot, weight)
   local h = hit(id, cx - 12, top, 24, bot - top,
     "Weight: bias this mic in the gain sharing\nDrag: adjust  |  Shift: fine\nDouble-click / Alt-click: 0 dB")
-  local nv, done = drag_value(id, h, weight, -12, 12, 0, 24 / (bot - top), 0.5)
+  local nv = drag_value(id, h, weight, -12, 12, 0, 24 / (bot - top), 0.5)
   if nv then
     nv = math.floor(nv * 2 + 0.5) / 2
     if nv ~= weight then reaper.TrackFX_SetParam(tr, fx, pi, nv) end
@@ -858,7 +958,7 @@ end
 local function group_chip(x, y, tr, fx, pi, group)
   local label = "G" .. group
   local w = text_w(font_label, label) + 22
-  local h = hit("##grp", x - w, y, w, 18, "Group: channels only share gain within their group")
+  local h = hit("##grp", x - w, y, w, 18, "Group " .. group .. ": channels only share gain within their group\nClick to change")
   rr(x - w, y, w, 18, 9, ACCENT, h.hov and 0.3 or 0.18)
   ImGui.DrawList_AddCircleFilled(DL, x - w + 9, y + 9, 3.5, rgba(ACCENT))
   -- centred by the font's real line height (it differs per OS font: Segoe UI sat low with a fixed offset)
@@ -880,10 +980,11 @@ end
 -- plain selector chip (input / output): same height and rounding as the group chip
 local function chip_width(label) return text_w(font_label, label) + 16 end
 
-local function plain_chip(id, popup, x, y, label, tip, off)
+-- tip_fn(tr) makes the tooltip text (ending in "Click to change"), only when it shows
+local function plain_chip(id, popup, x, y, label, tip_fn, tr, off)
   local w = chip_width(label)
   local open = ImGui.IsPopupOpen(ctx, popup)
-  local h = hit(id, x, y, w, 18, tip .. "\nClick to change")
+  local h = hit(id, x, y, w, 18, tip_fn, tr)
   rr(x, y, w, 18, 9, (h.hov or open) and COL.keyhov or COL.key)
   local col = (h.hov or open) and COL.text or off and COL.dim or COL.muted
   local _, th = text_w(font_label, label)
@@ -893,16 +994,22 @@ local function plain_chip(id, popup, x, y, label, tip, off)
 end
 
 -- input chip, left edge at x: No input / a mono hardware input
+local CHANGE = "\nClick to change"
+local function input_tip(tr)
+  local inp = reaper.GetMediaTrackInfo_Value(tr, "I_RECINPUT")
+  local cur = (inp >= 0 and inp < 1024) and math.floor(inp) or nil
+  if inp < 0 then return "Input: none" .. CHANGE end
+  if cur then
+    local name = reaper.GetInputChannelName(cur) or ""
+    return "Input: hardware input " .. (cur + 1) .. ((name ~= "") and ("  (" .. name .. ")") or "") .. CHANGE
+  end
+  return "Input: " .. input_label(tr) .. CHANGE
+end
+
 local function input_chip(x, y, tr, created)
   local inp = reaper.GetMediaTrackInfo_Value(tr, "I_RECINPUT")
   local cur = (inp >= 0 and inp < 1024) and math.floor(inp) or nil
-  local tip
-  if inp < 0 then tip = "Input: none"
-  elseif cur then
-    local name = reaper.GetInputChannelName(cur) or ""
-    tip = "Input: hardware input " .. (cur + 1) .. ((name ~= "") and ("  (" .. name .. ")") or "")
-  else tip = "Input: " .. input_label(tr) end
-  local w = plain_chip("##in", "input", x, y, input_label(tr), tip, inp < 0)
+  local w = plain_chip("##in", "input", x, y, input_label(tr), input_tip, tr, inp < 0)
   if ImGui.BeginPopup(ctx, "input") then
     if ImGui.MenuItem(ctx, "No input", nil, inp < 0) and inp >= 0 then set_input(tr, -1, created) end
     ImGui.Separator(ctx)
@@ -929,18 +1036,18 @@ local function output_label(out)
 end
 
 -- output chip, centred on cx: Main mix / a hardware output / None
+local function output_tip(tr)
+  local out = track_output(tr)
+  if out == "main" then return "Output: Main mix" .. CHANGE end
+  if out == "none" then return "Output: None (not heard anywhere)" .. CHANGE end
+  local name = reaper.GetOutputChannelName(out) or ""
+  return "Output: hardware output " .. (out + 1) .. ((name ~= "") and ("  (" .. name .. ")") or "") .. CHANGE
+end
+
 local function output_chip(cx, y, tr)
   local out = track_output(tr)
-  local label, tip = output_label(out)
-  if out == "main" then
-    tip = "Output: Main mix"
-  elseif out == "none" then
-    tip = "Output: None (not heard anywhere)"
-  else
-    local name = reaper.GetOutputChannelName(out) or ""
-    tip = "Output: hardware output " .. (out + 1) .. ((name ~= "") and ("  (" .. name .. ")") or "")
-  end
-  plain_chip("##out", "output", math.floor(cx - chip_width(label) / 2 + 0.5), y, label, tip, out == "none")
+  local label = output_label(out)
+  plain_chip("##out", "output", math.floor(cx - chip_width(label) / 2 + 0.5), y, label, output_tip, tr, out == "none")
   if ImGui.BeginPopup(ctx, "output") then
     if ImGui.MenuItem(ctx, "Main mix", nil, out == "main") and out ~= "main" then set_output(tr, "main") end
     if ImGui.BeginMenu(ctx, "Hardware output") then
@@ -966,7 +1073,8 @@ local DND_TYPE = "DANIEL_AUTOMIXER_SLOT"
 
 -- the strips that move with strip `from`: all strips whose track is selected when the dragged
 -- strip is one of them, otherwise just the dragged strip. Returns a set and a count.
-local function moving_set(from)
+local function moving_set(from, fresh)
+  if not fresh and MSET[from] then return MSET[from][1], MSET[from][2] end
   local function sel(k)
     local s = S.slots[k]
     local t = s and s.guid and track_by_guid(s.guid)
@@ -977,6 +1085,7 @@ local function moving_set(from)
     for k = 1, #S.slots do if sel(k) then set[k] = true n = n + 1 end end
   end
   if n == 0 then set[from] = true n = 1 end
+  MSET[from] = { set, n }
   return set, n
 end
 
@@ -1054,11 +1163,11 @@ local function empty_strip(i, slot, x, y)
   rr(x, y, SW, SH, 10, COL.panel, 0.55)
   ImGui.DrawList_AddRect(DL, x + 0.5, y + 0.5, x + SW - 0.5, y + SH - 0.5, rgba(COL.line), 10, 0, 1)
   keycap(x + 12, y + 12, tostring(i))
-  if close_x("##close", x + SW - 22, y + 18) then remove_slot(i, false) return end
+  if close_x("##close", x + SW - 22, y + 18, "Remove this empty slot") then remove_slot(i, false) return end
 
   -- the plus: click for the source menu
   local cx, cy = x + SW / 2, y + SH / 2 - 20
-  local h = hit("##plus", cx - 30, cy - 30, 60, 60, "Choose a source")
+  local h = hit("##plus", cx - 30, cy - 30, 60, 60, "Choose a source: a hardware input or an existing track")
   local open = ImGui.IsPopupOpen(ctx, "source")
   rr(cx - 26, cy - 26, 52, 52, 26, ACCENT, (h.hov or open) and 0.32 or 0.16)
   ImGui.DrawList_AddCircle(DL, cx, cy, 26, rgba(ACCENT, (h.hov or open) and 1 or 0.7), 0, 1.5)
@@ -1073,31 +1182,30 @@ local function empty_strip(i, slot, x, y)
   end
 
   -- the rest of the card: drag to move, drop target
-  hit("##select", x, y, SW, SH)
+  hit("##select", x, y, SW, SH, "Empty slot\nDrag: move")
   card_dnd(i, x, y, "Empty slot")
 end
 
 local function channel_strip(i, slot, tr, x, y, now, dt)
-  local fx = find_fx(tr)
-  if not fx then return end
-  local P = params_of(tr, fx)
+  local e = fx_entry(tr, slot.guid)
+  if not e then return end
+  local fx, P = e.fx, e.P
   if not (P.weight and P.group and P.slot) then return end
-  -- always automatic: put back any version-1 instance left in Manual / Mute
-  if P.mode and math.floor(reaper.TrackFX_GetParam(tr, fx, P.mode) + 0.5) ~= 0 then reaper.TrackFX_SetParam(tr, fx, P.mode, 0) end
-  -- the shared settings from the settings popover
-  local function apply(pk, v) if P[pk] and math.abs(reaper.TrackFX_GetParam(tr, fx, P[pk]) - v) > 0.001 then reaper.TrackFX_SetParam(tr, fx, P[pk], v) end end
-  apply("hold", S.cfg.hold) apply("thr", S.cfg.thr) apply("rel", S.cfg.rel)
+  -- the shared settings from the settings popover: sent only when a strip appears or they change
+  if e.cfg ~= S.cfg_ver then
+    e.cfg = S.cfg_ver
+    for _, pk in ipairs({ "hold", "thr", "rel" }) do
+      local v = S.cfg[pk]
+      if P[pk] and math.abs(reaper.TrackFX_GetParam(tr, fx, P[pk]) - v) > 0.001 then reaper.TrackFX_SetParam(tr, fx, P[pk], v) end
+    end
+  end
   local slot_idx = math.floor(reaper.TrackFX_GetParam(tr, fx, P.slot) + 0.5)
   local base = (slot_idx >= 0) and (16 + slot_idx * 16) or nil
   local age = base and (now - reaper.gmem_read(base + 1)) or 99
   local online = age < 0.5
   local muted = reaper.GetMediaTrackInfo_Value(tr, "B_MUTE") == 1
   local enabled = reaper.TrackFX_GetEnabled(tr, fx)
-  local group = math.floor(reaper.TrackFX_GetParam(tr, fx, P.group) + 0.5)
-  if group < 1 or group > N_GROUPS then                -- older setups could use groups 5-8
-    group = math.max(1, math.min(N_GROUPS, group))
-    reaper.TrackFX_SetParam(tr, fx, P.group, group)
-  end
+  local group = clamp(math.floor(reaper.TrackFX_GetParam(tr, fx, P.group) + 0.5), 1, N_GROUPS)
   ACCENT = GROUP_COL[group]   -- this strip in its group's colour (put back to blue after the strip)
   local weight = reaper.TrackFX_GetParam(tr, fx, P.weight)
   local bypassed = P.bypass and reaper.TrackFX_GetParam(tr, fx, P.bypass) > 0.5
@@ -1109,8 +1217,8 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   local d = S.disp[slot.guid]
   if not d then d = { in_db = -150, gain_db = -150 } S.disp[slot.guid] = d end
   if online and enabled then
-    d.in_db = math.max(db(reaper.gmem_read(base + 6)), d.in_db - 24 * dt)
-    local g = bypassed and -150 or db(reaper.gmem_read(base + 5))   -- bypassed: no gain sharing to show
+    d.in_db = math.max(val2db(reaper.gmem_read(base + 6)), d.in_db - DECAY.rate * dt)   -- falls at REAPER's meter decay
+    local g = bypassed and -150 or val2db(reaper.gmem_read(base + 5))   -- bypassed: no gain sharing to show
     -- display only (the audio isn't affected): rises in ~80 ms, falls in ~350 ms, so it reads calmly
     local tc = (g > d.gain_db) and 0.08 or 0.35
     d.gain_db = d.gain_db + (g - d.gain_db) * math.min(1, dt / tc)
@@ -1120,6 +1228,7 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   local holding = online and reaper.gmem_read(base + 11) > 0
 
   -- card
+  local tname = track_name(tr)
   local selected = reaper.IsTrackSelected(tr)
   rr(x, y, SW, SH, 10, selected and COL.panel_sel or COL.panel)
   if selected then
@@ -1179,10 +1288,12 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
     elseif nh.click then
       select_click(i, tr)
     end
-    card_dnd(i, x, y, track_name(tr))
-    text_at(font, clip_text(font, track_name(tr), name_w), name_x, y + 14, COL.text)
+    card_dnd(i, x, y, tname)
+    text_at(font, clip_text(font, tname, name_w), name_x, y + 14, COL.text)
   end
-  if close_x("##close", x + SW - 22, y + 18) then
+  if close_x("##close", x + SW - 22, y + 18, slot.created
+      and "Remove this channel\nAlso deletes the track the panel made for it"
+      or "Remove this channel\nTakes the Auto Mixer off the track (the track stays)") then
     remove_slot(i, slot.created)   -- created by the panel: delete the track; otherwise just remove the plugin
     return
   end
@@ -1199,9 +1310,8 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   rr(ix, wy, iw, wh, 8, COL.well)
   local top, bot = wy + 26, wy + wh - 26
   local meters_end = draw_meters(ix + 6, top, bot, d, slot.created)   -- segmented = hardware input
-  local weight_cx_ = ix + iw - 18
-  local fader_cx = math.floor((meters_end + weight_cx_ - 12) / 2 + 0.5)   -- centred in the space left
   local weight_cx = ix + iw - 18
+  local fader_cx = math.floor((meters_end + weight_cx - 12) / 2 + 0.5)   -- centred in the space left
   text_at(font_label, "GAIN", ix + 6 + 24 + 13, wy + 8, COL.dim, "center")
   text_at(font_label, "VOL", fader_cx, wy + 8, COL.dim, "center")
   text_at(font_label, "WT", weight_cx, wy + 8, COL.dim, "center")
@@ -1215,11 +1325,15 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   if bypassed then
     -- bypassed: the word in place of the number, in the bypass colour
     -- the largest font whose text stays within the status line below it (fonts differ per OS)
-    local f = font_small
-    for _, cand in ipairs({ font_title, font }) do
-      if text_w(cand, "Bypassed") <= STATUS_W then f = cand break end
+    local f = TXT.bypass_font
+    if not f then
+      f = font_small
+      for _, cand in ipairs({ font_title, font }) do
+        if text_w(cand, "Bypassed") <= STATUS_W then f = cand break end
+      end
+      TXT.bypass_font = f
     end
-    local bw, bh = text_w(f, "Bypassed")
+    local _, bh = text_w(f, "Bypassed")
     local _, nh = text_w(font_big, "0")
     text_at(f, "Bypassed", x + SW / 2, ry + (nh - bh) / 2, BYPASS_COL, "center")
   else
@@ -1250,34 +1364,16 @@ local function channel_strip(i, slot, tr, x, y, now, dt)
   -- the rest of the card selects the track (submitted last, so the controls above win)
   local bg = hit("##select", x, y, SW, SH, "Click: select (Shift: range, Cmd/Ctrl: toggle)\nDrag: move")
   if bg.click then select_click(i, tr) end
-  card_dnd(i, x, y, track_name(tr))
+  card_dnd(i, x, y, tname)
 end
 
--- horizontal drag (same gestures as the fader: Shift = fine, double-click / Alt-click = reset, wheel)
-local function hdrag_value(id, h, v, lo, hi, reset, per_dx, wheel_step)
-  local nv, done
-  if h.activated then drag[id] = v if is_alt() then drag[id] = reset nv = reset end end
-  if h.dbl then drag[id] = reset nv = reset end
-  if h.act and drag[id] then
-    local dx = ImGui.GetMouseDelta(ctx)
-    local d = dx * per_dx * (is_fine() and 0.1 or 1)
-    if d ~= 0 then drag[id] = clamp(drag[id] + d, lo, hi) nv = drag[id] end
-  end
-  if h.deactivated and drag[id] then nv = drag[id] done = true drag[id] = nil end
-  if h.hov and not h.act then
-    local w = ImGui.GetMouseWheel(ctx)
-    if w ~= 0 then nv = clamp(v + w * wheel_step, lo, hi) done = true end
-  end
-  return nv, done
-end
-
-local function setting_slider(id, x, y, w, label, v, lo, hi, def, step, fmt, enabled)
+local function setting_slider(id, x, y, w, label, v, lo, hi, def, step, fmt, enabled, tip)
   text_at(font_small, label, x, y, enabled and COL.text or COL.dim)
   text_at(font_label, string.format(fmt, v), x + w, y + 1, enabled and COL.muted or COL.dim, "right")
   local by = y + 22
-  local h = hit(id, x - 4, by - 6, w + 8, 20, "Drag: adjust  |  Shift: fine\nDouble-click / Alt-click: default")
+  local h = hit(id, x - 4, by - 6, w + 8, 20, tip .. "\nDrag: adjust  |  Shift: fine\nDouble-click / Alt-click: default")
   if enabled then
-    local nv = hdrag_value(id, h, v, lo, hi, def, (hi - lo) / w, step)
+    local nv = drag_value(id, h, v, lo, hi, def, (hi - lo) / w, step, true)
     if nv then v = math.floor(nv / step + 0.5) * step end
     if drag[id] then v = math.floor(drag[id] / step + 0.5) * step end
   end
@@ -1289,8 +1385,8 @@ local function setting_slider(id, x, y, w, label, v, lo, hi, def, step, fmt, ena
   return v
 end
 
-local function switch(id, x, y, on)
-  local h = hit(id, x, y, 36, 20)
+local function switch(id, x, y, on, tip)
+  local h = hit(id, x, y, 36, 20, tip)
   rr(x, y, 36, 20, 10, on and ACCENT or COL.key, (h.hov and not on) and 1 or (on and 1 or 0.8))
   ImGui.DrawList_AddCircleFilled(DL, on and (x + 26) or (x + 10), y + 10, 7, rgba(0xFFFFFF, on and 1 or 0.75))
   return h.click
@@ -1327,17 +1423,21 @@ local function settings_popup()
 
   local ry = y + 52
   text_at(font_small, "Last mic hold", x, ry + 2, COL.text)
-  if switch("##hold", x + W - 36, ry, c.hold == 1) then c.hold = (c.hold == 1) and 0 or 1 changed = true end
+  if switch("##hold", x + W - 36, ry, c.hold == 1,
+      "Last mic hold: " .. ((c.hold == 1) and "on" or "off") .. "\nClick to turn " .. ((c.hold == 1) and "off" or "on")) then c.hold = (c.hold == 1) and 0 or 1 changed = true end
   text_at(font_label, "Keeps the last talker open when everyone stops", x, ry + 24, COL.dim)
 
-  local thr = setting_slider("##thr", x, ry + 52, W, "Hold below", c.thr, -80, -20, CFG_DEFAULT.thr, 1, "%d dBFS", c.hold == 1)
+  local thr = setting_slider("##thr", x, ry + 52, W, "Hold below", c.thr, -80, -20, CFG_DEFAULT.thr, 1, "%d dBFS", c.hold == 1,
+    "Hold below: when every mic is below this level, the last talker stays open")
   if thr ~= c.thr then c.thr = thr changed = true end
-  local rel = setting_slider("##rel", x, ry + 100, W, "Release", c.rel, 20, 600, CFG_DEFAULT.rel, 5, "%d ms", true)
+  local rel = setting_slider("##rel", x, ry + 100, W, "Release", c.rel, 20, 600, CFG_DEFAULT.rel, 5, "%d ms", true,
+    "Release: how fast a mic turns down after its talker stops")
   if rel ~= c.rel then c.rel = rel changed = true end
 
   local fy = ry + 150
   ImGui.DrawList_AddLine(DL, x, fy, x + W, fy, rgba(COL.line), 1)
-  local rh = hit("##reset", x, fy + 8, text_w(font_label, "Reset to defaults") + 4, 16)
+  local rh = hit("##reset", x, fy + 8, text_w(font_label, "Reset to defaults") + 4, 16,
+    "Put Last mic hold, Hold below and Release back to their defaults")
   text_at(font_label, "Reset to defaults", x, fy + 10, rh.hov and COL.text or COL.muted)
   if rh.click then
     c.hold, c.thr, c.rel = CFG_DEFAULT.hold, CFG_DEFAULT.thr, CFG_DEFAULT.rel
@@ -1403,7 +1503,7 @@ local function plus_strip(x, y)
 
   -- settings below it
   local gy = y + 40
-  local gh = hit("##settings", x, gy, PLUS_W, 38, "Settings")
+  local gh = hit("##settings", x, gy, PLUS_W, 38, "Settings for all channels\nLast mic hold, Hold below, Release")
   local open = ImGui.IsPopupOpen(ctx, "settings")
   if gh.hov or open then rr(x + 3, gy + 3, PLUS_W - 6, 32, 8, COL.panel, 0.9) end
   gear(x + PLUS_W / 2, gy + 19, rgba((gh.hov or open) and ACCENT or COL.muted))
@@ -1449,7 +1549,7 @@ local function strips(now, dt)
 
   -- only shown when something went wrong (click to dismiss)
   if S.error_msg then
-    local h = hit("##err", ox, oy, avail_w, 22)
+    local h = hit("##err", ox, oy, avail_w, 22, "Click to dismiss")
     rr(ox, oy, avail_w, 22, 6, COL.note, 0.14)
     text_at(font_small, S.error_msg, ox + 10, oy + 4, COL.note)
     if h.click then S.error_msg = nil end
@@ -1491,7 +1591,7 @@ local function strips(now, dt)
     if S.slots[from] and S.slots[to] then
       -- move the dragged strip, plus every other selected strip with it, as one block in their
       -- current order: after the target when dragging right, before it when dragging left
-      local set = moving_set(from)
+      local set = moving_set(from, true)   -- read again: the selection may have changed this frame
       if not set[to] then
         local target = S.slots[to]
         local block, rest = {}, {}
@@ -1544,9 +1644,25 @@ local function loop()
   local dt = math.min(0.2, now - S.last_time)
   S.last_time = now
 
+  NOW, GMAP, MSET = now, nil, {}
+  TIP.mx, TIP.my = ImGui.GetMousePos(ctx)
+  PSC = reaper.GetProjectStateChangeCount(0)
+  -- REAPER's meter decay (Preferences > Track control panels), read every 2 s like the Meter Bridge
+  if now - DECAY.t >= 2 then
+    DECAY.t = now
+    if reaper.get_config_var_string then
+      local ok, v = reaper.get_config_var_string("vudecay")
+      v = ok and tonumber(v)
+      if v and v > 0 then DECAY.rate = v end
+    end
+  end
+
   local proj = reaper.EnumProjects(-1)
-  if proj ~= S.proj then S.proj = proj load_state() S.disp = {} S.last_scan = 0 end
-  if now - S.last_scan > 0.3 then scan() S.last_scan = now end
+  if proj ~= S.proj then S.proj = proj load_state() S.disp = {} S.last_scan = 0 S.scan_psc = nil FXC = {} end
+  -- scan when the project changed (at most every SCAN_MIN s), plus a slow safety scan
+  if (PSC ~= S.scan_psc and now - S.last_scan > SCAN_MIN) or now - S.last_scan > SCAN_SAFETY then
+    scan() S.last_scan, S.scan_psc = now, PSC
+  end
 
   if #S.slots ~= S.last_count then S.want_resize = true S.last_count = #S.slots end
 
@@ -1574,10 +1690,19 @@ local function loop()
     S.docked = docked
     if docked then
       local id = ImGui.GetWindowDockID(ctx)
-      if id < 0 then reaper.SetExtState(EXT, "dock", tostring(id), true) end   -- remember the docker
+      if id < 0 and id ~= S.dock_saved then                                   -- remember the docker
+        reaper.SetExtState(EXT, "dock", tostring(id), true)
+        S.dock_saved = id
+      end
+    end
+    -- text sizes depend on the screen's scale: measure again after moving to another screen
+    if ImGui.GetWindowDpiScale then
+      local dpi = ImGui.GetWindowDpiScale(ctx)
+      if dpi ~= TXT.dpi then TXT.dpi = dpi text_cache_clear() end
     end
     DL = ImGui.GetWindowDrawList(ctx)
     strips(now, dt)
+    show_tooltip(now)
 
     -- right-click the title bar or any empty space: Dock / Undock, Close
     if ImGui.IsWindowHovered(ctx, ImGui.HoveredFlags_ChildWindows)
@@ -1623,6 +1748,8 @@ reaper.atexit(function()
     reaper.SetExtState(EXT, "stopped_at", tostring(reaper.time_precise()), false)
   end
 end)
+
+S.dock_saved = tonumber(reaper.GetExtState(EXT, "dock"))
 
 -- open docked if it was docked when last closed
 if reaper.GetExtState(EXT, "docked") == "1" then

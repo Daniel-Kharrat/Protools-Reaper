@@ -1,124 +1,87 @@
 -- Daniel_Always Recording.lua
--- Live waveform viewer + click-select + drag-to-anywhere for the paired
--- Daniel_Always Recording.jsfx. A plain gfx window has no automatic dock
--- menu, so this builds its own via gfx.showmenu() + gfx.dock().
+-- Version: 2.0
+-- Author: Daniel Kharrat
+--
+-- Live waveform viewer + click-select + drag-to-anywhere. Two sources:
+--   Hardware input (extension): the "Daniel_Always Recording" extension
+--     (reaper_daniel_always_recording) keeps ONE global rolling buffer of a
+--     hardware input in REAPER's audio engine: no effect, no hidden track,
+--     nothing saved in your projects, and it keeps recording when you
+--     switch project tabs. The buffer runs only while this window is open
+--     (on at start, off when it closes). The extension's action
+--     "Daniel_Always Recording: Show window (toggle)" opens/closes this window.
+--   Effect on a track (manual): the paired Daniel_Always Recording.jsfx,
+--     placed by you on any track / Input FX / Monitor FX. Only the instance
+--     in the CURRENTLY FOCUSED project is kept on; every other instance is
+--     switched offline.
+-- A plain gfx window has no automatic dock menu, so this builds its own via
+-- gfx.showmenu() + gfx.dock().
 --
 -- RIGHT-CLICK MENU:
 --   Dock Window in Docker / Undock Window
---   Support (Ko-fi) : at the bottom, opens ko-fi.com/danielkharrat
---   Source ->
---     Effect on a track (manual) : the original behavior. You put the JSFX
---                                  on any track / Input FX / Monitor FX.
---     Hardware input (automatic) : the script creates its own hidden track
---                                  that listens to a physical input on your
---                                  interface -- independent of which tracks
---                                  exist, which are armed, or who is
---                                  recording where.
---   Hardware input -> pick a mono input or a stereo pair (picking one also
---                     switches the source to "Hardware input").
---   Buffer length  -> 5-60 seconds (presets or Custom...). Changing it
---                     restarts the buffer, so earlier audio is cleared.
+--   Source ->  Effect on a track (manual) / Hardware input (extension)
+--   Hardware input ->  Mono -> pick an input, or Stereo -> pick a pair
+--                      (picking one also switches the source to "Hardware input").
+--   Buffer length  ->  5-60 seconds (presets or Custom...). Changing the
+--                      input or the length restarts the buffer, so earlier
+--                      audio is cleared.
+--   Support (Ko-fi) :  at the bottom, opens ko-fi.com/danielkharrat
 --   Your choices are remembered across projects and restarts.
---
--- HIDDEN TRACK (Hardware input mode):
---   Hidden from arrange + mixer, armed with record mode "input monitoring
---   only" (so it NEVER writes files when you press record), master send and
---   hardware outputs off (so it makes no sound). It exists only while this
---   script runs: it's deleted from every open project when the script
---   closes, and any leftover (e.g. after a crash) is cleaned up the next
---   time the script runs. It's created/removed outside the undo system.
 --
 -- TO USE: click-drag inside the waveform to select a region. Release to fix
 -- the selection. Click again, starting INSIDE that selection, and drag --
 -- you're now carrying the clip. Release over any track/position in the
--- arrange view to drop it there.
+-- arrange view to drop it there. Drop on the empty area below the last
+-- track to put it on a new track. The audio is written to a file in that
+-- project's media folder.
 --
--- Requires the SWS extension (for BR_GetMouseCursorContext*).
---
--- MULTIPLE PROJECTS OPEN AT ONCE: only the instance in your CURRENTLY
--- FOCUSED project is kept on; every other instance (other projects, and in
--- Hardware input mode any manually placed copies too) is switched offline,
--- so only one instance ever processes audio and nothing collides over the
--- shared gmem channel.
+-- Requires the SWS extension (for BR_GetMouseCursorContext*), plus the
+-- Daniel_Always Recording extension for the hardware input source.
 
--- TOOLBAR TOGGLE BUTTON: this script's own command ID/state is used so the
--- toolbar button lights up while running and turns off when closed. A
--- second press of the button (while already running) sets the toggle state
--- to 0 and exits immediately -- the ALREADY-RUNNING instance notices that
--- (checked once per loop) and shuts itself down, which is what actually
--- closes the window.
+-- TOOLBAR BUTTON: put the extension's action "Daniel_Always Recording:
+-- Show window (toggle)" on a toolbar button. It runs this script and lights
+-- while this window is open. No separate toggle script is needed.
+-- Running this script while it is already running closes the window: the
+-- ALREADY-RUNNING instance notices that (checked once per loop) and shuts
+-- itself down.
+-- REMEMBER ACROSS RESTARTS: the extension keeps an "open" flag. It is set
+-- when the window opens and cleared only when YOU close it (window X or the
+-- button), not when REAPER quits. At the next start the extension opens the
+-- window again if the flag is set.
 reaper.set_action_options(1)
 local _, _, section_id, cmd_id = reaper.get_action_context()
 
--- Keeps the SEPARATE toolbar-toggle script's button + the shared ini file
--- in sync with this script's actual running state, no matter how THIS
--- script was launched (toolbar button, action list, keyboard shortcut,
--- startup action) -- so they can never show a different on/off state than
--- what's actually true.
-local REAPER_INI = reaper.GetResourcePath() .. "/reaper.ini"
-local INI_KEY = "Always_Recording"   -- the key the startup action reads
+local CAN_REMEMBER = reaper.APIExists("Daniel_AlwaysRec_SetWindowOpen")
 
--- The toolbar button's script: Daniel_Always Recording (toolbar toggle).lua
-local toggle_button_cmd_id = reaper.NamedCommandLookup("_RS1d334413686175f313d60578bea01a827ae4e954")
-
--- Sets KEY=value in reaper.ini, in the [toolbar button states] section. If the line isn't
--- there yet, it's added to that section (and the section is added at the end if it's missing).
-local function SetIniValue(key, value)
-  local file = io.open(REAPER_INI, "rb")
-  if not file then return false end
+-- Version 1 used a "[toolbar button states] Always_Recording=" flag in
+-- reaper.ini for a startup action. The extension does this job now, so set
+-- that old flag to 0 (if it exists) to stop a second launch at startup.
+local function retire_old_ini_flag()
+  if reaper.GetExtState("AlwaysRecording_Display", "ini_flag_retired") == "1" then return end
+  reaper.SetExtState("AlwaysRecording_Display", "ini_flag_retired", "1", true)
+  local path = reaper.GetResourcePath() .. "/reaper.ini"
+  local file = io.open(path, "rb")
+  if not file then return end
   local contents = file:read("*all")
   file:close()
-  value = tostring(value)
-
-  local new_contents, count = contents:gsub(
-    "(\n" .. key .. "=)[^\r\n]*",
-    function(prefix) return prefix .. value end
-  )
-  if count == 0 then
-    local nl = contents:find("\r\n", 1, true) and "\r\n" or "\n"
-    local header = "[toolbar button states]"
-    local s = (contents:sub(1, #header) == header) and 1 or contents:find("\n" .. header, 1, true)
-    if s then
-      local eol = contents:find("\n", s + (s == 1 and 0 or 1), true)
-      if not eol then contents = contents .. nl; eol = #contents end   -- header was the last line
-      new_contents = contents:sub(1, eol) .. key .. "=" .. value .. nl .. contents:sub(eol + 1)
-    else
-      if contents ~= "" and not contents:match("\n$") then contents = contents .. nl end
-      new_contents = contents .. header .. nl .. key .. "=" .. value .. nl
-    end
+  local new_contents, count = contents:gsub("(\nAlways_Recording=)1", "%10")
+  if count > 0 then
+    file = io.open(path, "wb")
+    if file then file:write(new_contents) file:close() end
   end
-  if new_contents == contents then return true end
-
-  file = io.open(REAPER_INI, "wb")
-  if not file then return false end
-  file:write(new_contents)
-  file:close()
-  return true
 end
 
-local function write_ini_value(value) SetIniValue(INI_KEY, value) end
-
 local function set_visual_state(on)
-  local v = on and 1 or 0
-  -- this script's own action (used internally for reentrancy handling)
-  reaper.SetToggleCommandState(section_id, cmd_id, v)
+  reaper.SetToggleCommandState(section_id, cmd_id, on and 1 or 0)
   reaper.RefreshToolbar2(section_id, cmd_id)
-  -- the actual visible toolbar button, bound to the separate toggle script
-  if toggle_button_cmd_id and toggle_button_cmd_id ~= 0 then
-    reaper.SetToggleCommandState(0, toggle_button_cmd_id, v)
-    reaper.RefreshToolbar2(0, toggle_button_cmd_id)
-  end
 end
 
 -- Use this ONLY for genuine, intentional on/off decisions (starting up, or
--- the deliberate "second press closes it" branch) -- it persists to the
--- ini file that the startup action reads. Do NOT call this from atexit:
--- REAPER quitting also fires atexit, and if that wrote 0 to the file, a
--- normal quit-while-on would wipe out the "relaunch me on next startup"
--- flag, which defeats the entire point of that file.
+-- the deliberate "second press closes it" branch). Not from atexit when
+-- REAPER is quitting, so the window comes back at the next start.
 local function set_button_state(on)
   set_visual_state(on)
-  write_ini_value(on and 1 or 0)
+  if CAN_REMEMBER then reaper.Daniel_AlwaysRec_SetWindowOpen(on) end
 end
 
 if reaper.GetToggleCommandStateEx(section_id, cmd_id) == 1 then
@@ -127,152 +90,88 @@ if reaper.GetToggleCommandStateEx(section_id, cmd_id) == 1 then
   return
 end
 set_button_state(true)
+retire_old_ini_flag()
 
-local GMEM_NAME = "Daniel_Always_Recording"
-reaper.gmem_attach(GMEM_NAME)
+local EXT_SECTION = "AlwaysRecording_Display"   -- window dock state + source mode
 
-local DISP_BASE = 7
-local EXT_SECTION = "AlwaysRecording_Display"
+-- the extension (reaper_daniel_always_recording) gives these functions
+local HAS_EXT = reaper.APIExists("Daniel_AlwaysRec_GetInfo")
+local DISP_N = 600
+local peaks_arr = reaper.new_array(DISP_N)
 
-------------------------------------------------------------
--- SOURCE MODE + HARDWARE INPUT (persisted globally)
-------------------------------------------------------------
-
--- "input" = hidden track listening to a chosen hardware input (DEFAULT)
--- "track" = effect placed manually (original behavior)
--- Nothing saved yet (first run) -> Hardware input mode on mono input 1.
--- Once the user picks something from the menu, that choice is remembered.
+-- SOURCE MODE (remembered):
+--   "input" = hardware input, recorded by the extension (DEFAULT)
+--   "track" = the Daniel_Always Recording JSFX placed manually on a track
 local mode = reaper.GetExtState(EXT_SECTION, "mode")
 if mode ~= "track" then mode = "input" end
 
--- I_RECINPUT value: channel index for mono, 1024 + first channel for a
--- stereo pair. Defaults to mono input 1.
-local saved_input = tonumber(reaper.GetExtState(EXT_SECTION, "input")) or 0
+-- JSFX (manual mode) shares a small gmem channel with this window
+local GMEM_NAME = "Daniel_Always_Recording"
+reaper.gmem_attach(GMEM_NAME)
+local DISP_BASE = 7
 
--- Rolling buffer length in seconds (the JSFX's slider, 5..60). Defaults to
--- the JSFX's own default of 30. In Hardware input mode it's applied to the
--- hidden track's effect automatically; in manual mode picking a value from
--- the menu sets the placed effect's slider directly.
-local BUFFER_MIN, BUFFER_MAX = 5, 60
-local BUFFER_PRESETS = { 10, 30, 60 }
-local saved_buffer = tonumber(reaper.GetExtState(EXT_SECTION, "buffer_seconds")) or 30
+------------------------------------------------------------
+-- LEFTOVERS FROM VERSION 1 (JSFX + hidden track)
+------------------------------------------------------------
 
+-- Version 1 made a hidden track "Always Recording (auto)". It was deleted
+-- when the window closed; after a crash one could stay behind. Remove any
+-- that are still in open projects (outside the undo system).
 local HIDDEN_KEY = "P_EXT:Daniel_Always_Recording_Hidden"
-local HIDDEN_NAME = "Always Recording (auto)"
-local JSFX_NAMES = {
-  "JS:Daniel_Always Recording",
-  "JS:Daniel_Always Recording.jsfx",
-  "Daniel_Always Recording",
-}
 
-local force_scan = false
-local jsfx_load_failed = false
-
-local function is_hidden_track(track)
-  local ok, v = reaper.GetSetMediaTrackInfo_String(track, HIDDEN_KEY, "", false)
-  return ok and v == "1"
-end
-
-local function get_hidden_tracks(proj)
-  local list = {}
-  for ti = 0, reaper.CountTracks(proj) - 1 do
-    local tr = reaper.GetTrack(proj, ti)
-    if is_hidden_track(tr) then list[#list + 1] = tr end
-  end
-  return list
-end
-
--- Only writes a value if it's actually different, so the re-enforcing done
--- on every scan doesn't keep marking the project as modified.
-local function set_if_different(track, key, value)
-  if reaper.GetMediaTrackInfo_Value(track, key) ~= value then
-    reaper.SetMediaTrackInfo_Value(track, key, value)
-  end
-end
-
--- (Re)applies every setting the hidden track needs. Called on every scan,
--- so things like "unarm all tracks" or an input change are corrected
--- within a fraction of a second.
-local function apply_hidden_settings(track)
-  set_if_different(track, "B_SHOWINTCP", 0)
-  set_if_different(track, "B_SHOWINMIXER", 0)
-  set_if_different(track, "B_MAINSEND", 0)    -- no sound to master/parent
-  set_if_different(track, "I_RECMODE", 2)     -- record: disable (input monitoring only)
-  set_if_different(track, "I_RECMON", 1)      -- monitoring on (so FX receive the input)
-  set_if_different(track, "I_RECINPUT", saved_input)
-  set_if_different(track, "I_RECARM", 1)
-  -- strip any hardware outputs (e.g. from default track settings)
-  while reaper.GetTrackNumSends(track, 1) > 0 do
-    reaper.RemoveTrackSend(track, 1, 0)
-  end
-end
-
-local function add_jsfx(track)
-  for _, name in ipairs(JSFX_NAMES) do
-    local fx = reaper.TrackFX_AddByName(track, name, false, -1)
-    if fx and fx >= 0 then
-      reaper.TrackFX_Show(track, fx, 2) -- make sure no floating window pops up
-      return fx
-    end
-  end
-  return -1
-end
-
--- Creates the hidden track at the end of the ACTIVE project.
-local function create_hidden_track()
-  reaper.PreventUIRefresh(1)
-  local idx = reaper.CountTracks(0)
-  reaper.InsertTrackAtIndex(idx, false)
-  local tr = reaper.GetTrack(0, idx)
-  reaper.GetSetMediaTrackInfo_String(tr, "P_NAME", HIDDEN_NAME, true)
-  reaper.GetSetMediaTrackInfo_String(tr, HIDDEN_KEY, "1", true)
-  reaper.SetTrackSelected(tr, false)
-  apply_hidden_settings(tr)
-  local fx = add_jsfx(tr)
-  if fx < 0 then
-    reaper.DeleteTrack(tr)
-    tr = nil
-    jsfx_load_failed = true
-  end
-  reaper.PreventUIRefresh(-1)
-  reaper.TrackList_AdjustWindows(false)
-  return tr
-end
-
-local function delete_tracks(list)
-  if #list == 0 then return end
-  reaper.PreventUIRefresh(1)
-  for _, tr in ipairs(list) do
-    reaper.DeleteTrack(tr)
-  end
-  reaper.PreventUIRefresh(-1)
-  reaper.TrackList_AdjustWindows(false)
-end
-
-local function remove_all_hidden_tracks()
+local function remove_old_hidden_tracks()
   local i = 0
   while true do
     local proj = reaper.EnumProjects(i)
     if not proj then break end
-    delete_tracks(get_hidden_tracks(proj))
+    local list = {}
+    for ti = 0, reaper.CountTracks(proj) - 1 do
+      local tr = reaper.GetTrack(proj, ti)
+      local ok, v = reaper.GetSetMediaTrackInfo_String(tr, HIDDEN_KEY, "", false)
+      if ok and v == "1" then list[#list + 1] = tr end
+    end
+    if #list > 0 then
+      reaper.PreventUIRefresh(1)
+      for _, tr in ipairs(list) do reaper.DeleteTrack(tr) end
+      reaper.PreventUIRefresh(-1)
+      reaper.TrackList_AdjustWindows(false)
+    end
     i = i + 1
   end
 end
 
 ------------------------------------------------------------
--- FINDING + SWITCHING INSTANCES
+-- BUFFER SETTINGS (kept by the extension)
+------------------------------------------------------------
+
+local BUFFER_MIN, BUFFER_MAX = 5, 60
+local BUFFER_PRESETS = { 10, 30, 60 }
+
+-- state: 0 = off, 1 = waiting for audio/input, 2 = running
+local function get_info()
+  if not HAS_EXT then return 0, 30, 0, 0, 0 end
+  local state, buf_seconds, write_head, wrapped, input = reaper.Daniel_AlwaysRec_GetInfo()
+  return state, buf_seconds, write_head, wrapped, input
+end
+
+------------------------------------------------------------
+-- MANUAL MODE: FINDING + SWITCHING JSFX INSTANCES
 ------------------------------------------------------------
 
 -- Collects every Daniel_Always Recording instance on one track: normal FX
 -- chain and input/record FX chain (which is also how the master track's
 -- Monitor FX chain is addressed).
-local function collect_track_fx(track, out)
+-- skip_rec: leave out the record/input chain. On the master track that
+-- chain is the Monitor FX chain, which is GLOBAL (one chain for all
+-- projects), so it must be collected only once (from the active project).
+local function collect_track_fx(track, out, skip_rec)
   for fi = 0, reaper.TrackFX_GetCount(track) - 1 do
     local ok, fxname = reaper.TrackFX_GetFXName(track, fi, "")
     if ok and fxname and fxname:match("Daniel_Always Recording") then
       out[#out + 1] = { track = track, fx = fi }
     end
   end
+  if skip_rec then return end
   for fi = 0, reaper.TrackFX_GetRecCount(track) - 1 do
     local idx = 0x1000000 + fi
     local ok, fxname = reaper.TrackFX_GetFXName(track, idx, "")
@@ -282,24 +181,27 @@ local function collect_track_fx(track, out)
   end
 end
 
-local function collect_project_fx(proj, out)
-  collect_track_fx(reaper.GetMasterTrack(proj), out)
+local function collect_project_fx(proj, out, is_active)
+  collect_track_fx(reaper.GetMasterTrack(proj), out, not is_active)   -- Monitor FX only once
   for ti = 0, reaper.CountTracks(proj) - 1 do
     collect_track_fx(reaper.GetTrack(proj, ti), out)
   end
 end
 
--- Walks every open project. Picks exactly one "winner" instance (in the
--- active project, according to the current mode), turns it ON and turns
--- every other instance OFF. Also creates/removes/repairs hidden tracks as
--- the mode requires. Returns true if a winner exists. Remembers the
--- winner's track for mono/stereo detection on drop.
+-- Walks every open project. In manual mode, picks exactly one "winner"
+-- instance (the first one in the ACTIVE project), turns it ON and turns
+-- every other instance OFF, so only one instance ever processes audio and
+-- nothing collides over the shared gmem channel. In hardware input mode
+-- (the extension records), every instance is turned OFF.
+-- full = false: scan only the active project (the other projects were
+-- already switched off by the last full scan). A full scan runs on a tab
+-- switch and every ~2 s, so with ~25 open projects most scans stay small.
+-- Returns true if a winner exists.
 local active_track = nil
 local active_fx = nil
 
-local function manage_instances()
+local function manage_instances(full)
   local active_proj = reaper.EnumProjects(-1)
-  local input_mode = (mode == "input")
   local all = {}
   local winner = nil
   active_track = nil
@@ -309,54 +211,15 @@ local function manage_instances()
   while true do
     local proj = reaper.EnumProjects(i)
     if not proj then break end
-
-    local hidden = get_hidden_tracks(proj)
-    if not input_mode then
-      -- manual mode: hidden tracks must not exist anywhere
-      delete_tracks(hidden)
-      hidden = {}
-    else
-      -- never more than one (e.g. after an undo/redo brought one back)
-      if #hidden > 1 then
-        local extras = {}
-        for k = 2, #hidden do extras[#extras + 1] = hidden[k] end
-        delete_tracks(extras)
-        hidden = { hidden[1] }
-      end
-      if proj == active_proj then
-        if not hidden[1] and not jsfx_load_failed then
-          hidden[1] = create_hidden_track()
-        end
-        if hidden[1] then apply_hidden_settings(hidden[1]) end
-      end
-    end
-
-    local proj_fx = {}
-    collect_project_fx(proj, proj_fx)
-
-    if proj == active_proj then
-      if input_mode then
-        if hidden[1] then
-          for _, inst in ipairs(proj_fx) do
-            if inst.track == hidden[1] then winner = inst break end
-          end
-          -- hidden track somehow lost its effect: put it back
-          if not winner and not jsfx_load_failed then
-            local fx = add_jsfx(hidden[1])
-            if fx >= 0 then
-              winner = { track = hidden[1], fx = fx }
-              proj_fx[#proj_fx + 1] = winner
-            else
-              jsfx_load_failed = true
-            end
-          end
-        end
-      else
+    local is_active = (proj == active_proj)
+    if full or is_active then
+      local proj_fx = {}
+      collect_project_fx(proj, proj_fx, is_active)
+      if is_active and mode == "track" then
         winner = proj_fx[1] -- master (Monitor FX) first, then tracks in order
       end
+      for _, inst in ipairs(proj_fx) do all[#all + 1] = inst end
     end
-
-    for _, inst in ipairs(proj_fx) do all[#all + 1] = inst end
     i = i + 1
   end
 
@@ -373,14 +236,6 @@ local function manage_instances()
   if winner then
     active_track = winner.track
     active_fx = winner.fx
-    -- Hidden track: keep its buffer-length slider on the saved value
-    -- (only written when different, since changing it resets the buffer).
-    if input_mode then
-      local cur = reaper.TrackFX_GetParam(winner.track, winner.fx, 0)
-      if math.abs(cur - saved_buffer) > 0.01 then
-        reaper.TrackFX_SetParam(winner.track, winner.fx, 0, saved_buffer)
-      end
-    end
   end
   return winner ~= nil
 end
@@ -389,17 +244,25 @@ end
 -- than a stereo pair (I_RECINPUT bit 1024 marks a stereo input pair). The
 -- master track (used for Monitor FX) has no meaningful record input at
 -- all, so it's always treated as stereo rather than misread as mono.
--- In Hardware input mode the host is the hidden track, whose record input
--- IS the input you picked -- so this works unchanged for both modes.
 local function host_track_is_mono()
   if not active_track then return false end
   local track_num = reaper.GetMediaTrackInfo_Value(active_track, "IP_TRACKNUMBER")
-  local is_master = track_num <= 0 -- -1 = master track, 0 = not found; either way, no real record input to read
-  if is_master then return false end
+  if track_num <= 0 then return false end -- master or not found: no real record input
   local rec_input = reaper.GetMediaTrackInfo_Value(active_track, "I_RECINPUT")
   if rec_input < 0 then return false end -- no input assigned; default to stereo
-  if (rec_input & 4096) ~= 0 then return false end -- MIDI input; not applicable, default to stereo
+  if (rec_input & 4096) ~= 0 then return false end -- MIDI input; default to stereo
   return (rec_input & 1024) == 0
+end
+
+-- Buffer length of the current source (seconds)
+local function current_buffer_seconds()
+  if mode == "track" then
+    local s = reaper.gmem_read(4)
+    if not s or s < BUFFER_MIN then s = 30 end
+    return s
+  end
+  local _, s = get_info()
+  return s
 end
 
 local STATE_IDLE, STATE_SELECTING, STATE_CARRYING = 0, 1, 2
@@ -473,38 +336,79 @@ local function should_keep_running()
 end
 
 local function try_drop()
-  reaper.BR_GetMouseCursorContext()
+  if not reaper.BR_GetMouseCursorContext then return end
+  local window, segment = reaper.BR_GetMouseCursorContext()
   local track = reaper.BR_GetMouseCursorContext_Track()
   local pos = reaper.BR_GetMouseCursorContext_Position()
 
-  if track and pos and pos >= 0 and reaper.ValidatePtr(track, "MediaTrack*")
-     and not is_hidden_track(track) then
-    local track_num = reaper.GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER")
-    local track_idx = track_num - 1 -- 0-based for the JSFX
-    if track_idx >= 0 then
-      local a, b = sel_start, sel_end
-      if a > b then a, b = b, a end
+  -- Dropped on the empty area below the last track: make a new track there,
+  -- like REAPER does when you drag an item to empty space.
+  local new_track = false
+  if not track and window == "arrange" and segment == "empty" and pos and pos >= 0 then
+    new_track = true
+  end
 
-      local buf_seconds = reaper.gmem_read(4)
-      local duration = (b - a) * buf_seconds
+  local function create_track()
+    local idx = reaper.CountTracks(0)
+    reaper.InsertTrackAtIndex(idx, true)   -- true = use default track settings
+    reaper.TrackList_AdjustWindows(false)
+    return reaper.GetTrack(0, idx)
+  end
+
+  if (new_track or track) and pos and pos >= 0 then
+    local a, b = sel_start, sel_end
+    if a > b then a, b = b, a end
+
+    if mode == "track" then
+      if new_track then
+        reaper.Undo_BeginBlock()
+        track = create_track()
+        reaper.Undo_EndBlock("Always Recording: new track for drop", -1)
+      end
+      if not (track and reaper.ValidatePtr(track, "MediaTrack*")) then return end
+      -- manual mode: the JSFX writes the file (same as version 1)
+      local track_idx = reaper.GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER") - 1
+      if track_idx < 0 then return end
+      local duration = (b - a) * reaper.gmem_read(4)
       if duration > 0 then
         reaper.Undo_BeginBlock()
         clear_track_range(track, pos, pos + duration)
         reaper.Undo_EndBlock("Clear space for Always Recording drop", -1)
       end
-
-      -- Deselect every item first (e.g. the one left selected after you
-      -- stop recording), so the freshly dropped item ends up being the
-      -- ONLY selected item and you can move it without dragging others.
       reaper.SelectAllMediaItems(0, false)
       reaper.UpdateArrange()
-
       reaper.SetEditCurPos(pos, false, false)
       reaper.gmem_write(8, track_idx)
       reaper.gmem_write(1, a)
       reaper.gmem_write(2, b - a)
       reaper.gmem_write(13, host_track_is_mono() and 1 or 0)
       reaper.gmem_write(0, 1) -- trigger export in the JSFX
+      return
+    end
+
+    local _, buf_seconds = get_info()
+    local duration = (b - a) * buf_seconds
+    if duration > 0 then
+      reaper.Undo_BeginBlock()
+      reaper.PreventUIRefresh(1)
+      if new_track then track = create_track() end
+      if not (track and reaper.ValidatePtr(track, "MediaTrack*")) then
+        reaper.PreventUIRefresh(-1)
+        reaper.Undo_EndBlock("Always Recording: drop failed", -1)
+        return
+      end
+      clear_track_range(track, pos, pos + duration)
+
+      -- Deselect every item first (e.g. the one left selected after you
+      -- stop recording), so the freshly dropped item ends up being the
+      -- ONLY selected item and you can move it without dragging others.
+      reaper.SelectAllMediaItems(0, false)
+      reaper.SetEditCurPos(pos, false, false)
+      local ok = reaper.Daniel_AlwaysRec_Export(track, pos, a, b - a)
+      if not ok and new_track then reaper.DeleteTrack(track) end   -- no empty leftover track
+      reaper.PreventUIRefresh(-1)
+      reaper.UpdateArrange()
+      reaper.Undo_EndBlock(ok and "Always Recording: drop audio" or "Always Recording: drop failed", -1)
     end
   end
   -- if not over a valid track/position, the drop is simply cancelled
@@ -514,50 +418,51 @@ end
 -- RIGHT-CLICK MENU
 ------------------------------------------------------------
 
+local function reset_selection()
+  sel_start, sel_end = nil, nil
+  state = STATE_IDLE
+end
+
+local force_scan = false
+
+-- The extension's buffer runs only while this window is open AND the
+-- source is "Hardware input". Manual mode uses the JSFX instead.
+local function sync_buffer()
+  if HAS_EXT then reaper.Daniel_AlwaysRec_SetEnabled(mode == "input") end
+end
+
 local function set_mode(m)
   mode = m
   reaper.SetExtState(EXT_SECTION, "mode", m, true)
-  jsfx_load_failed = false
-  sel_start, sel_end = nil, nil
-  state = STATE_IDLE
+  sync_buffer()
+  reset_selection()
   force_scan = true
 end
 
 local function set_input(v)
-  saved_input = v
-  reaper.SetExtState(EXT_SECTION, "input", tostring(v), true)
-  if mode ~= "input" then
-    set_mode("input")
-  else
-    jsfx_load_failed = false
-    force_scan = true
-  end
+  if HAS_EXT then reaper.Daniel_AlwaysRec_SetInput(v) end
+  if mode ~= "input" then set_mode("input")       -- picking an input switches the source (also resets)
+  else reset_selection() end                       -- the buffer restarts, so any old selection is stale
 end
 
 local function set_buffer(seconds)
   seconds = math.floor(clamp(seconds, BUFFER_MIN, BUFFER_MAX) + 0.5)
-  saved_buffer = seconds
-  reaper.SetExtState(EXT_SECTION, "buffer_seconds", tostring(seconds), true)
-  -- apply right away to whichever instance is currently active
-  if active_track and active_fx and reaper.ValidatePtr(active_track, "MediaTrack*") then
-    reaper.TrackFX_SetParam(active_track, active_fx, 0, seconds)
+  if mode == "track" then
+    -- manual mode: set the placed effect's slider directly
+    if active_track and active_fx and reaper.ValidatePtr(active_track, "MediaTrack*") then
+      reaper.TrackFX_SetParam(active_track, active_fx, 0, seconds)
+    end
+  elseif HAS_EXT then
+    reaper.Daniel_AlwaysRec_SetBufferSeconds(seconds)
   end
-  -- the buffer restarts at the new length, so any old selection is stale
-  sel_start, sel_end = nil, nil
-  state = STATE_IDLE
-end
-
--- Current length as reported by the running effect, or the saved value.
-local function current_buffer_seconds()
-  local s = reaper.gmem_read(4)
-  if not s or s < BUFFER_MIN then s = saved_buffer end
-  return s
+  reset_selection()   -- the buffer restarts at the new length
 end
 
 local function ask_custom_buffer()
+  local cur = current_buffer_seconds()
   local ok, str = reaper.GetUserInputs("Always Recording", 1,
     "Buffer length (" .. BUFFER_MIN .. "-" .. BUFFER_MAX .. " seconds):",
-    tostring(math.floor(current_buffer_seconds() + 0.5)))
+    tostring(math.floor(cur + 0.5)))
   if ok then
     local v = tonumber(str)
     if v then set_buffer(v) end
@@ -590,47 +495,54 @@ local function show_context_menu(mx, my)
 
   sub("Source")
   add("Effect on a track (manual)", function() set_mode("track") end, mode == "track")
-  add("Hardware input (automatic)", function() set_mode("input") end, mode == "input", true)
+  add("Hardware input (extension)", function() set_mode("input") end, mode == "input", true)
 
-  sub("Hardware input")
-  local n = reaper.GetNumAudioInputs()
-  if n < 1 then
-    add("No audio inputs (check audio device)", function() end, false, true)
-  else
-    for ch = 0, n - 1 do
-      local val = ch
-      add("Mono: " .. menu_safe(reaper.GetInputChannelName(ch)),
-          function() set_input(val) end,
-          mode == "input" and saved_input == val,
-          n < 2 and ch == n - 1)
-    end
-    if n >= 2 then
-      sep()
-      local last_pair = (n % 2 == 0) and (n - 2) or (n - 3)
-      for ch = 0, n - 2, 2 do
-        local val = 1024 + ch
-        add("Stereo: " .. menu_safe(reaper.GetInputChannelName(ch)) ..
-            " / " .. menu_safe(reaper.GetInputChannelName(ch + 1)),
+  local _, _, _, _, saved_input = get_info()
+
+  do
+    -- Hardware input -> Mono -> ... / Stereo -> ...
+    -- ("<>" on a submenu title: it is also the last item of the menu above)
+    sub("Hardware input")
+    local n = reaper.GetNumAudioInputs()
+    if n < 1 then
+      add("No audio inputs (check audio device)", function() end, false, true)
+    else
+      items[#items + 1] = (n < 2 and "<>" or ">") .. "Mono"
+      for ch = 0, n - 1 do
+        local val = ch
+        add(menu_safe(reaper.GetInputChannelName(ch)),
             function() set_input(val) end,
-            mode == "input" and saved_input == val,
-            ch == last_pair)
+            mode == "input" and HAS_EXT and saved_input == val,
+            ch == n - 1)
+      end
+      if n >= 2 then
+        items[#items + 1] = "<>Stereo"
+        local last_pair = (n % 2 == 0) and (n - 2) or (n - 3)
+        for ch = 0, n - 2, 2 do
+          local val = 1024 + ch
+          add(menu_safe(reaper.GetInputChannelName(ch)) ..
+              " / " .. menu_safe(reaper.GetInputChannelName(ch + 1)),
+              function() set_input(val) end,
+              mode == "input" and HAS_EXT and saved_input == val,
+              ch == last_pair)
+        end
       end
     end
+
+    sub("Buffer length")
+    local cur = math.floor(current_buffer_seconds() + 0.5)
+    local is_preset = false
+    for _, s in ipairs(BUFFER_PRESETS) do
+      local val = s
+      if cur == s then is_preset = true end
+      add(s .. " seconds", function() set_buffer(val) end, cur == s)
+    end
+    sep()
+    add(is_preset and "Custom..." or ("Custom (" .. cur .. " seconds)..."),
+        ask_custom_buffer, not is_preset, true)
+    sep()
   end
 
-  sub("Buffer length")
-  local cur = math.floor(current_buffer_seconds() + 0.5)
-  local is_preset = false
-  for _, s in ipairs(BUFFER_PRESETS) do
-    local val = s
-    if cur == s then is_preset = true end
-    add(s .. " seconds", function() set_buffer(val) end, cur == s)
-  end
-  sep()
-  add(is_preset and "Custom..." or ("Custom (" .. cur .. " seconds)..."),
-      ask_custom_buffer, not is_preset, true)
-
-  sep()
   add("♥ Support (Ko-fi)", function()
     local url = "https://ko-fi.com/danielkharrat"
     if reaper.CF_ShellExecute then reaper.CF_ShellExecute(url)          -- SWS
@@ -680,10 +592,14 @@ end
 -- MAIN LOOP
 ------------------------------------------------------------
 
-local frame_count = 0
-local found_active = false
+-- For the first moment after the window opens, the buffer (or the effect
+-- scan) may not be ready yet. Show only the empty background then, so no
+-- status message flashes before the waveform.
+local START_TIME = reaper.time_precise()
+local MESSAGE_DELAY = 1.0
 
 local function draw_message(lines)
+  if reaper.time_precise() - START_TIME < MESSAGE_DELAY then return end
   gfx.setfont(1, "Arial", 14)
   gfx.set(0.7, 0.7, 0.7, 1)
   local line_h = 18
@@ -693,6 +609,14 @@ local function draw_message(lines)
   end
 end
 
+local frame_count = 0
+local found_active = false
+local last_active_proj = nil
+local FULL_SCAN_FRAMES = 60   -- ~2 s
+
+-- reused every frame (no new tables per frame)
+local raw, peaks = {}, {}
+
 local function main()
   keepFocusOnReaper()
 
@@ -701,9 +625,13 @@ local function main()
   -- single frame, especially with a couple dozen projects open at once.
   -- force_scan makes a menu change take effect on the very next frame.
   frame_count = frame_count + 1
-  if force_scan or frame_count % 10 == 1 then
+  local active_proj = reaper.EnumProjects(-1)
+  local tab_switched = active_proj ~= last_active_proj
+  if force_scan or tab_switched or frame_count % 10 == 1 then
+    local full = force_scan or tab_switched or frame_count % FULL_SCAN_FRAMES == 1
     force_scan = false
-    found_active = manage_instances()
+    last_active_proj = active_proj
+    found_active = manage_instances(full)
   end
 
   gfx.set(51/255, 51/255, 51/255, 1)
@@ -713,44 +641,67 @@ local function main()
   local rdown = (gfx.mouse_cap & 2) == 2
 
   -- RIGHT-CLICK: our own menu (gfx windows have no native one). Handled
-  -- before the "nothing found" early return, so you can always switch
-  -- source/input even when no instance exists yet.
+  -- before the "not running" early return, so you can always switch
+  -- input or turn the buffer on.
   if rdown and not last_rdown then
     show_context_menu(mx, my)
   end
   last_rdown = rdown
 
-  if not found_active then
-    if mode == "input" then
-      if jsfx_load_failed then
-        draw_message({
-          "Couldn't load the Daniel_Always Recording effect.",
-          "Check the JSFX is installed, then pick the source again.",
-        })
-      else
-        draw_message({ "Setting up the hidden input track..." })
-      end
-    else
+  local ext_state, buf_seconds, write_head = get_info()
+  local disp_n = 0
+
+  if mode == "track" then
+    if not found_active then
       draw_message({
         "No effect found. Please insert",
         '"Daniel_Always Recording" on a track.',
+      })
+      gfx.update()
+      if should_keep_running() then reaper.defer(main) end
+      return
+    end
+    disp_n = math.floor(reaper.gmem_read(3) + 0.5)
+    if disp_n < 1 then disp_n = DISP_N end
+    buf_seconds = reaper.gmem_read(4)
+    write_head = reaper.gmem_read(6)
+    for i = 0, disp_n - 1 do
+      raw[i] = reaper.gmem_read(DISP_BASE + i)
+    end
+  elseif ext_state ~= 2 then
+    if not HAS_EXT then
+      draw_message({
+        "The Daniel_Always Recording extension is not installed.",
+        "Install it via ReaPack, then restart REAPER.",
+      })
+    elseif ext_state == 0 then
+      draw_message({ "Could not start the rolling buffer (audio hook)." })
+    else
+      draw_message({
+        "Waiting for audio from the hardware input...",
+        "Check the audio device, or right-click to pick another input.",
       })
     end
     gfx.update()
     if should_keep_running() then reaper.defer(main) end
     return
+  else
+    disp_n = reaper.Daniel_AlwaysRec_GetPeaks(peaks_arr)
+    if disp_n < 1 then disp_n = DISP_N end
+    for i = 0, disp_n - 1 do
+      raw[i] = peaks_arr[i + 1]
+    end
   end
-
-  local disp_n = math.floor(reaper.gmem_read(3) + 0.5)
-  if disp_n < 1 then disp_n = 600 end
-  local buf_seconds = reaper.gmem_read(4)
-  local have_wrapped = reaper.gmem_read(5)
-  local write_head = reaper.gmem_read(6)
 
   -- colors matched exactly to your REAPER theme
   -- background: exact theme grey (51,51,51) -- uncompensated so it stays
   -- correct across platforms, not just tuned for macOS rendering
   local BLUE_R, BLUE_G, BLUE_B = 50/255, 105/255, 175/255
+  -- glowing outline: midpoint between the too-strong and too-faint
+  -- versions -- moderate brightening, visible but not dominant
+  local GLOW_R = math.min(1, BLUE_R + 0.18)
+  local GLOW_G = math.min(1, BLUE_G + 0.24)
+  local GLOW_B = math.min(1, BLUE_B + 0.35)
 
   -- waveform fills the entire window -- no header, no reserved rows
   local wf_x, wf_y = 2, 2
@@ -759,16 +710,10 @@ local function main()
   if wf_h < 10 then wf_h = 10 end
   local center_y = wf_y + wf_h / 2
 
-  local raw = {}
-  for i = 0, disp_n - 1 do
-    raw[i] = reaper.gmem_read(DISP_BASE + i)
-  end
-
   -- SMOOTHING: each point is blended with its neighbours (weighted so the
   -- closest ones count most), which rounds off sharp spiky peaks.
   -- 0 = original sharp look. 2-4 = gently smoothed. 6+ = very soft/blobby.
   local SMOOTH = 1
-  local peaks = {}
   local maxpeak = 0
   for i = 0, disp_n - 1 do
     local sum, wsum = 0, 0
@@ -809,11 +754,6 @@ local function main()
       gfx.triangle(lx, center_y, lx, ly1, x, y1, x, center_y)
       gfx.triangle(lx, center_y, lx, ly2, x, y2, x, center_y)
 
-      -- glowing outline: midpoint between the too-strong and too-faint
-      -- versions -- moderate brightening, visible but not dominant
-      local GLOW_R = math.min(1, BLUE_R + 0.18)
-      local GLOW_G = math.min(1, BLUE_G + 0.24)
-      local GLOW_B = math.min(1, BLUE_B + 0.35)
       gfx.set(GLOW_R, GLOW_G, GLOW_B, 0.18)
       gfx.line(lx, ly1 - 1, x, y1 - 1)
       gfx.line(lx, ly1 + 1, x, y1 + 1)
@@ -880,9 +820,9 @@ end
 local function exit()
   local window_state = gfx.dock(-1)
   reaper.SetExtState(EXT_SECTION, "dockstate", tostring(window_state), true)
+  if HAS_EXT then reaper.Daniel_AlwaysRec_SetEnabled(false) end -- buffer off with the window
   set_visual_state(false) -- buttons off; the ini flag is left alone when REAPER is quitting
-  if closed_by_user then write_ini_value(0) end -- window X: don't reopen at the next startup
-  pcall(remove_all_hidden_tracks) -- no leftovers once the script is closed
+  if closed_by_user and CAN_REMEMBER then reaper.Daniel_AlwaysRec_SetWindowOpen(false) end -- window X: don't reopen at the next start
 end
 
 local w, h = 520, 130
@@ -898,7 +838,11 @@ else
 end
 
 reaper.atexit(exit)
--- Started via defer (not called directly) so the hidden-track creation
--- happens outside the script's initial run -- that keeps REAPER from
--- adding an automatic "ReaScript" undo point for it.
-reaper.defer(main)
+sync_buffer()   -- buffer on with the window (Hardware input mode)
+-- Started via defer (not called directly) so the leftover cleanup happens
+-- outside the script's initial run -- that keeps REAPER from adding an
+-- automatic "ReaScript" undo point for it.
+reaper.defer(function()
+  pcall(remove_old_hidden_tracks)
+  main()
+end)

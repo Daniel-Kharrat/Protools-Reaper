@@ -785,6 +785,12 @@
         <source>https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Auto%20Mixer</source>
       </version>
     </reapack>
+
+    <reapack name="Daniel_Pro Tools plug-in placeholder" type="effect" desc="Daniel_Pro Tools plug-in placeholder">
+      <version name="1.0" author="Daniel" time="2026-11-24T00:00:00Z">
+        <source>https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Effects/Utility/Daniel_Pro%20Tools%20plug-in%20placeholder</source>
+      </version>
+    </reapack>
     
   </category>
 

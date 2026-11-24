@@ -1,0 +1,14 @@
+desc:Daniel_Pro Tools plug-in placeholder
+//author: Daniel Kharrat
+//tags: utility placeholder
+// Keeps the slot of a Pro Tools plug-in that has no REAPER version.
+// The FX name shows the Pro Tools plug-in. Audio and MIDI pass through unchanged.
+// Made by "Daniel_Open Pro Tools session.lua".
+
+@gfx 380 64
+gfx_clear = 0x1B1717;
+gfx_setfont(1, "Arial", 15);
+gfx_r = 0.93; gfx_g = 0.93; gfx_b = 0.95;
+gfx_x = 14; gfx_y = 14; gfx_drawstr("Placeholder for a Pro Tools plug-in.");
+gfx_r = 0.54; gfx_g = 0.54; gfx_b = 0.59;
+gfx_x = 14; gfx_y = 36; gfx_drawstr("Replace it with the real plug-in.");

@@ -25,7 +25,6 @@ if file then
         "Horizontal_Scroll_50",
         "Insertion_Follows_Playback",
         "Link_Timeline_and_Edit_Selection",
-        "Always_Recording",
         "Floating_Mixer",
         "Meter_Bridge",
         "Auto_Mixer_Panel",
@@ -43,7 +42,6 @@ end
 -- Once someone turns one off, its toggle script writes "=0" and that choice is kept.
 local default_on = {
     Link_Timeline_and_Edit_Selection = true,
-    Always_Recording = true,
 }
 for key in pairs(default_on) do
     if toggles[key] == nil then toggles[key] = "1" end
@@ -78,14 +76,6 @@ if toggles["Link_Timeline_and_Edit_Selection"] == "1" then
     local id3 = reaper.NamedCommandLookup("_RSdd4ba6262e05c57604ab621179a4552cf2bad49b")
     reaper.SetToggleCommandState(0, id3, 1)
     reaper.RefreshToolbar2(0, id3)
-end
-
---------------------------------------------------
---Always Recording
---------------------------------------------------
-
-if toggles["Always_Recording"] == "1" then
-    reaper.Main_OnCommand(reaper.NamedCommandLookup("_RS22184bfd14ba6fe71f7c982d8354aec893c6d2ba"), 0)
 end
 
 --------------------------------------------------

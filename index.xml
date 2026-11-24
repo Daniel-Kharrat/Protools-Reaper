@@ -166,7 +166,7 @@
     </reapack>
 
     <reapack name="Daniel_Global startup actions.lua" type="script" desc="Daniel_Global startup actions.lua">
-      <version name="3.0" author="Daniel" time="2026-11-01T00:00:00Z">
+      <version name="3.1" author="Daniel" time="2026-11-24T00:00:00Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Protools/Daniel_Global%20startup%20actions.lua</source>
       </version>
     </reapack>
@@ -585,14 +585,8 @@
       </version>
     </reapack>
 
-    <reapack name="Daniel_Always Recording (toolbar toggle).lua" type="script" desc="Daniel_Always Recording (toolbar toggle).lua">
-      <version name="1.7" author="Daniel" time="2026-10-01T00:00:00Z">
-        <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording%20(toolbar%20toggle).lua</source>
-      </version>
-    </reapack>
-
     <reapack name="Daniel_Always Recording.lua" type="script" desc="Daniel_Always Recording.lua">
-      <version name="2.0" author="Daniel" time="2026-10-01T00:00:00Z">
+      <version name="2.1" author="Daniel" time="2026-11-24T00:00:00Z">
         <source main="main">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/refs/heads/master/Scripts/Utility/Daniel_Always%20Recording.lua</source>
       </version>
     </reapack>
@@ -746,6 +740,36 @@
     
   </category>
 
+<!-- ________Extensions________ -->
+
+  <category name="Extensions">
+      
+    <reapack name="Daniel_Open Pro Tools session" type="extension" desc="Daniel_Open Pro Tools session">
+      <version name="1.0" author="Daniel" time="2026-11-24T00:00:00Z">
+        <source platform="darwin">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Open%20Pro%20Tools%20Session/reaper_daniel_open_protools_session.dylib</source>
+        <source platform="win64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Open%20Pro%20Tools%20Session/reaper_daniel_open_protools_session-x64.dll</source>
+        <source platform="linux64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Open%20Pro%20Tools%20Session/reaper_daniel_open_protools_session-x86_64.so</source>
+      </version>
+    </reapack>
+    
+    <reapack name="Daniel_Pre-Record Punch-In" type="extension" desc="Daniel_Pre-Record Punch-In">
+      <version name="1.0" author="Daniel" time="2026-11-24T00:00:00Z">
+        <source platform="darwin">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Pre%20Record%20Punch%20in/reaper_daniel_prerecord_punchin.dylib</source>
+        <source platform="win64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Pre%20Record%20Punch%20in/reaper_daniel_prerecord_punchin-x64.dll</source>
+        <source platform="linux64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Pre%20Record%20Punch%20in/reaper_daniel_prerecord_punchin-x86_64.so</source>
+      </version>
+    </reapack>
+    
+    <reapack name="Daniel_Always Recording" type="extension" desc="Daniel_Always Recording">
+      <version name="1.0" author="Daniel" time="2026-11-24T00:00:00Z">
+        <source platform="darwin">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Always%20Recording/reaper_daniel_always_recording.dylib</source>
+        <source platform="win64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Always%20Recording/reaper_daniel_always_recording-x64.dll</source>
+        <source platform="linux64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Always%20Recording/reaper_daniel_always_recording-x86_64.so</source>
+      </version>
+    </reapack>
+    
+  </category>
+  
 <!-- ________Utility Effects________ -->
 
   <category name="utility">

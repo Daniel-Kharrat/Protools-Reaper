@@ -745,26 +745,26 @@
   <category name="Extensions">
       
     <reapack name="Daniel_Open Pro Tools session" type="extension" desc="Daniel_Open Pro Tools session">
-      <version name="1.0" author="Daniel" time="2026-11-24T00:00:00Z">
-        <source platform="darwin">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Open%20Pro%20Tools%20Session/reaper_daniel_open_protools_session.dylib</source>
-        <source platform="win64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Open%20Pro%20Tools%20Session/reaper_daniel_open_protools_session-x64.dll</source>
-        <source platform="linux64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Open%20Pro%20Tools%20Session/reaper_daniel_open_protools_session-x86_64.so</source>
+      <version name="1.1" author="Daniel" time="2026-11-24T17:20:00Z">
+        <source platform="darwin" file="reaper_daniel_open_protools_session.dylib">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Open%20Pro%20Tools%20Session/reaper_daniel_open_protools_session.dylib</source>
+        <source platform="win64" file="reaper_daniel_open_protools_session-x64.dll">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Open%20Pro%20Tools%20Session/reaper_daniel_open_protools_session-x64.dll</source>
+        <source platform="linux64" file="reaper_daniel_open_protools_session-x86_64.so">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Open%20Pro%20Tools%20Session/reaper_daniel_open_protools_session-x86_64.so</source>
       </version>
     </reapack>
     
     <reapack name="Daniel_Pre-Record Punch-In" type="extension" desc="Daniel_Pre-Record Punch-In">
-      <version name="1.0" author="Daniel" time="2026-11-24T00:00:00Z">
-        <source platform="darwin">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Pre%20Record%20Punch%20in/reaper_daniel_prerecord_punchin.dylib</source>
-        <source platform="win64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Pre%20Record%20Punch%20in/reaper_daniel_prerecord_punchin-x64.dll</source>
-        <source platform="linux64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Pre%20Record%20Punch%20in/reaper_daniel_prerecord_punchin-x86_64.so</source>
+      <version name="1.1" author="Daniel" time="2026-11-24T17:20:00Z">
+        <source platform="darwin" file="reaper_daniel_prerecord_punchin.dylib">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Pre%20Record%20Punch%20in/reaper_daniel_prerecord_punchin.dylib</source>
+        <source platform="win64" file="reaper_daniel_prerecord_punchin-x64.dll">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Pre%20Record%20Punch%20in/reaper_daniel_prerecord_punchin-x64.dll</source>
+        <source platform="linux64" file="reaper_daniel_prerecord_punchin-x86_64.so">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Pre%20Record%20Punch%20in/reaper_daniel_prerecord_punchin-x86_64.so</source>
       </version>
     </reapack>
     
     <reapack name="Daniel_Always Recording" type="extension" desc="Daniel_Always Recording">
-      <version name="1.0" author="Daniel" time="2026-11-24T00:00:00Z">
-        <source platform="darwin">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Always%20Recording/reaper_daniel_always_recording.dylib</source>
-        <source platform="win64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Always%20Recording/reaper_daniel_always_recording-x64.dll</source>
-        <source platform="linux64">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Always%20Recording/reaper_daniel_always_recording-x86_64.so</source>
+      <version name="1.1" author="Daniel" time="2026-11-24T17:20:00Z">
+        <source platform="darwin" file="reaper_daniel_always_recording.dylib">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Always%20Recording/reaper_daniel_always_recording.dylib</source>
+        <source platform="win64" file="reaper_daniel_always_recording-x64.dll">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Always%20Recording/reaper_daniel_always_recording-x64.dll</source>
+        <source platform="linux64" file="reaper_daniel_always_recording-x86_64.so">https://github.com/Daniel-Kharrat/Protools-Reaper/raw/master/Extensions/Always%20Recording/reaper_daniel_always_recording-x86_64.so</source>
       </version>
     </reapack>
     

@@ -19,7 +19,6 @@ The Pro Tools session file is never changed.
 - [What is not converted](#what-is-not-converted)
 - [Compatibility](#compatibility)
 - [Files that the extension writes](#files-that-the-extension-writes)
-- [Building from source](#building-from-source)
 - [Credits](#credits)
 
 ---
@@ -55,7 +54,9 @@ The Pro Tools session file is never changed.
 
    You can also open this folder from REAPER: **Options > Show REAPER resource path**, then open `UserPlugins`.
 
-3. Restart REAPER.
+3. Install the placeholder JSFX with ReaPack: **Extensions > ReaPack > Browse packages**, then install **Daniel_Pro Tools plug-in placeholder** from the Daniel Kharrat repository. Without it, plug-ins that have no REAPER version show as missing.
+
+4. Restart REAPER.
 
 > **Tip:** Keep the `.ptx` in its Pro Tools session folder, next to the `Audio Files` folder. REAPER then finds the audio.
 
@@ -181,7 +182,7 @@ REAPER has 32 track groups. If a session has more groups, only the first 32 are 
 Every Pro Tools insert keeps its **slot**, in the same order:
 
 - **Avid stock plug-ins** below become REAPER stock plug-ins with the same settings.
-- **Every other plug-in** becomes a placeholder with the Pro Tools plug-in name. The placeholder passes audio through unchanged. Replace it with the real plug-in.
+- **Every other plug-in** becomes a placeholder with the Pro Tools plug-in name. The placeholder is the JSFX **Daniel_Pro Tools plug-in placeholder** (see [Installation](#installation)). It passes audio through unchanged. Replace it with the real plug-in.
 - **Bypassed** inserts are bypassed in REAPER.
 - **Inactive** inserts are set offline in REAPER.
 
@@ -269,6 +270,7 @@ It is silent, as in Pro Tools. To hear it, raise its volume and turn on its mast
 | Windows | 64-bit |
 | Linux | x86_64, glibc 2.17 or newer |
 | Pro Tools sessions | `.ptx` from Pro Tools 10 and newer. Tested with Pro Tools 12.5 (Windows) and 2021.7 (macOS). |
+| ReaPack | To install the placeholder JSFX |
 | SWS (optional) | Needed only for track notes from Pro Tools track comments |
 
 The Pro Tools session format is not public. If a session from another Pro Tools version does not convert correctly, please open an issue and add the conversion report.
@@ -281,7 +283,6 @@ The Pro Tools session format is not public. If a session from another Pro Tools 
 |---|---|---|
 | `Session.rpp` | Next to the `.ptx` | The converted REAPER project |
 | `Session - conversion report.txt` | Next to the `.ptx` | What was converted, what was not, and what needs a check |
-| `Daniel_Pro Tools plug-in placeholder.jsfx` | `REAPER/Effects/Daniel Kharrat/ProTools Effects/` | The placeholder for plug-ins that have no REAPER version |
 
 The `.ptx` file and the audio files are never changed.
 
@@ -297,38 +298,6 @@ The report has these parts:
 - **Muted clips:** check that these are muted in Pro Tools too
 - **Audio files outside the session folder**
 - **Tracks:** each track with its volume, pan, output, sends and inserts
-
----
-
-## Building from source
-
-Everything that the build needs is in this repository. Nothing is downloaded.
-
-| Folder or file | What |
-|---|---|
-| `src/main.cpp` | The extension |
-| `src/Daniel_Open Pro Tools session.lua` | The converter. It is built into the extension. |
-| `deps/lua` | Lua 5.4 |
-| `deps/reaper-sdk` | REAPER SDK headers |
-| `tests/` | Test tools that compare the extension output with the converter output |
-
-**macOS** (needs the Xcode Command Line Tools):
-
-```sh
-./build-mac.sh
-```
-
-This builds the `.dylib` for Apple Silicon and Intel and installs it in REAPER's `UserPlugins` folder.
-
-**Linux and Windows** (on Linux, needs `gcc`, `xxd` and MinGW for Windows; `zig` is optional, for older Linux systems):
-
-```sh
-./build.sh          # both
-./build.sh linux    # .so only
-./build.sh windows  # .dll only
-```
-
-To change the converter, edit only `src/Daniel_Open Pro Tools session.lua`, then build again.
 
 ---
 

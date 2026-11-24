@@ -1,6 +1,10 @@
 -- @description Daniel_Floating Mixer
--- @version 4.1
+-- @version 4.2
 -- @changelog
+--   Docked mixer windows in tabs: a drag from REAPER's mixer (send, FX, routing button) or from the
+--   FX browser now goes only to a strip in the tab that is in front, not to a hidden tab.
+--   Click a track's name to select it, like REAPER's mixer (Cmd: toggle, Shift: range).
+--   Drag a send from REAPER's mixer onto a floating strip: copies the send to that track again (Option: move).
 --   Mute button: right-click shows the mute menu (unmute all, exclusive mute, mute all others, ignore
 --   selection), and its modifier clicks work on the button (Cmd: unmute all, Option+Cmd: exclusive,
 --   Option: mute all others, Shift: ignore selection).
@@ -2711,8 +2715,9 @@ local function draw_name(tr, y1, y2)
     return
   end
 
-  local h = hit('##name', X(0), Y(y1), X(DESIGN_W), Y(y2), 'Double-click: rename track  |  Drag: move track  |  Right-click: choose tracks')
+  local h = hit('##name', X(0), Y(y1), X(DESIGN_W), Y(y2), 'Click: select track  |  Double-click: rename track  |  Drag: move track  |  Right-click: choose tracks')
   track_drag_source(tr)
+  if h.click then select_click(tr) end           -- click the name: select the track, like the mixer
   if h.rclick then ImGui.OpenPopup(ctx, 'bar_menu') end
   if name ~= '' then
     local armed = r.GetMediaTrackInfo_Value(tr, 'I_RECARM') == 1
@@ -3861,7 +3866,8 @@ state.nd_drop = function(src, kind, idx, dst, e)
     undo_wrap('Send from routing button drag', function() r.CreateTrackSend(src, dst) end)
   elseif kind == 'send' then
     if not e then
-      for _, x in ipairs(send_list(src)) do if x.cat == 0 and x.ci == idx then e = x end end
+      e = send_list(src)[idx]                                 -- the slot in the mixer's send list (its order)
+      if not e then return false end                          -- no send with that number
     end
     if e and e.cat then
       undo_wrap(move and 'Move send to track' or 'Copy send to track', function()
@@ -3892,9 +3898,12 @@ state.native_drag_update = function()
       if info == 'mcp.io' then
         state.nd_src, state.nd_kind = tr, 'io'
       elseif info:find('mcp%.sendlist') then
-        state.nd_src, state.nd_kind, state.nd_idx = tr, 'send', tonumber(info:match('sendlist%s+(%d+)'))
+        -- the slot number may come after a space or a dot ("mcp.sendlist 1" / "mcp.sendlist.1")
+        local i = tonumber(info:match('sendlist%D*(%d+)'))
+        if not i and r.GetTrackNumSends(tr, 0) == 1 then i = 0 end   -- no number: a single send is that one
+        state.nd_src, state.nd_kind, state.nd_idx, state.nd_info = tr, 'send', i, info
       elseif info:find('mcp%.fxlist') then
-        state.nd_src, state.nd_kind, state.nd_idx = tr, 'fx', tonumber(info:match('fxlist%s+(%d+)'))
+        state.nd_src, state.nd_kind, state.nd_idx = tr, 'fx', tonumber(info:match('fxlist%D*(%d+)'))
       end
     end
   elseif not down and state.nd_was_down then
@@ -3908,7 +3917,14 @@ state.native_drag_update = function()
     local dragged = state.nd_start and (math.abs(x - state.nd_start[1]) + math.abs(y - state.nd_start[2]) > 6)
     -- native -> floating: dropped on a floating strip
     if state.nd_src and dragged and over_float and (state.nd_idx ~= nil or state.nd_kind == 'io') then
-      state.nd_drop(state.nd_src, state.nd_kind, state.nd_idx, over_float)
+      local ok = state.nd_drop(state.nd_src, state.nd_kind, state.nd_idx, over_float)
+      if ok == false then state.nd_idx = nil end
+    end
+    -- a send drag that couldn't be matched to a send: say what REAPER reported, once, so it can be fixed
+    if state.nd_kind == 'send' and dragged and over_float and state.nd_idx == nil and not state.nd_logged then
+      state.nd_logged = true
+      r.ShowConsoleMsg('Floating Mixer: could not find the dragged send. REAPER reported: "'
+        .. tostring(state.nd_info) .. '"\n')
     end
     -- floating -> native: released over a track in REAPER's mixer
     if state.fl_drag and not over_float then
@@ -4116,6 +4132,7 @@ state.draw_mixer_window = function(W)
   local title_hov = visible and ImGui.IsItemHovered(ctx)
   if visible and W.hidden then build() end         -- shown again: build its strips now
   W.hidden = not visible
+  if not visible then state.strip_rects = {}; state.fx_rows = {} end   -- a hidden tab takes no drops
   if visible then ImGui.PushStyleColor(ctx, ImGui.Col_DragDropTarget, 0x00000000) end
   state.docked = visible and ImGui.IsWindowDocked(ctx) or false
   if visible then

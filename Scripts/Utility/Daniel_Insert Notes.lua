@@ -1,5 +1,8 @@
 local cursor = reaper.GetCursorPosition()
 
+-- One undo point for the whole action (insert, color, length)
+reaper.Undo_BeginBlock()
+
 -- Freeze drawing so the edit cursor jump is not visible
 reaper.PreventUIRefresh(1)
 
@@ -30,6 +33,8 @@ reaper.SetEditCurPos(cursor, false, false)
 reaper.GetSet_ArrangeView2(0, true, 0, 0, view_start, view_end)
 
 reaper.PreventUIRefresh(-1)
+
+reaper.Undo_EndBlock("Insert note item", -1)
 
 --Item: Show notes for items
 reaper.Main_OnCommand(40850, 0)

@@ -1,5 +1,5 @@
 -- Daniel_Always Recording.lua
--- Version: 2.0
+-- Version: 2.1
 -- Author: Daniel Kharrat
 --
 -- Live waveform viewer + click-select + drag-to-anywhere. Two sources:
@@ -10,6 +10,11 @@
 --     switch project tabs. The buffer runs only while this window is open
 --     (on at start, off when it closes). The extension's action
 --     "Daniel_Always Recording: Show window (toggle)" opens/closes this window.
+--   Application (extension, macOS 14.2+ or Linux with PipeWire): the
+--     extension records the audio of one app (for example a web browser
+--     playing YouTube), or all system audio except REAPER. On macOS a small
+--     helper app does the capture; macOS asks once for "System Audio
+--     Recording" permission for it. On Linux no permission is needed.
 --   Effect on a track (manual): the paired Daniel_Always Recording.jsfx,
 --     placed by you on any track / Input FX / Monitor FX. Only the instance
 --     in the CURRENTLY FOCUSED project is kept on; every other instance is
@@ -19,7 +24,12 @@
 --
 -- RIGHT-CLICK MENU:
 --   Dock Window in Docker / Undock Window
---   Source ->  Effect on a track (manual) / Hardware input (extension)
+--   Source ->  Effect on a track (manual) / Hardware input (extension) /
+--              Application (extension, macOS)
+--   Application -> pick an app (apps with an open audio stream are first,
+--                  marked "audio active": open, not always audible),
+--                  or "All system audio (except REAPER)"
+--                  (picking one also switches the source to "Application").
 --   Hardware input ->  Mono -> pick an input, or Stereo -> pick a pair
 --                      (picking one also switches the source to "Hardware input").
 --   Buffer length  ->  5-60 seconds (presets or Custom...). Changing the
@@ -96,14 +106,18 @@ local EXT_SECTION = "AlwaysRecording_Display"   -- window dock state + source mo
 
 -- the extension (reaper_daniel_always_recording) gives these functions
 local HAS_EXT = reaper.APIExists("Daniel_AlwaysRec_GetInfo")
+-- application source: needs extension v1.1 on macOS 14.2+
+local HAS_APP = reaper.APIExists("Daniel_AlwaysRec_GetApps") and reaper.Daniel_AlwaysRec_GetApps("") == true
+local IS_MAC = reaper.GetOS():find("OSX") ~= nil or reaper.GetOS():find("mac") ~= nil
 local DISP_N = 600
 local peaks_arr = reaper.new_array(DISP_N)
 
 -- SOURCE MODE (remembered):
 --   "input" = hardware input, recorded by the extension (DEFAULT)
 --   "track" = the Daniel_Always Recording JSFX placed manually on a track
+--   "app"   = the audio of an application, recorded by the extension (macOS)
 local mode = reaper.GetExtState(EXT_SECTION, "mode")
-if mode ~= "track" then mode = "input" end
+if mode ~= "track" and not (mode == "app" and HAS_APP) then mode = "input" end
 
 -- JSFX (manual mode) shares a small gmem channel with this window
 local GMEM_NAME = "Daniel_Always_Recording"
@@ -426,9 +440,13 @@ end
 local force_scan = false
 
 -- The extension's buffer runs only while this window is open AND the
--- source is "Hardware input". Manual mode uses the JSFX instead.
+-- source is "Hardware input" or "Application". Manual mode uses the JSFX.
 local function sync_buffer()
-  if HAS_EXT then reaper.Daniel_AlwaysRec_SetEnabled(mode == "input") end
+  if not HAS_EXT then return end
+  local on = (mode == "input" or mode == "app")
+  if not on then reaper.Daniel_AlwaysRec_SetEnabled(false) end
+  if HAS_APP then reaper.Daniel_AlwaysRec_SetSource(mode == "app" and 1 or 0) end
+  if on then reaper.Daniel_AlwaysRec_SetEnabled(true) end
 end
 
 local function set_mode(m)
@@ -443,6 +461,33 @@ local function set_input(v)
   if HAS_EXT then reaper.Daniel_AlwaysRec_SetInput(v) end
   if mode ~= "input" then set_mode("input")       -- picking an input switches the source (also resets)
   else reset_selection() end                       -- the buffer restarts, so any old selection is stale
+end
+
+local function set_app(key)
+  if HAS_APP then reaper.Daniel_AlwaysRec_SetApp(key) end
+  if mode ~= "app" then set_mode("app") end       -- picking an app switches the source (also resets)
+  -- same source: the buffer keeps its audio, so the selection stays valid
+end
+
+-- { key, name, playing } list from the extension (first: all system audio)
+local function get_apps()
+  local list = {}
+  if not HAS_APP then return list end
+  local ok, text = reaper.Daniel_AlwaysRec_GetApps(string.rep(" ", 16384))
+  if not ok or not text then return list end
+  for line in text:gmatch("[^\n]+") do
+    local key, name, playing = line:match("^([^\t]*)\t([^\t]*)\t(%d)")
+    if key and key ~= "" then list[#list + 1] = { key = key, name = name, playing = playing == "1" } end
+  end
+  return list
+end
+
+-- status of the application source: code, key, name, error
+-- code: 0 = not supported, 1 = starting, 2 = capturing, 3 = app not playing, 4 = error
+local function get_app_status()
+  if not HAS_APP then return 0, "", "", 0 end
+  local code, key, name, err = reaper.Daniel_AlwaysRec_GetAppStatus("", "")
+  return code, key or "", name or "", err or 0
 end
 
 local function set_buffer(seconds)
@@ -495,7 +540,10 @@ local function show_context_menu(mx, my)
 
   sub("Source")
   add("Effect on a track (manual)", function() set_mode("track") end, mode == "track")
-  add("Hardware input (extension)", function() set_mode("input") end, mode == "input", true)
+  add("Hardware input (extension)", function() set_mode("input") end, mode == "input", not HAS_APP)
+  if HAS_APP then
+    add("Application (extension)", function() set_mode("app") end, mode == "app", true)
+  end
 
   local _, _, _, _, saved_input = get_info()
 
@@ -525,6 +573,24 @@ local function show_context_menu(mx, my)
               function() set_input(val) end,
               mode == "input" and HAS_EXT and saved_input == val,
               ch == last_pair)
+        end
+      end
+    end
+
+    if HAS_APP then
+      -- Application -> All system audio / apps (playing ones first)
+      sub("Application")
+      local apps = get_apps()
+      local _, cur_key = get_app_status()
+      if #apps == 0 then
+        add("No apps found", function() end, false, true)
+      else
+        for i, app in ipairs(apps) do
+          local key = app.key
+          add(menu_safe(app.name) .. (app.playing and "   (audio active)" or ""),
+              function() set_app(key) end,
+              mode == "app" and cur_key == key,
+              i == #apps)
         end
       end
     end
@@ -611,6 +677,7 @@ end
 
 local frame_count = 0
 local found_active = false
+local last_sound_time = reaper.time_precise()   -- application source: silence hint
 local last_active_proj = nil
 local FULL_SCAN_FRAMES = 60   -- ~2 s
 
@@ -674,6 +741,23 @@ local function main()
         "The Daniel_Always Recording extension is not installed.",
         "Install it via ReaPack, then restart REAPER.",
       })
+    elseif mode == "app" then
+      local code, _, name, err = get_app_status()
+      if code == 0 then
+        draw_message({ IS_MAC and "Application audio needs macOS 14.2 or later." or "Application audio needs PipeWire." })
+      elseif code == 3 then
+        draw_message({
+          "Waiting for " .. name .. " to play audio...",
+          "Right-click to pick another app.",
+        })
+      elseif code == 4 then
+        draw_message({
+          err == -1 and "Could not install the helper app." or ("Could not capture " .. name .. " (error " .. tostring(err) .. ")."),
+          "Right-click to pick another app.",
+        })
+      else
+        draw_message({ "Starting the capture of " .. name .. "..." })
+      end
     elseif ext_state == 0 then
       draw_message({ "Could not start the rolling buffer (audio hook)." })
     else
@@ -735,13 +819,45 @@ local function main()
   local MIN_SCALE = 0.2
   local scale = math.max(maxpeak, MIN_SCALE)
 
+  -- Application source: if the whole buffer stays silent for 8 s, macOS may
+  -- block the helper (no permission), or the app plays nothing. Then show a
+  -- clean centred note instead of an empty waveform.
+  local show_hint = false
+  if mode == "app" then
+    local now = reaper.time_precise()
+    if maxpeak > 0.00001 then last_sound_time = now end
+    show_hint = now - last_sound_time > 8
+  else
+    last_sound_time = reaper.time_precise()
+  end
+
   -- mirrored (top+bottom) waveform: a solid filled shape between each pair
   -- of points (no per-point spoke lines, so no visible vertical lines),
   -- plus a full-brightness outline stroke along the envelope for crispness
   local FILL_ALPHA = 0.4
   local step = wf_w / disp_n
   local lx, ly1, ly2
-  for i = 0, disp_n - 1 do
+  if show_hint then
+    local _, key, name = get_app_status()
+    local lines = {
+      key == "ALL" and "No system audio." or ("No audio from " .. name .. "."),
+    }
+    if IS_MAC then
+      lines[2] = 'If sound is playing, allow "Daniel_App Audio Helper" in'
+      lines[3] = "System Settings > Privacy & Security > Screen & System Audio Recording."
+    end
+    gfx.setfont(1, "Arial", 14)
+    local line_h = 19
+    local y = math.floor(center_y - (#lines * line_h) / 2 + 0.5)
+    for i, text in ipairs(lines) do
+      if i == 1 then gfx.set(0.85, 0.85, 0.85, 1) else gfx.set(0.6, 0.6, 0.6, 1) end
+      local tw = gfx.measurestr(text)
+      gfx.x, gfx.y = math.floor(wf_x + (wf_w - tw) / 2 + 0.5), y
+      gfx.drawstr(text)
+      y = y + line_h
+    end
+  end
+  for i = 0, (show_hint and -1 or disp_n - 1) do
     local v = peaks[i] / scale
     if v > 1 then v = 1 end
     local half = v * (wf_h / 2)
@@ -767,14 +883,16 @@ local function main()
     lx, ly1, ly2 = x, y1, y2
   end
 
-  -- center line
-  gfx.set(BLUE_R, BLUE_G, BLUE_B, 0.3)
-  gfx.line(wf_x, center_y, wf_x + wf_w, center_y)
+  if not show_hint then
+    -- center line
+    gfx.set(BLUE_R, BLUE_G, BLUE_B, 0.3)
+    gfx.line(wf_x, center_y, wf_x + wf_w, center_y)
 
-  -- write-head marker
-  gfx.set(1, 1, 0.2, 0.85)
-  local head_x = wf_x + write_head * wf_w
-  gfx.line(head_x, wf_y, head_x, wf_y + wf_h)
+    -- write-head marker
+    gfx.set(1, 1, 0.2, 0.85)
+    local head_x = wf_x + write_head * wf_w
+    gfx.line(head_x, wf_y, head_x, wf_y + wf_h)
+  end
 
   local over_wf = mx >= wf_x and mx <= wf_x + wf_w and my >= wf_y and my <= wf_y + wf_h
   local mdown = (gfx.mouse_cap & 1) == 1
@@ -838,7 +956,7 @@ else
 end
 
 reaper.atexit(exit)
-sync_buffer()   -- buffer on with the window (Hardware input mode)
+sync_buffer()   -- buffer on with the window (Hardware input / Application mode)
 -- Started via defer (not called directly) so the leftover cleanup happens
 -- outside the script's initial run -- that keeps REAPER from adding an
 -- automatic "ReaScript" undo point for it.
